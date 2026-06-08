@@ -1,0 +1,13 @@
+# Keil build output
+Output/
+
+# Keil output folders
+Objects/
+Listings/
+
+# Keil temporary / local files
+*.uvguix.*
+*.uvgui.*
+*.uvgui_*
+*.bak
+*.dep
