@@ -1,5 +1,5 @@
-#ifndef BMS_TASKS_H
-#define BMS_TASKS_H
+#ifndef __BMS_TASKS_H
+#define __BMS_TASKS_H
 
 #include "FreeRTOS.h"
 #include "bq76940_app.h"

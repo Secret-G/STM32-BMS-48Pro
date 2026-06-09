@@ -115,6 +115,9 @@ uint8_t BQ76940_AppBringUpAndSelfTest(BQ76940_AppCtx_t *ctx);
 /* 周期运行一次 */
 uint8_t BQ76940_AppRunCycle(BQ76940_AppCtx_t *ctx);
 
+/*can发送函数*/
+void BQ76940_AppSendCanTelemetry(const BQ76940_AppCtx_t *ctx);
+
 #endif
 
 

@@ -93,7 +93,7 @@ static uint8_t BQ76940_AppBuildAlarmFlags(const BQ76940_AppCtx_t *ctx)
  * CAN 底层初始化、邮箱发送等细节由 can_drv.c 负责。
  */
 
-static void BQ76940_AppSendCanTelemetry(const BQ76940_AppCtx_t *ctx)
+void BQ76940_AppSendCanTelemetry(const BQ76940_AppCtx_t *ctx)
 {
     uint8_t data[8];
     uint8_t ret;
@@ -900,9 +900,6 @@ uint8_t BQ76940_AppRunCycle(BQ76940_AppCtx_t *ctx)
                               ctx->bal_target_label,
                               &ctx->bal_auto_rd);
 		BQ76200_ExecPrintState(&ctx->bq76200_exec);
-
-		BQ76940_AppSendCanTelemetry(ctx);
-
     printf("----------------------------------------\r\n");
 
     return 0;
