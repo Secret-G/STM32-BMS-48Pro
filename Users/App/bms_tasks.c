@@ -4,6 +4,7 @@
 #include "task.h"
 #include "stdio.h"
 #include "bq34z100_app.h"
+#include "can_drv.h"
 
 #define BMS_CORE_TASK_STACK_WORDS      512U
 #define LED_TASK_STACK_WORDS           128U
@@ -59,7 +60,8 @@ BaseType_t BMS_TasksCreate(BQ76940_AppCtx_t *app)
 {
     BaseType_t result;
 	
-		 BQ34Z100_AppInit(&g_bq34z100_ctx);
+		BQ34Z100_AppInit(&g_bq34z100_ctx);
+	
 
     result = xTaskCreate(BMS_CoreTask,
                          "BMS_Core",
@@ -94,6 +96,9 @@ static void BMS_CoreTask(void *argument)
     {
         uint8_t ret;
 
+        /*
+         * 1. BQ76940 主流程
+         */
         ret = BQ76940_AppRunCycle(app);
         if (ret != 0U)
         {
@@ -103,6 +108,11 @@ static void BMS_CoreTask(void *argument)
         }
 
 #if (BMS_CORE_RUN_BQ34Z100 != 0U)
+        /*
+         * 2. BQ34Z100 电量计周期刷新
+         * 当前 BMS_CoreTask 周期约 100ms，
+         * BMS_CORE_BQ34Z100_PERIOD_CNT = 10 时约 1s 刷新一次。
+         */
         bq34_cnt++;
         if (bq34_cnt >= BMS_CORE_BQ34Z100_PERIOD_CNT)
         {
@@ -123,7 +133,6 @@ static void BMS_CoreTask(void *argument)
             }
         }
 #endif
-
         vTaskDelay(pdMS_TO_TICKS(100U));
     }
 }

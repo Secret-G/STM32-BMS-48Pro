@@ -79,6 +79,20 @@ static uint8_t BQ76940_AppBuildAlarmFlags(const BQ76940_AppCtx_t *ctx)
     return flags;
 }
 
+/*
+ * 将 BQ76940 应用层状态打包为 CAN 状态帧并发送。
+ *
+ * 当前 CAN 协议：
+ * 0x301: Pack 总压 + Pack 电流
+ * 0x302: Cell1 ~ Cell4 电压
+ * 0x303: Cell5 ~ Cell8 电压
+ * 0x304: Cell9 电压 + TS1 温度 + 告警/保护/均衡状态
+ *
+ * 注意：
+ * 本函数只负责业务数据打包和调用 CAN_DrvSendStd()，
+ * CAN 底层初始化、邮箱发送等细节由 can_drv.c 负责。
+ */
+
 static void BQ76940_AppSendCanTelemetry(const BQ76940_AppCtx_t *ctx)
 {
     uint8_t data[8];
