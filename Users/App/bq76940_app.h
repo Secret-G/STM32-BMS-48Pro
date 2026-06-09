@@ -118,6 +118,14 @@ uint8_t BQ76940_AppRunCycle(BQ76940_AppCtx_t *ctx);
 /*can·¢ËÍº¯Êý*/
 void BQ76940_AppSendCanTelemetry(const BQ76940_AppCtx_t *ctx);
 
+
+uint8_t BQ76940_AppSampleUpdate(BQ76940_AppCtx_t *ctx);
+uint8_t BQ76940_AppProtectUpdate(BQ76940_AppCtx_t *ctx);
+uint8_t BQ76940_AppBalanceUpdate(BQ76940_AppCtx_t *ctx);
+uint8_t BQ76940_AppControlUpdate(BQ76940_AppCtx_t *ctx);
+void    BQ76940_AppPrintRuntime(const BQ76940_AppCtx_t *ctx);
+void    BQ76940_AppSendCanTelemetry(const BQ76940_AppCtx_t *ctx);
+
 #endif
 
 

@@ -697,210 +697,373 @@ static uint8_t BQ76940_AppHandleAutoBalance(BQ76940_AppCtx_t *ctx)
 uint8_t BQ76940_AppRunCycle(BQ76940_AppCtx_t *ctx)
 {
     uint8_t ret;
-		
-		BQ76200_ExecInput_t exec_input;
-	
+
     if (ctx == 0)
     {
-        return 1;
+        return 1U;
     }
 
-    /* 1. 读取 9 节映射电压 */
+    /*
+     * 1. 采样阶段：
+     * 电压 / 电流 / 温度 / 硬件状态读取
+     */
+    ret = BQ76940_AppSampleUpdate(ctx);
+    if (ret != 0U)
+    {
+        return ret;
+    }
+
+    /*
+     * 2. 保护阶段：
+     * UV / OV / DIFF / OT / UT / OCD / SCD
+     */
+    ret = BQ76940_AppProtectUpdate(ctx);
+    if (ret != 0U)
+    {
+        return ret;
+    }
+
+    /*
+     * 3. 均衡阶段：
+     * 自动均衡判断与 CELLBAL 控制
+     */
+    ret = BQ76940_AppBalanceUpdate(ctx);
+    if (ret != 0U)
+    {
+        return ret;
+    }
+
+    /*
+     * 4. 执行控制阶段：
+     * 根据保护状态刷新 BQ76200 执行层
+     */
+    ret = BQ76940_AppControlUpdate(ctx);
+    if (ret != 0U)
+    {
+        return ret;
+    }
+
+    /*
+     * 5. 调试打印阶段
+     */
+    BQ76940_AppPrintRuntime(ctx);
+
+    return 0U;
+}
+
+
+uint8_t BQ76940_AppSampleUpdate(BQ76940_AppCtx_t *ctx)
+{
+    uint8_t ret;
+
+    if (ctx == 0)
+    {
+        return 1U;
+    }
+
+    /*
+     * 1. 读取 9 节映射电压
+     */
     ret = BQ76940_ReadAllMappedCellVoltages9_mV(&ctx->calib,
                                                 ctx->cell_raw,
                                                 ctx->cell_mV);
-    if (ret != 0)
+    if (ret != 0U)
     {
-        return 11;
+        return 11U;
     }
 
-    /* 2. 计算总压 */
+    /*
+     * 2. 计算 Pack 总压
+     */
     ctx->pack_total_mV = BQ76940_CalcPackVoltage9_mV(ctx->cell_mV);
 
-    /* 3. 分析最大/最小/压差 */
+    /*
+     * 3. 统计最高、最低、压差
+     */
     ret = BQ76940_AnalyzeCellVoltages9(ctx->cell_mV, &ctx->cell_stats);
-    if (ret != 0)
+    if (ret != 0U)
     {
-        return 12;
+        return 12U;
     }
 
-    /* 4. 更新软件告警状态 */
+    /*
+     * 4. 触发一次 CC 1-shot 电流采样
+     */
+    ret = BQ76940_CC_StartOneShot();
+    if (ret != 0U)
+    {
+        printf("[CC] StartOneShot fail, ret = %d\r\n", ret);
+        return 14U;
+    }
+
+    /*
+     * 5. 等待 CC_READY
+     */
+    ret = BQ76940_CC_WaitReady(600U);
+    if (ret != 0U)
+    {
+        printf("[CC] WaitReady fail, ret = %d\r\n", ret);
+        return 15U;
+    }
+
+    /*
+     * 6. 读取 CC 原始值
+     */
+    ret = BQ76940_CC_ReadRaw(&ctx->cc_raw);
+    if (ret != 0U)
+    {
+        printf("[CC] ReadRaw fail, ret = %d\r\n", ret);
+        return 16U;
+    }
+
+    /*
+     * 7. 换算 Pack 电流
+     */
+    ret = BQ76940_CC_ConvertToCurrent_mA(ctx->cc_raw.raw_s16,
+                                         BQ76940_RSENSE_UOHM,
+                                         &ctx->pack_current_mA);
+    if (ret != 0U)
+    {
+        printf("[CC] ConvertToCurrent fail, ret = %d\r\n", ret);
+        return 17U;
+    }
+
+    /*
+     * 8. 判断电流方向
+     */
+    ctx->pack_current_dir = BQ76940_AppJudgeCurrentDir(ctx->pack_current_mA);
+
+    /*
+     * 9. 读取 TS1 外部温度
+     */
+    ret = BQ76940_ReadTS1Raw(&ctx->ts1_raw_adc);
+    if (ret != 0U)
+    {
+        printf("[TEMP] Read TS1 fail, ret = %d\r\n", ret);
+        return 18U;
+    }
+
+    ret = BQ76940_ConvertTS1Temp_dC(ctx->ts1_raw_adc, &ctx->ts1_temp_dC);
+    if (ret != 0U)
+    {
+        printf("[TEMP] Convert TS1 fail, ret = %d\r\n", ret);
+        return 19U;
+    }
+
+    /*
+     * 10. 读取硬件故障状态 SYS_STAT
+     */
+    ret = BQ76940_ProtectReadFaultStatus(&ctx->sys_stat);
+    if (ret != 0U)
+    {
+        printf("[HW FAULT] read SYS_STAT fail, ret = %d\r\n", ret);
+        return 23U;
+    }
+
+    /*
+     * 11. 提取当前激活的硬件故障位
+     */
+    ret = BQ76940_ProtectGetActiveFaultMask(ctx->sys_stat,
+                                            &ctx->fault_mask_active);
+    if (ret != 0U)
+    {
+        printf("[HW FAULT] get active mask fail, ret = %d\r\n", ret);
+        return 24U;
+    }
+
+    return 0U;
+}
+
+
+uint8_t BQ76940_AppProtectUpdate(BQ76940_AppCtx_t *ctx)
+{
+    uint8_t ret;
+
+    if (ctx == 0)
+    {
+        return 1U;
+    }
+
+    /*
+     * 1. 更新单体电压相关软件告警：
+     * UV / OV / DIFF
+     */
     ret = BQ76940_UpdateAlarmState9(ctx->cell_mV,
                                     &ctx->cell_stats,
                                     &ctx->alarm_th,
                                     &ctx->alarm_state);
-    if (ret != 0)
+    if (ret != 0U)
     {
-        return 13;
+        return 13U;
     }
 
-    /* 5. 触发一次 CC 1-shot */
-    ret = BQ76940_CC_StartOneShot();
-    if (ret != 0)
-    {
-        printf("[CC] StartOneShot fail, ret = %d\r\n", ret);
-        return 14;
-    }
-
-    /* 6. 等待 CC_READY */
-    ret = BQ76940_CC_WaitReady(600);
-    if (ret != 0)
-    {
-        printf("[CC] WaitReady fail, ret = %d\r\n", ret);
-        return 15;
-    }
-
-    /* 7. 读取 CC 原始值 */
-    ret = BQ76940_CC_ReadRaw(&ctx->cc_raw);
-    if (ret != 0)
-    {
-        printf("[CC] ReadRaw fail, ret = %d\r\n", ret);
-        return 16;
-    }
-
-    /* 8. 换算包电流 */
-    ret = BQ76940_CC_ConvertToCurrent_mA(ctx->cc_raw.raw_s16,
-                                         BQ76940_RSENSE_UOHM,
-                                         &ctx->pack_current_mA);
-    if (ret != 0)
-    {
-        printf("[CC] ConvertToCurrent fail, ret = %d\r\n", ret);
-        return 17;
-    }
-
-    /* 9. 判断方向 */
-    ctx->pack_current_dir = BQ76940_AppJudgeCurrentDir(ctx->pack_current_mA);
-		
-		    /* 读取 TS1 外部温度 */
-    ret = BQ76940_ReadTS1Raw(&ctx->ts1_raw_adc);
-    if (ret != 0)
-    {
-        printf("[TEMP] Read TS1 fail, ret = %d\r\n", ret);
-        return 18;
-    }
-
-    ret = BQ76940_ConvertTS1Temp_dC(ctx->ts1_raw_adc, &ctx->ts1_temp_dC);
-    if (ret != 0)
-    {
-        printf("[TEMP] Convert TS1 fail, ret = %d\r\n", ret);
-        return 19;
-    }
-		    /* 更新 TS1 软件过温告警 */
+    /*
+     * 2. 更新 TS1 过温告警
+     */
     ret = BQ76940_UpdateTempAlarmTs1(ctx->ts1_temp_dC,
                                      &ctx->alarm_th,
                                      &ctx->alarm_state);
-    if (ret != 0)
+    if (ret != 0U)
     {
         printf("[TEMP ALARM] update fail, ret = %d\r\n", ret);
-        return 20;
+        return 20U;
     }
-		
-		ret = BQ76940_UpdateLowTempAlarmTs1(ctx->ts1_temp_dC,
-                                    &ctx->alarm_th,
-                                    &ctx->alarm_state);
-		if (ret != 0)
-		{
-				printf("[LOW TEMP ALARM] update fail, ret = %d\r\n", ret);
-				return 22;
-		}
-		    /* 处理过温联动控制 */
+
+    /*
+     * 3. 更新 TS1 低温告警
+     */
+    ret = BQ76940_UpdateLowTempAlarmTs1(ctx->ts1_temp_dC,
+                                        &ctx->alarm_th,
+                                        &ctx->alarm_state);
+    if (ret != 0U)
+    {
+        printf("[LOW TEMP ALARM] update fail, ret = %d\r\n", ret);
+        return 22U;
+    }
+
+    /*
+     * 4. 处理过温联动控制：
+     * OT 生效时，充放电都禁止。
+     */
     ret = BQ76940_AppHandleTempProtect(ctx);
-    if (ret != 0)
+    if (ret != 0U)
     {
         printf("[TEMP PROTECT] handle fail, ret = %d\r\n", ret);
-        return 21;
+        return 21U;
     }
-			
-		    /* 处理低温联动控制：只禁止充电 */
+
+    /*
+     * 5. 处理低温联动控制：
+     * UT 生效时，只禁止充电。
+     */
     ret = BQ76940_AppHandleLowTempProtect(ctx);
-    if (ret != 0)
+    if (ret != 0U)
     {
         printf("[LOW TEMP PROTECT] handle fail, ret = %d\r\n", ret);
-        return 22;
+        return 25U;
     }
-		
-		    /* 读取并打印硬件故障状态 */
-    ret = BQ76940_ProtectReadFaultStatus(&ctx->sys_stat);
-    if (ret != 0)
-    {
-        printf("[HW FAULT] read SYS_STAT fail, ret = %d\r\n", ret);
-        return 23;
-    }
-		
-		    /* 提取当前激活的硬件故障位 */
-    ret = BQ76940_ProtectGetActiveFaultMask(ctx->sys_stat, &ctx->fault_mask_active);
-    if (ret != 0)
-    {
-        printf("[HW FAULT] get active mask fail, ret = %d\r\n", ret);
-        return 24;
-    }
-		
-		ret = BQ76940_AppHandleOcdScdProtect(ctx);
-    if (ret != 0)
+
+    /*
+     * 6. 处理 OCD / SCD 放电侧硬件保护状态
+     */
+    ret = BQ76940_AppHandleOcdScdProtect(ctx);
+    if (ret != 0U)
     {
         printf("[OCD/SCD PROTECT] handle fail, ret = %d\r\n", ret);
-        return 27;
+        return 27U;
     }
-		
-		ret = BQ76940_AppHandleAutoBalance(ctx);
-		if (ret != 0)
-		{
-				printf("[BALANCE AUTO] handle fail, ret = %d\r\n", ret);
-				return 30;
-		}
-		
-    /* 组织 BQ76200 执行层输入 */
+
+    return 0U;
+}
+
+uint8_t BQ76940_AppBalanceUpdate(BQ76940_AppCtx_t *ctx)
+{
+    uint8_t ret;
+
+    if (ctx == 0)
+    {
+        return 1U;
+    }
+
+    /*
+     * 自动均衡控制：
+     * 根据单体压差、最低电压、电流大小等条件决定是否开启均衡。
+     */
+    ret = BQ76940_AppHandleAutoBalance(ctx);
+    if (ret != 0U)
+    {
+        printf("[BALANCE AUTO] handle fail, ret = %d\r\n", ret);
+        return 30U;
+    }
+
+    return 0U;
+}
+
+
+uint8_t BQ76940_AppControlUpdate(BQ76940_AppCtx_t *ctx)
+{
+    uint8_t ret;
+    BQ76200_ExecInput_t exec_input;
+
+    if (ctx == 0)
+    {
+        return 1U;
+    }
+
+    /*
+     * 组织 BQ76200 执行层输入。
+     *
+     * ot_cutoff_active:
+     *     过温保护生效，充放电都禁止
+     *
+     * ut_chg_block_active:
+     *     低温禁充，只禁止充电
+     *
+     * hw_dsg_block_active:
+     *     OCD/SCD 等放电侧故障，只禁止放电
+     */
     exec_input.ot_cutoff_active    = ctx->ot_cutoff_active;
     exec_input.ut_chg_block_active = ctx->ut_chg_block_active;
     exec_input.hw_dsg_block_active = ctx->hw_dsg_block_active;
 
-    /* 更新 BQ76200 执行层 */
+    /*
+     * 更新 BQ76200 执行层状态机
+     */
     ret = BQ76200_ExecUpdate(&ctx->bq76200_exec, &exec_input);
-    if (ret != 0)
+    if (ret != 0U)
     {
-         printf("[BQ76200 EXEC] update fail, ret = %d\r\n", ret);
-         return 31;
+        printf("[BQ76200 EXEC] update fail, ret = %d\r\n", ret);
+        return 31U;
     }
 
-		
-		printf("----------------------------------------\r\n");
-    /* 10. 统一打印 */
+    return 0U;
+}
+
+void BQ76940_AppPrintRuntime(const BQ76940_AppCtx_t *ctx)
+{
+    if (ctx == 0)
+    {
+        return;
+    }
+
+    printf("----------------------------------------\r\n");
+
     BQ76940_PrintAllMappedCellVoltages9(ctx->cell_raw,
                                         ctx->cell_mV,
                                         ctx->pack_total_mV);
 
     BQ76940_PrintCellStats9(&ctx->cell_stats, ctx->pack_total_mV);
-		
-		
-
 
     BQ76940_PrintAlarmFlags9(&ctx->alarm_state);
 
     BQ76940_PrintPackCurrent(&ctx->cc_raw,
                              ctx->pack_current_mA,
                              ctx->pack_current_dir);
-		
-		BQ76940_PrintCycleSummary9(ctx->pack_total_mV,
-															 &ctx->cell_stats,
-															 &ctx->alarm_state,
-															 ctx->pack_current_mA,
-															 ctx->pack_current_dir,
-															 ctx->ts1_temp_dC,
-															 ctx->ot_cutoff_active,
-															 ctx->ut_chg_block_active,
-															 ctx->hw_dsg_block_active,
-															 ctx->hw_ocd_active,
-															 ctx->hw_scd_active);
-													 										 
-		BQ76940_PrintTS1Temp(ctx->ts1_raw_adc, ctx->ts1_temp_dC);
-		BQ76940_PrintTempAlarmTs1(&ctx->alarm_state);
-		BQ76940_PrintLowTempAlarmTs1(&ctx->alarm_state);
-		BQ76940_ProtectPrintFaultStatus(ctx->sys_stat);
-		BQ76940_PrintBalanceAutoState(ctx->bal_active,
-                              ctx->bal_target_label,
-                              &ctx->bal_auto_rd);
-		BQ76200_ExecPrintState(&ctx->bq76200_exec);
-    printf("----------------------------------------\r\n");
 
-    return 0;
+    BQ76940_PrintCycleSummary9(ctx->pack_total_mV,
+                               &ctx->cell_stats,
+                               &ctx->alarm_state,
+                               ctx->pack_current_mA,
+                               ctx->pack_current_dir,
+                               ctx->ts1_temp_dC,
+                               ctx->ot_cutoff_active,
+                               ctx->ut_chg_block_active,
+                               ctx->hw_dsg_block_active,
+                               ctx->hw_ocd_active,
+                               ctx->hw_scd_active);
+
+    BQ76940_PrintTS1Temp(ctx->ts1_raw_adc, ctx->ts1_temp_dC);
+
+    BQ76940_PrintTempAlarmTs1(&ctx->alarm_state);
+    BQ76940_PrintLowTempAlarmTs1(&ctx->alarm_state);
+
+    BQ76940_ProtectPrintFaultStatus(ctx->sys_stat);
+
+    BQ76940_PrintBalanceAutoState(ctx->bal_active,
+                                  ctx->bal_target_label,
+                                  &ctx->bal_auto_rd);
+
+    BQ76200_ExecPrintState(&ctx->bq76200_exec);
+
+    printf("----------------------------------------\r\n");
 }
