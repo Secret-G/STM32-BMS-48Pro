@@ -218,16 +218,22 @@ static void BMS_SampleTask(void *argument)
         if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
         {
             ret = BQ76940_AppSampleUpdate(app);
+
+            /*
+             * 采样成功后，在释放 mutex 之前先通知 ProtectTask。
+             * 这样可以减少 CAN / Aux 在“采样已更新、保护未更新”中间插队读取 app 的概率。
+             */
+            if (ret == 0U)
+            {
+                xSemaphoreGive(g_protect_sem);
+            }
+
             xSemaphoreGive(g_bms_ctx_mutex);
         }
 
         if (ret != 0U)
         {
             printf("[BMS_SampleTask] sample update fail, ret = %d\r\n", ret);
-        }
-        else
-        {
-            xSemaphoreGive(g_protect_sem);
         }
 
         vTaskDelay(pdMS_TO_TICKS(BMS_SAMPLE_TASK_PERIOD_MS));
@@ -267,16 +273,23 @@ static void BMS_ProtectTask(void *argument)
             if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
             {
                 ret = BQ76940_AppProtectUpdate(app);
+
+                /*
+                 * 保护判断成功后，在释放 mutex 之前通知 BalanceTask。
+                 * 这样主链会更紧凑：
+                 * Sample -> Protect -> Balance -> Control
+                 */
+                if (ret == 0U)
+                {
+                    xSemaphoreGive(g_balance_sem);
+                }
+
                 xSemaphoreGive(g_bms_ctx_mutex);
             }
 
             if (ret != 0U)
             {
                 printf("[BMS_ProtectTask] protect update fail, ret = %d\r\n", ret);
-            }
-            else
-            {
-                xSemaphoreGive(g_balance_sem);
             }
         }
     }
@@ -295,16 +308,22 @@ static void BMS_BalanceTask(void *argument)
             if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
             {
                 ret = BQ76940_AppBalanceUpdate(app);
+
+                /*
+                 * 均衡处理成功后，在释放 mutex 之前通知 ControlTask。
+                 * ControlTask 会根据最新的保护/均衡/故障状态刷新执行层。
+                 */
+                if (ret == 0U)
+                {
+                    xSemaphoreGive(g_control_sem);
+                }
+
                 xSemaphoreGive(g_bms_ctx_mutex);
             }
 
             if (ret != 0U)
             {
                 printf("[BMS_BalanceTask] balance update fail, ret = %d\r\n", ret);
-            }
-            else
-            {
-                xSemaphoreGive(g_control_sem);
             }
         }
     }

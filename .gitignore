@@ -1,13 +1,33 @@
-# Keil build output
+cat > .gitignore <<'EOF'
+# Build outputs
 Output/
-
-# Keil output folders
 Objects/
 Listings/
 
-# Keil temporary / local files
+# Keil / ARMCC generated files
+*.o
+*.obj
+*.d
+*.crf
+*.lst
+*.map
+*.axf
+*.elf
+*.hex
+*.bin
+*.lnp
+
+# Keil user / temporary files
 *.uvguix.*
 *.uvgui.*
-*.uvgui_*
-*.bak
-*.dep
+*.uvguix.*
+*.uvoptx
+*.log
+
+# VSCode local settings
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+EOF
