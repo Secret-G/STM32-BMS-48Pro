@@ -389,27 +389,93 @@ static void BMS_ProtectTask(void *argument)
         if (xSemaphoreTake(g_protect_sem, portMAX_DELAY) == pdTRUE)
         {
             uint8_t ret = 0U;
+            BQ76940_OcdScdRequest_t ocdscd_req;
 
+            /*
+             * 1. Base + Decide 阶段：
+             *
+             * Base：
+             *   - 更新 UV / OV / DIFF 软件告警
+             *   - 更新 OT / UT 温度告警
+             *   - 当前阶段仍包含 OT / UT 旧联动保护
+             *
+             * OcdScdDecide：
+             *   - 只根据 app 当前状态判断是否需要 DSG_OFF / DSG_ON
+             *   - 不访问 I2C
+             *
+             * 所以这里持有 ctx mutex。
+             */
             if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
             {
-                ret = BQ76940_AppProtectUpdate(app);
+                ret = BQ76940_AppProtectUpdateBase(app);
 
-                /*
-                 * 保护判断成功后，在释放 mutex 之前通知 BalanceTask。
-                 * 这样主链会更紧凑：
-                 * Sample -> Protect -> Balance -> Control
-                 */
                 if (ret == 0U)
                 {
-                    xSemaphoreGive(g_balance_sem);
+                    ret = BQ76940_AppOcdScdDecide(app, &ocdscd_req);
                 }
 
                 xSemaphoreGive(g_bms_ctx_mutex);
             }
+            else
+            {
+                ret = 1U;
+            }
+
+            /*
+             * 2. OCD / SCD ApplyHw 阶段：
+             *
+             * 只有真正需要修改 BQ76940 DSG 位时，
+             * 才申请 I2C mutex。
+             */
+            if (ret == 0U)
+            {
+                if (ocdscd_req.action != BQ76940_OCDSCD_ACTION_NONE)
+                {
+                    if (xSemaphoreTake(g_i2c_bus_mutex,
+                                       pdMS_TO_TICKS(BMS_I2C_MUTEX_TIMEOUT_MS)) == pdTRUE)
+                    {
+                        ret = BQ76940_AppOcdScdApplyHw(&ocdscd_req);
+
+                        xSemaphoreGive(g_i2c_bus_mutex);
+                    }
+                    else
+                    {
+                        ret = BMS_TASK_RET_I2C_LOCK_TIMEOUT;
+                    }
+                }
+            }
+
+            /*
+             * 3. OCD / SCD Commit 阶段：
+             *
+             * 将 OCD / SCD 锁存状态、DSG 阻断状态、恢复请求状态
+             * 提交回 app。
+             */
+            if (ret == 0U)
+            {
+                if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
+                {
+                    ret = BQ76940_AppOcdScdCommit(app, &ocdscd_req);
+
+                    /*
+                     * 保护阶段完成后，继续通知 BalanceTask。
+                     */
+                    if (ret == 0U)
+                    {
+                        xSemaphoreGive(g_balance_sem);
+                    }
+
+                    xSemaphoreGive(g_bms_ctx_mutex);
+                }
+                else
+                {
+                    ret = 2U;
+                }
+            }
 
             if (ret != 0U)
             {
-                printf("[BMS_ProtectTask] protect update fail, ret = %d\r\n", ret);
+                printf("[BMS_ProtectTask] protect fail, ret = %d\r\n", ret);
             }
         }
     }

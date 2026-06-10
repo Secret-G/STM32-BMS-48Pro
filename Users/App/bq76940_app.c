@@ -554,9 +554,9 @@ static uint8_t BQ76940_AppHandleLowTempProtect(BQ76940_AppCtx_t *ctx)
         return 1;
     }
 
-    printf("[LOW TEMP PROTECT DBG]\r\n");
-    printf("UT_FLAG = %d\r\n", ctx->alarm_state.ut_flag);
-    printf("UT_CHG_BLOCK_ACTIVE = %d\r\n", ctx->ut_chg_block_active);
+//    printf("[LOW TEMP PROTECT DBG]\r\n");
+//    printf("UT_FLAG = %d\r\n", ctx->alarm_state.ut_flag);
+//    printf("UT_CHG_BLOCK_ACTIVE = %d\r\n", ctx->ut_chg_block_active);
 
     /* 1. 首次进入低温：只关 CHG，不关 DSG */
     if ((ctx->alarm_state.ut_flag != 0U) && (ctx->ut_chg_block_active == 0U))
@@ -576,10 +576,10 @@ static uint8_t BQ76940_AppHandleLowTempProtect(BQ76940_AppCtx_t *ctx)
             return 4;
         }
 
-        printf("------------------------------------------------------\r\n");
-        printf("[LOW TEMP PROTECT]\r\n");
-        printf("UT active -> CHG=OFF, DSG unchanged\r\n");
-        printf("------------------------------------------------------\r\n");
+//        printf("------------------------------------------------------\r\n");
+//        printf("[LOW TEMP PROTECT]\r\n");
+//        printf("UT active -> CHG=OFF, DSG unchanged\r\n");
+//        printf("------------------------------------------------------\r\n");
     }
     /* 2. 低温恢复：若当前没有 OV / OT，再恢复 CHG */
     else if ((ctx->alarm_state.ut_flag == 0U) && (ctx->ut_chg_block_active != 0U))
@@ -613,66 +613,118 @@ static uint8_t BQ76940_AppHandleLowTempProtect(BQ76940_AppCtx_t *ctx)
     return 0;
 }
 
-
 #define BQ76940_PROTECT_DBG_ENABLE          0U
 #define BQ76940_PROTECT_EVENT_PRINT_ENABLE  1U
 
+void BQ76940_AppOcdScdRequestClear(BQ76940_OcdScdRequest_t *req)
+{
+    if (req == 0)
+    {
+        return;
+    }
 
-static uint8_t BQ76940_AppHandleOcdScdProtect(BQ76940_AppCtx_t *ctx)
+    req->action            = BQ76940_OCDSCD_ACTION_NONE;
+    req->sys_stat_snapshot = 0U;
+    req->hw_fault_now      = 0U;
+    req->ocd_now           = 0U;
+    req->scd_now           = 0U;
+    req->recover_request   = 0U;
+}
+
+uint8_t BQ76940_AppOcdScdDecide(const BQ76940_AppCtx_t *ctx,
+                                BQ76940_OcdScdRequest_t *req)
+{
+    if ((ctx == 0) || (req == 0))
+    {
+        return 1U;
+    }
+
+    BQ76940_AppOcdScdRequestClear(req);
+
+    /*
+     * 保存当前 SYS_STAT 快照。
+     *
+     * 注意：
+     *   ctx->sys_stat 已经在 SampleTask 采样阶段读取并提交到 app。
+     *   这里不直接读 BQ76940。
+     */
+    req->sys_stat_snapshot = ctx->sys_stat;
+
+    req->hw_fault_now = (uint8_t)(ctx->sys_stat &
+                                  (BQ76940_SYS_STAT_OCD |
+                                   BQ76940_SYS_STAT_SCD));
+
+    if ((ctx->sys_stat & BQ76940_SYS_STAT_OCD) != 0U)
+    {
+        req->ocd_now = 1U;
+    }
+
+    if ((ctx->sys_stat & BQ76940_SYS_STAT_SCD) != 0U)
+    {
+        req->scd_now = 1U;
+    }
+
+    /*
+     * 情况 1：
+     * 当前硬件检测到 OCD / SCD，并且 DSG 还没有被阻断。
+     * 需要执行 DSG_OFF。
+     */
+    if ((req->hw_fault_now != 0U) &&
+        (ctx->hw_dsg_block_active == 0U))
+    {
+        req->action = BQ76940_OCDSCD_ACTION_DSG_OFF;
+        return 0U;
+    }
+
+    /*
+     * 情况 2：
+     * 手动恢复：
+     *   - 已经人工发起恢复请求
+     *   - 当前 DSG 处于阻断状态
+     *   - 当前硬件 OCD / SCD 位已经清除
+     *   - 当前没有 UV / OT 阻塞
+     */
+    if ((ctx->hw_fault_recover_once_enable != 0U) &&
+        (ctx->hw_dsg_block_active != 0U) &&
+        (req->hw_fault_now == 0U))
+    {
+        if ((ctx->alarm_state.uv_flag == 0U) &&
+            (ctx->alarm_state.ot_flag == 0U))
+        {
+            req->action = BQ76940_OCDSCD_ACTION_DSG_ON;
+            req->recover_request = 1U;
+            return 0U;
+        }
+    }
+
+    /*
+     * 情况 3：
+     * 无需硬件动作。
+     * 但 Commit 阶段仍然可以根据 ocd_now / scd_now 锁存状态。
+     */
+    req->action = BQ76940_OCDSCD_ACTION_NONE;
+
+    return 0U;
+}
+
+uint8_t BQ76940_AppOcdScdApplyHw(const BQ76940_OcdScdRequest_t *req)
 {
     uint8_t ret;
-    uint8_t hw_fault_now;
 
-    if (ctx == 0)
+    if (req == 0)
     {
         return 1U;
     }
 
     /*
-     * 当前硬件 OCD / SCD 故障位。
-     *
-     * 注意：
-     *   ctx->sys_stat 已经在采样阶段读取并提交到 app。
-     *   这里不直接读 BQ76940，只基于当前 app 状态判断。
+     * 无动作时，不访问 I2C。
      */
-    hw_fault_now = (uint8_t)(ctx->sys_stat &
-                            (BQ76940_SYS_STAT_OCD | BQ76940_SYS_STAT_SCD));
-
-    /*
-     * 锁存当前是否发生过 OCD / SCD。
-     * 一旦硬件故障位出现过，就记录到 app 状态中，
-     * 用于 CAN 上报和后续人工恢复判断。
-     */
-    if ((ctx->sys_stat & BQ76940_SYS_STAT_OCD) != 0U)
+    if (req->action == BQ76940_OCDSCD_ACTION_NONE)
     {
-        ctx->hw_ocd_active = 1U;
+        return 0U;
     }
 
-    if ((ctx->sys_stat & BQ76940_SYS_STAT_SCD) != 0U)
-    {
-        ctx->hw_scd_active = 1U;
-    }
-
-#if (BQ76940_PROTECT_DBG_ENABLE != 0U)
-    /*
-     * 调试用详细打印：
-     * 默认关闭，避免每轮 ProtectTask 都刷屏。
-     */
-    printf("[OCD/SCD DBG] SYS=%02X OCD=%u SCD=%u DSG_BLK=%u\r\n",
-           ctx->sys_stat,
-           ctx->hw_ocd_active,
-           ctx->hw_scd_active,
-           ctx->hw_dsg_block_active);
-#endif
-
-    /*
-     * 1. 只要当前硬件看到 OCD / SCD，就先阻断 DSG。
-     *
-     * 注意：
-     *   这里调用 BQ76940_SetDSGState(0)，会访问 BQ76940 I2C。
-     *   后面拆 ProtectTask 锁时，这个动作要归到 ApplyHw 阶段。
-     */
-    if ((hw_fault_now != 0U) && (ctx->hw_dsg_block_active == 0U))
+    if (req->action == BQ76940_OCDSCD_ACTION_DSG_OFF)
     {
         ret = BQ76940_SetDSGState(0U);
         if (ret != 0U)
@@ -680,12 +732,10 @@ static uint8_t BQ76940_AppHandleOcdScdProtect(BQ76940_AppCtx_t *ctx)
             return 2U;
         }
 
-        ctx->hw_dsg_block_active = 1U;
-
 #if (BQ76940_PROTECT_DBG_ENABLE != 0U)
         /*
          * 读回 SYS_CTRL2 只用于调试确认。
-         * 默认关闭，节省 Flash，也减少 I2C 访问。
+         * 默认关闭，避免增加 I2C 访问和 Flash 字符串。
          */
         ret = BQ76940_AppPrintSysCtrl2Readback("OCD/SCD ACTIVE READBACK");
         if (ret != 0U)
@@ -694,64 +744,224 @@ static uint8_t BQ76940_AppHandleOcdScdProtect(BQ76940_AppCtx_t *ctx)
         }
 #endif
 
-#if (BQ76940_PROTECT_EVENT_PRINT_ENABLE != 0U)
-        if ((ctx->sys_stat & BQ76940_SYS_STAT_SCD) != 0U)
+        return 0U;
+    }
+
+    if (req->action == BQ76940_OCDSCD_ACTION_DSG_ON)
+    {
+        ret = BQ76940_SetDSGState(1U);
+        if (ret != 0U)
         {
-            printf("[HW] SCD -> DSG OFF\r\n");
+            return 4U;
         }
-        else if ((ctx->sys_stat & BQ76940_SYS_STAT_OCD) != 0U)
+
+#if (BQ76940_PROTECT_DBG_ENABLE != 0U)
+        ret = BQ76940_AppPrintSysCtrl2Readback("OCD/SCD RECOVER READBACK");
+        if (ret != 0U)
         {
-            printf("[HW] OCD -> DSG OFF\r\n");
+            return 5U;
         }
 #endif
+
+        return 0U;
+    }
+
+    return 6U;
+}
+
+uint8_t BQ76940_AppOcdScdCommit(BQ76940_AppCtx_t *ctx,
+                                const BQ76940_OcdScdRequest_t *req)
+{
+    if ((ctx == 0) || (req == 0))
+    {
+        return 1U;
     }
 
     /*
-     * 2. 手动恢复：
-     *    要求：
-     *      - 已经人工发起恢复请求
-     *      - 当前硬件 OCD / SCD 位已清掉
-     *      - 当前没有 UV / OT 阻塞
+     * 锁存当前是否发生过 OCD / SCD。
+     * 即使本轮没有硬件动作，也要记录当前故障状态。
      */
-    if ((ctx->hw_fault_recover_once_enable != 0U) &&
-        (ctx->hw_dsg_block_active != 0U) &&
-        (hw_fault_now == 0U))
+    if (req->ocd_now != 0U)
     {
-        if ((ctx->alarm_state.uv_flag == 0U) &&
-            (ctx->alarm_state.ot_flag == 0U))
-        {
-            ret = BQ76940_SetDSGState(1U);
-            if (ret != 0U)
-            {
-                return 4U;
-            }
+        ctx->hw_ocd_active = 1U;
+    }
 
-            ctx->hw_dsg_block_active          = 0U;
-            ctx->hw_ocd_active                = 0U;
-            ctx->hw_scd_active                = 0U;
-            ctx->hw_fault_recover_once_enable = 0U;
+    if (req->scd_now != 0U)
+    {
+        ctx->hw_scd_active = 1U;
+    }
 
 #if (BQ76940_PROTECT_DBG_ENABLE != 0U)
-            /*
-             * 恢复后读回 SYS_CTRL2，仅用于调试确认。
-             */
-            ret = BQ76940_AppPrintSysCtrl2Readback("OCD/SCD RECOVER READBACK");
-            if (ret != 0U)
-            {
-                return 5U;
-            }
+    printf("[OCD/SCD DBG] SYS=%02X OCD=%u SCD=%u DSG_BLK=%u\r\n",
+           req->sys_stat_snapshot,
+           ctx->hw_ocd_active,
+           ctx->hw_scd_active,
+           ctx->hw_dsg_block_active);
 #endif
 
+    /*
+     * DSG_OFF 执行成功后，提交 DSG 阻断状态。
+     */
+    if (req->action == BQ76940_OCDSCD_ACTION_DSG_OFF)
+    {
+        ctx->hw_dsg_block_active = 1U;
+
 #if (BQ76940_PROTECT_EVENT_PRINT_ENABLE != 0U)
-            printf("[HW] OCD/SCD recover -> DSG ON\r\n");
-#endif
+        if (req->scd_now != 0U)
+        {
+            printf("[HW] SCD -> DSG OFF\r\n");
         }
+        else if (req->ocd_now != 0U)
+        {
+            printf("[HW] OCD -> DSG OFF\r\n");
+        }
+        else
+        {
+            printf("[HW] OCD/SCD -> DSG OFF\r\n");
+        }
+#endif
+    }
+    /*
+     * DSG_ON 执行成功后，清除锁存状态和恢复请求。
+     */
+    else if (req->action == BQ76940_OCDSCD_ACTION_DSG_ON)
+    {
+        ctx->hw_dsg_block_active          = 0U;
+        ctx->hw_ocd_active                = 0U;
+        ctx->hw_scd_active                = 0U;
+        ctx->hw_fault_recover_once_enable = 0U;
+
+#if (BQ76940_PROTECT_EVENT_PRINT_ENABLE != 0U)
+        printf("[HW] OCD/SCD recover -> DSG ON\r\n");
+#endif
     }
 
     return 0U;
 }
 
 
+
+
+static uint8_t BQ76940_AppHandleOcdScdProtect(BQ76940_AppCtx_t *ctx)
+{
+    uint8_t ret;
+    BQ76940_OcdScdRequest_t req;
+
+    if (ctx == 0)
+    {
+        return 1U;
+    }
+
+    /*
+     * 兼容旧接口：
+     *   1. Decide  只判断
+     *   2. ApplyHw 只写硬件
+     *   3. Commit  只更新 ctx
+     *
+     * 注意：
+     *   本函数不负责加锁。
+     *   后续在 FreeRTOS ProtectTask 中，应直接调用三段式接口。
+     */
+    ret = BQ76940_AppOcdScdDecide(ctx, &req);
+    if (ret != 0U)
+    {
+        return 10U;
+    }
+
+    ret = BQ76940_AppOcdScdApplyHw(&req);
+    if (ret != 0U)
+    {
+        return 20U;
+    }
+
+    ret = BQ76940_AppOcdScdCommit(ctx, &req);
+    if (ret != 0U)
+    {
+        return 30U;
+    }
+
+    return 0U;
+}
+
+uint8_t BQ76940_AppProtectUpdateBase(BQ76940_AppCtx_t *ctx)
+{
+    uint8_t ret;
+
+    if (ctx == 0)
+    {
+        return 1U;
+    }
+
+    /*
+     * 1. 更新单体电压相关软件告警：
+     *    UV / OV / DIFF
+     */
+    ret = BQ76940_UpdateAlarmState9(ctx->cell_mV,
+                                    &ctx->cell_stats,
+                                    &ctx->alarm_th,
+                                    &ctx->alarm_state);
+    if (ret != 0U)
+    {
+        return 13U;
+    }
+
+    /*
+     * 2. 更新 TS1 过温告警
+     */
+    ret = BQ76940_UpdateTempAlarmTs1(ctx->ts1_temp_dC,
+                                     &ctx->alarm_th,
+                                     &ctx->alarm_state);
+    if (ret != 0U)
+    {
+        printf("[TEMP ALARM] update fail, ret = %d\r\n", ret);
+        return 20U;
+    }
+
+    /*
+     * 3. 更新 TS1 低温告警
+     */
+    ret = BQ76940_UpdateLowTempAlarmTs1(ctx->ts1_temp_dC,
+                                        &ctx->alarm_th,
+                                        &ctx->alarm_state);
+    if (ret != 0U)
+    {
+        printf("[LOW TEMP ALARM] update fail, ret = %d\r\n", ret);
+        return 22U;
+    }
+
+    /*
+     * 4. 处理过温联动控制：
+     *    OT 生效时，充放电都禁止。
+     *
+     * 注意：
+     *   这里当前仍然是旧结构，
+     *   内部可能会访问 BQ76940 I2C。
+     *   后续会继续拆成 Decide / ApplyHw / Commit。
+     */
+    ret = BQ76940_AppHandleTempProtect(ctx);
+    if (ret != 0U)
+    {
+        printf("[TEMP PROTECT] handle fail, ret = %d\r\n", ret);
+        return 21U;
+    }
+
+    /*
+     * 5. 处理低温联动控制：
+     *    UT 生效时，只禁止充电。
+     *
+     * 注意：
+     *   这里当前仍然是旧结构，
+     *   后续会继续拆。
+     */
+    ret = BQ76940_AppHandleLowTempProtect(ctx);
+    if (ret != 0U)
+    {
+        printf("[LOW TEMP PROTECT] handle fail, ret = %d\r\n", ret);
+        return 25U;
+    }
+
+    return 0U;
+}
 
 
 static uint8_t BQ76940_AppIsBalanceAllowed(const BQ76940_AppCtx_t *ctx)
