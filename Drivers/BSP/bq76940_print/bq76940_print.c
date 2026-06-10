@@ -1,18 +1,23 @@
 #include "bq76940_print.h"
 
 
- void BQ76940_PrintBasicRegs(const BQ76940_BasicRegs_t *regs)
+void BQ76940_PrintBasicRegs(const BQ76940_BasicRegs_t *regs)
 {
-    printf("\r\n[BQ76940 Basic Registers]\r\n");
-    printf("SYS_STAT  = 0x%02X\r\n", regs->sys_stat);
-    printf("SYS_CTRL1 = 0x%02X\r\n", regs->sys_ctrl1);
-    printf("SYS_CTRL2 = 0x%02X\r\n", regs->sys_ctrl2);
-//    printf("PROTECT1  = 0x%02X\r\n", regs->protect1);
-//    printf("PROTECT2  = 0x%02X\r\n", regs->protect2);
-//    printf("PROTECT3  = 0x%02X\r\n", regs->protect3);
-		printf("OV_TRIP  = 0x%02X\r\n", regs->ov_trip);
-    printf("UV_TRIP  = 0x%02X\r\n", regs->uv_trip);
-    printf("CC_CFG    = 0x%02X\r\n", regs->cc_cfg);
+    if (regs == 0)
+    {
+        return;
+    }
+
+    printf("[BQREG] STAT=%02X C1=%02X C2=%02X P1=%02X P2=%02X P3=%02X OV=%02X UV=%02X CC=%02X\r\n",
+           regs->sys_stat,
+           regs->sys_ctrl1,
+           regs->sys_ctrl2,
+           regs->protect1,
+           regs->protect2,
+           regs->protect3,
+           regs->ov_trip,
+           regs->uv_trip,
+           regs->cc_cfg);
 }
 
  void BQ76940_PrintAllMappedCellVoltages9(const uint16_t raw_adc[BQ76940_CELL_COUNT_9],
@@ -114,11 +119,11 @@ void BQ76940_PrintPackCurrent(const BQ76940_CCRaw_t *cc,
         abs_current_mA = -current_mA;
     }
 
-    printf("[CC RAW]\r\n");
-    printf("CC_HI  = 0x%02X\r\n", cc->raw_hi);
-    printf("CC_LO  = 0x%02X\r\n", cc->raw_lo);
-    printf("CC_U16 = 0x%04X\r\n", cc->raw_u16);
-    printf("CC_S16 = %d\r\n", cc->raw_s16);
+//    printf("[CC RAW]\r\n");
+//    printf("CC_HI  = 0x%02X\r\n", cc->raw_hi);
+//    printf("CC_LO  = 0x%02X\r\n", cc->raw_lo);
+//    printf("CC_U16 = 0x%04X\r\n", cc->raw_u16);
+//    printf("CC_S16 = %d\r\n", cc->raw_s16);
 
     printf("[PACK CURRENT]\r\n");
     printf("CURRENT_mA = %ld\r\n", (long)current_mA);
@@ -340,10 +345,10 @@ void BQ76940_PrintCellBalRegs(const BQ76940_CellBalRegs_t *regs, const char *tag
         return;
     }
 
-    printf("[%s]\r\n", tag);
-    printf("CELLBAL1 = 0x%02X\r\n", regs->cellbal1);
-    printf("CELLBAL2 = 0x%02X\r\n", regs->cellbal2);
-    printf("CELLBAL3 = 0x%02X\r\n", regs->cellbal3);
+//    printf("[%s]\r\n", tag);
+//    printf("CELLBAL1 = 0x%02X\r\n", regs->cellbal1);
+//    printf("CELLBAL2 = 0x%02X\r\n", regs->cellbal2);
+//    printf("CELLBAL3 = 0x%02X\r\n", regs->cellbal3);
 }
 
 void BQ76940_PrintBalanceAutoState(uint8_t bal_active,

@@ -614,6 +614,10 @@ static uint8_t BQ76940_AppHandleLowTempProtect(BQ76940_AppCtx_t *ctx)
 }
 
 
+#define BQ76940_PROTECT_DBG_ENABLE          0U
+#define BQ76940_PROTECT_EVENT_PRINT_ENABLE  1U
+
+
 static uint8_t BQ76940_AppHandleOcdScdProtect(BQ76940_AppCtx_t *ctx)
 {
     uint8_t ret;
@@ -621,13 +625,24 @@ static uint8_t BQ76940_AppHandleOcdScdProtect(BQ76940_AppCtx_t *ctx)
 
     if (ctx == 0)
     {
-        return 1;
+        return 1U;
     }
 
-    /* 当前硬件故障位 */
-    hw_fault_now = (uint8_t)(ctx->sys_stat & (BQ76940_SYS_STAT_OCD | BQ76940_SYS_STAT_SCD));
+    /*
+     * 当前硬件 OCD / SCD 故障位。
+     *
+     * 注意：
+     *   ctx->sys_stat 已经在采样阶段读取并提交到 app。
+     *   这里不直接读 BQ76940，只基于当前 app 状态判断。
+     */
+    hw_fault_now = (uint8_t)(ctx->sys_stat &
+                            (BQ76940_SYS_STAT_OCD | BQ76940_SYS_STAT_SCD));
 
-    /* 先锁存当前是否发生过 OCD / SCD */
+    /*
+     * 锁存当前是否发生过 OCD / SCD。
+     * 一旦硬件故障位出现过，就记录到 app 状态中，
+     * 用于 CAN 上报和后续人工恢复判断。
+     */
     if ((ctx->sys_stat & BQ76940_SYS_STAT_OCD) != 0U)
     {
         ctx->hw_ocd_active = 1U;
@@ -638,48 +653,65 @@ static uint8_t BQ76940_AppHandleOcdScdProtect(BQ76940_AppCtx_t *ctx)
         ctx->hw_scd_active = 1U;
     }
 
-    printf("[OCD/SCD PROTECT DBG]\r\n");
-    printf("SYS_STAT            = 0x%02X\r\n", ctx->sys_stat);
-    printf("HW_OCD_ACTIVE       = %d\r\n", ctx->hw_ocd_active);
-    printf("HW_SCD_ACTIVE       = %d\r\n", ctx->hw_scd_active);
-    printf("HW_DSG_BLOCK_ACTIVE = %d\r\n", ctx->hw_dsg_block_active);
+#if (BQ76940_PROTECT_DBG_ENABLE != 0U)
+    /*
+     * 调试用详细打印：
+     * 默认关闭，避免每轮 ProtectTask 都刷屏。
+     */
+    printf("[OCD/SCD DBG] SYS=%02X OCD=%u SCD=%u DSG_BLK=%u\r\n",
+           ctx->sys_stat,
+           ctx->hw_ocd_active,
+           ctx->hw_scd_active,
+           ctx->hw_dsg_block_active);
+#endif
 
-    /* 1. 只要当前硬件看到 OCD/SCD，就先阻断 DSG */
+    /*
+     * 1. 只要当前硬件看到 OCD / SCD，就先阻断 DSG。
+     *
+     * 注意：
+     *   这里调用 BQ76940_SetDSGState(0)，会访问 BQ76940 I2C。
+     *   后面拆 ProtectTask 锁时，这个动作要归到 ApplyHw 阶段。
+     */
     if ((hw_fault_now != 0U) && (ctx->hw_dsg_block_active == 0U))
     {
-        ret = BQ76940_SetDSGState(0);
+        ret = BQ76940_SetDSGState(0U);
         if (ret != 0U)
         {
-            return 2;
+            return 2U;
         }
 
         ctx->hw_dsg_block_active = 1U;
 
+#if (BQ76940_PROTECT_DBG_ENABLE != 0U)
+        /*
+         * 读回 SYS_CTRL2 只用于调试确认。
+         * 默认关闭，节省 Flash，也减少 I2C 访问。
+         */
         ret = BQ76940_AppPrintSysCtrl2Readback("OCD/SCD ACTIVE READBACK");
         if (ret != 0U)
         {
-            return 3;
+            return 3U;
         }
+#endif
 
-        printf("------------------------------------------------------\r\n");
-        printf("[OCD/SCD PROTECT]\r\n");
-
+#if (BQ76940_PROTECT_EVENT_PRINT_ENABLE != 0U)
         if ((ctx->sys_stat & BQ76940_SYS_STAT_SCD) != 0U)
         {
-            printf("SCD active -> DSG=OFF, CHG unchanged\r\n");
+            printf("[HW] SCD -> DSG OFF\r\n");
         }
         else if ((ctx->sys_stat & BQ76940_SYS_STAT_OCD) != 0U)
         {
-            printf("OCD active -> DSG=OFF, CHG unchanged\r\n");
+            printf("[HW] OCD -> DSG OFF\r\n");
         }
-
-        printf("------------------------------------------------------\r\n");
+#endif
     }
 
-    /* 2. 手动恢复：要求
-     *    - 已经人工发起恢复请求
-     *    - 当前硬件 OCD/SCD 位已清掉
-     *    - 当前没有 UV / OT 阻塞
+    /*
+     * 2. 手动恢复：
+     *    要求：
+     *      - 已经人工发起恢复请求
+     *      - 当前硬件 OCD / SCD 位已清掉
+     *      - 当前没有 UV / OT 阻塞
      */
     if ((ctx->hw_fault_recover_once_enable != 0U) &&
         (ctx->hw_dsg_block_active != 0U) &&
@@ -688,31 +720,35 @@ static uint8_t BQ76940_AppHandleOcdScdProtect(BQ76940_AppCtx_t *ctx)
         if ((ctx->alarm_state.uv_flag == 0U) &&
             (ctx->alarm_state.ot_flag == 0U))
         {
-            ret = BQ76940_SetDSGState(1);
+            ret = BQ76940_SetDSGState(1U);
             if (ret != 0U)
             {
-                return 4;
+                return 4U;
             }
 
-            ctx->hw_dsg_block_active         = 0U;
-            ctx->hw_ocd_active               = 0U;
-            ctx->hw_scd_active               = 0U;
+            ctx->hw_dsg_block_active          = 0U;
+            ctx->hw_ocd_active                = 0U;
+            ctx->hw_scd_active                = 0U;
             ctx->hw_fault_recover_once_enable = 0U;
 
+#if (BQ76940_PROTECT_DBG_ENABLE != 0U)
+            /*
+             * 恢复后读回 SYS_CTRL2，仅用于调试确认。
+             */
             ret = BQ76940_AppPrintSysCtrl2Readback("OCD/SCD RECOVER READBACK");
             if (ret != 0U)
             {
-                return 5;
+                return 5U;
             }
+#endif
 
-            printf("------------------------------------------------------\r\n");
-            printf("[OCD/SCD PROTECT]\r\n");
-            printf("OCD/SCD recover -> DSG=ON, CHG unchanged\r\n");
-            printf("------------------------------------------------------\r\n");
+#if (BQ76940_PROTECT_EVENT_PRINT_ENABLE != 0U)
+            printf("[HW] OCD/SCD recover -> DSG ON\r\n");
+#endif
         }
     }
 
-    return 0;
+    return 0U;
 }
 
 
@@ -750,141 +786,194 @@ static uint8_t BQ76940_AppIsBalanceAllowed(const BQ76940_AppCtx_t *ctx)
     return 1;
 }
 
-static uint8_t BQ76940_AppStartBalance(BQ76940_AppCtx_t *ctx, uint8_t cell_label)
+void BQ76940_AppBalanceRequestClear(BQ76940_BalanceRequest_t *req)
 {
-    uint8_t ret;
-
-    if (ctx == 0)
+    if (req == 0)
     {
-        return 1;
+        return;
     }
 
-    ret = BQ76940_BuildSingleCellBalMask(cell_label, &ctx->bal_auto_wr);
-    if (ret != BQ76940_OK)
-    {
-        return 2;
-    }
+    req->action       = BQ76940_BAL_ACTION_NONE;
+    req->target_label = 0U;
+    req->reason       = BQ76940_BAL_REASON_NONE;
 
-    ret = BQ76940_WriteCellBalRegs(&ctx->bal_auto_wr);
-    if (ret != BQ76940_OK)
-    {
-        return 3;
-    }
-
-    ret = BQ76940_ReadCellBalRegs(&ctx->bal_auto_rd);
-    if (ret != BQ76940_OK)
-    {
-        return 4;
-    }
-
-    ctx->bal_active       = 1U;
-    ctx->bal_target_label = cell_label;
-
-    printf("------------------------------------------------------\r\n");
-    printf("[BALANCE AUTO]\r\n");
-    printf("Start balance -> VC%d\r\n", cell_label);
-    printf("------------------------------------------------------\r\n");
-
-    return 0;
+    BQ76940_ClearCellBalRegs(&req->wr);
+    BQ76940_ClearCellBalRegs(&req->rd);
 }
 
-static uint8_t BQ76940_AppStopBalance(BQ76940_AppCtx_t *ctx, const char *reason)
-{
-    uint8_t ret;
-
-    if (ctx == 0)
-    {
-        return 1;
-    }
-
-    BQ76940_ClearCellBalRegs(&ctx->bal_auto_wr);
-
-    ret = BQ76940_WriteCellBalRegs(&ctx->bal_auto_wr);
-    if (ret != BQ76940_OK)
-    {
-        return 2;
-    }
-
-    ret = BQ76940_ReadCellBalRegs(&ctx->bal_auto_rd);
-    if (ret != BQ76940_OK)
-    {
-        return 3;
-    }
-
-    ctx->bal_active       = 0U;
-    ctx->bal_target_label = 0U;
-
-    printf("------------------------------------------------------\r\n");
-    printf("[BALANCE AUTO]\r\n");
-    printf("Stop balance -> %s\r\n", reason);
-    printf("------------------------------------------------------\r\n");
-
-    return 0;
-}
-
-static uint8_t BQ76940_AppHandleAutoBalance(BQ76940_AppCtx_t *ctx)
+uint8_t BQ76940_AppBalanceDecide(const BQ76940_AppCtx_t *ctx,
+                                  BQ76940_BalanceRequest_t *req)
 {
     uint8_t allow_balance;
     uint8_t ret;
 
-    if (ctx == 0)
+    if ((ctx == 0) || (req == 0))
     {
-        return 1;
+        return 1U;
     }
 
+    BQ76940_AppBalanceRequestClear(req);
+
+    /*
+     * Decide 阶段只做判断：
+     *   - 读取当前 app 状态
+     *   - 判断是否允许均衡
+     *   - 判断是否需要 START / STOP
+     *   - 生成准备写入的 CELLBAL mask
+     *
+     * 注意：
+     *   这里不访问 I2C，不写 BQ76940。
+     */
     allow_balance = BQ76940_AppIsBalanceAllowed(ctx);
 
-    printf("[BALANCE AUTO DBG]\r\n");
-    printf("ALLOW_BALANCE   = %d\r\n", allow_balance);
-    printf("BAL_ACTIVE      = %d\r\n", ctx->bal_active);
-    printf("BAL_TARGET      = %d\r\n", ctx->bal_target_label);
-    printf("VMAX_LABEL      = %d\r\n", ctx->cell_stats.max_cell_label);
-    printf("DIFF_mV         = %d\r\n", ctx->cell_stats.diff_mV);
-
-    /* 情况 1：当前不允许均衡 */
+    /*
+     * 情况 1：
+     * 当前不允许均衡，但之前处于均衡状态。
+     * 需要关闭所有 CELLBAL。
+     */
     if (allow_balance == 0U)
     {
         if (ctx->bal_active != 0U)
         {
-            ret = BQ76940_AppStopBalance(ctx, "balance not allowed");
-            if (ret != 0U)
-            {
-                return 2;
-            }
+            req->action = BQ76940_BAL_ACTION_STOP;
+            req->reason = BQ76940_BAL_REASON_NOT_ALLOWED;
+
+            BQ76940_ClearCellBalRegs(&req->wr);
         }
-        return 0;
+
+        return 0U;
     }
 
-    /* 情况 2：当前未均衡，判断是否满足进入条件 */
+    /*
+     * 情况 2：
+     * 当前允许均衡，且还没有处于均衡状态。
+     * 如果压差达到进入阈值，则对最高单体开启均衡。
+     */
     if (ctx->bal_active == 0U)
     {
         if (ctx->cell_stats.diff_mV >= ctx->bal_cfg.diff_enter_mV)
         {
-            ret = BQ76940_AppStartBalance(ctx, ctx->cell_stats.max_cell_label);
-            if (ret != 0U)
+            req->action       = BQ76940_BAL_ACTION_START;
+            req->target_label = ctx->cell_stats.max_cell_label;
+
+            ret = BQ76940_BuildSingleCellBalMask(req->target_label,
+                                                 &req->wr);
+            if (ret != BQ76940_OK)
             {
-                return 3;
+                return 2U;
             }
         }
 
-        return 0;
+        return 0U;
     }
 
-    /* 情况 3：当前已在均衡，判断是否满足退出条件 */
+    /*
+     * 情况 3：
+     * 当前已经处于均衡状态。
+     * 如果压差降到退出阈值，则关闭均衡。
+     */
     if (ctx->cell_stats.diff_mV <= ctx->bal_cfg.diff_exit_mV)
     {
-        ret = BQ76940_AppStopBalance(ctx, "diff below exit threshold");
-        if (ret != 0U)
-        {
-            return 4;
-        }
+        req->action = BQ76940_BAL_ACTION_STOP;
+        req->reason = BQ76940_BAL_REASON_DIFF_EXIT;
 
-        return 0;
+        BQ76940_ClearCellBalRegs(&req->wr);
+
+        return 0U;
     }
 
-    /* 第一版策略：均衡过程中先保持同一目标，不频繁切换 */
-    return 0;
+    /*
+     * 情况 4：
+     * 当前已经在均衡，且没有达到退出条件。
+     * 第一版策略保持原目标，不频繁切换均衡通道。
+     */
+    return 0U;
 }
+
+uint8_t BQ76940_AppBalanceApplyHw(BQ76940_BalanceRequest_t *req)
+{
+    uint8_t ret;
+
+    if (req == 0)
+    {
+        return 1U;
+    }
+
+    /*
+     * 没有动作时，不访问 I2C。
+     */
+    if (req->action == BQ76940_BAL_ACTION_NONE)
+    {
+        return 0U;
+    }
+
+    /*
+     * ApplyHw 阶段只负责硬件动作：
+     *   1. 写 CELLBAL1/2/3
+     *   2. 读回 CELLBAL1/2/3
+     *
+     * 注意：
+     *   该函数会访问 BQ76940 I2C。
+     *   在 FreeRTOS 任务中调用前，外层必须持有 i2c mutex。
+     */
+    ret = BQ76940_WriteCellBalRegs(&req->wr);
+    if (ret != BQ76940_OK)
+    {
+        return 2U;
+    }
+
+    ret = BQ76940_ReadCellBalRegs(&req->rd);
+    if (ret != BQ76940_OK)
+    {
+        return 3U;
+    }
+
+    return 0U;
+}
+
+uint8_t BQ76940_AppBalanceCommit(BQ76940_AppCtx_t *ctx,
+                                  const BQ76940_BalanceRequest_t *req)
+{
+    if ((ctx == 0) || (req == 0))
+    {
+        return 1U;
+    }
+
+    /*
+     * 没有动作时，不修改 app。
+     */
+    if (req->action == BQ76940_BAL_ACTION_NONE)
+    {
+        return 0U;
+    }
+
+    /*
+     * 保存本轮自动均衡写入值和读回值。
+     */
+    ctx->bal_auto_wr = req->wr;
+    ctx->bal_auto_rd = req->rd;
+
+    if (req->action == BQ76940_BAL_ACTION_START)
+    {
+        ctx->bal_active       = 1U;
+        ctx->bal_target_label = req->target_label;
+
+        /*
+         * 精简打印，避免 Keil 32KB 超限。
+         */
+        printf("[BAL] START VC%d\r\n", req->target_label);
+    }
+    else if (req->action == BQ76940_BAL_ACTION_STOP)
+    {
+        ctx->bal_active       = 0U;
+        ctx->bal_target_label = 0U;
+
+        printf("[BAL] STOP R=%d\r\n", req->reason);
+    }
+
+    return 0U;
+}
+
 
 
 
@@ -946,42 +1035,34 @@ uint8_t BQ76940_AppRunCycle(BQ76940_AppCtx_t *ctx)
 }
 
 
-uint8_t BQ76940_AppSampleUpdate(BQ76940_AppCtx_t *ctx)
+
+uint8_t BQ76940_AppSampleReadHw(const BQ76940_AdcCalib_t *calib,
+                                BQ76940_AppSampleData_t *sample)
 {
     uint8_t ret;
 
-    if (ctx == 0)
+    if ((calib == 0) || (sample == 0))
     {
         return 1U;
     }
 
     /*
-     * 1. 读取 9 节映射电压
+     * 1. 读取 9 节映射电压。
+     *
+     * 注意：
+     *   该函数内部会通过 I2C 访问 BQ76940。
+     *   因此调用本函数前，上层任务应已经拿到 I2C 总线互斥锁。
      */
-    ret = BQ76940_ReadAllMappedCellVoltages9_mV(&ctx->calib,
-                                                ctx->cell_raw,
-                                                ctx->cell_mV);
+    ret = BQ76940_ReadAllMappedCellVoltages9_mV(calib,
+                                                sample->cell_raw,
+                                                sample->cell_mV);
     if (ret != 0U)
     {
         return 11U;
     }
 
     /*
-     * 2. 计算 Pack 总压
-     */
-    ctx->pack_total_mV = BQ76940_CalcPackVoltage9_mV(ctx->cell_mV);
-
-    /*
-     * 3. 统计最高、最低、压差
-     */
-    ret = BQ76940_AnalyzeCellVoltages9(ctx->cell_mV, &ctx->cell_stats);
-    if (ret != 0U)
-    {
-        return 12U;
-    }
-
-    /*
-     * 4. 触发一次 CC 1-shot 电流采样
+     * 2. 触发一次 CC 1-shot 电流采样。
      */
     ret = BQ76940_CC_StartOneShot();
     if (ret != 0U)
@@ -991,7 +1072,10 @@ uint8_t BQ76940_AppSampleUpdate(BQ76940_AppCtx_t *ctx)
     }
 
     /*
-     * 5. 等待 CC_READY
+     * 3. 等待 CC_READY。
+     *
+     * 当前版本保持原来的逻辑：
+     *   等待期间仍然认为属于 BQ76940 电流采样事务的一部分。
      */
     ret = BQ76940_CC_WaitReady(600U);
     if (ret != 0U)
@@ -1001,9 +1085,9 @@ uint8_t BQ76940_AppSampleUpdate(BQ76940_AppCtx_t *ctx)
     }
 
     /*
-     * 6. 读取 CC 原始值
+     * 4. 读取 CC 原始值。
      */
-    ret = BQ76940_CC_ReadRaw(&ctx->cc_raw);
+    ret = BQ76940_CC_ReadRaw(&sample->cc_raw);
     if (ret != 0U)
     {
         printf("[CC] ReadRaw fail, ret = %d\r\n", ret);
@@ -1011,11 +1095,61 @@ uint8_t BQ76940_AppSampleUpdate(BQ76940_AppCtx_t *ctx)
     }
 
     /*
-     * 7. 换算 Pack 电流
+     * 5. 读取 TS1 原始 ADC。
      */
-    ret = BQ76940_CC_ConvertToCurrent_mA(ctx->cc_raw.raw_s16,
+    ret = BQ76940_ReadTS1Raw(&sample->ts1_raw_adc);
+    if (ret != 0U)
+    {
+        printf("[TEMP] Read TS1 fail, ret = %d\r\n", ret);
+        return 18U;
+    }
+
+    /*
+     * 6. 读取 BQ76940 硬件故障状态 SYS_STAT。
+     */
+    ret = BQ76940_ProtectReadFaultStatus(&sample->sys_stat);
+    if (ret != 0U)
+    {
+        printf("[HW FAULT] read SYS_STAT fail, ret = %d\r\n", ret);
+        return 23U;
+    }
+
+    return 0U;
+}
+
+
+
+uint8_t BQ76940_AppSampleProcess(BQ76940_AppSampleData_t *sample)
+{
+    uint8_t ret;
+
+    if (sample == 0)
+    {
+        return 1U;
+    }
+
+    /*
+     * 1. 计算 Pack 总压。
+     * 这一步只依赖已经读取到的 cell_mV，不访问 I2C。
+     */
+    sample->pack_total_mV = BQ76940_CalcPackVoltage9_mV(sample->cell_mV);
+
+    /*
+     * 2. 统计最高单体、最低单体、压差。
+     */
+    ret = BQ76940_AnalyzeCellVoltages9(sample->cell_mV,
+                                       &sample->cell_stats);
+    if (ret != 0U)
+    {
+        return 12U;
+    }
+
+    /*
+     * 3. CC 原始值换算为 Pack 电流。
+     */
+    ret = BQ76940_CC_ConvertToCurrent_mA(sample->cc_raw.raw_s16,
                                          BQ76940_RSENSE_UOHM,
-                                         &ctx->pack_current_mA);
+                                         &sample->pack_current_mA);
     if (ret != 0U)
     {
         printf("[CC] ConvertToCurrent fail, ret = %d\r\n", ret);
@@ -1023,21 +1157,16 @@ uint8_t BQ76940_AppSampleUpdate(BQ76940_AppCtx_t *ctx)
     }
 
     /*
-     * 8. 判断电流方向
+     * 4. 判断电流方向：充电 / 放电 / 近零。
      */
-    ctx->pack_current_dir = BQ76940_AppJudgeCurrentDir(ctx->pack_current_mA);
+    sample->pack_current_dir =
+        BQ76940_AppJudgeCurrentDir(sample->pack_current_mA);
 
     /*
-     * 9. 读取 TS1 外部温度
+     * 5. TS1 原始 ADC 换算为温度。
      */
-    ret = BQ76940_ReadTS1Raw(&ctx->ts1_raw_adc);
-    if (ret != 0U)
-    {
-        printf("[TEMP] Read TS1 fail, ret = %d\r\n", ret);
-        return 18U;
-    }
-
-    ret = BQ76940_ConvertTS1Temp_dC(ctx->ts1_raw_adc, &ctx->ts1_temp_dC);
+    ret = BQ76940_ConvertTS1Temp_dC(sample->ts1_raw_adc,
+                                    &sample->ts1_temp_dC);
     if (ret != 0U)
     {
         printf("[TEMP] Convert TS1 fail, ret = %d\r\n", ret);
@@ -1045,24 +1174,97 @@ uint8_t BQ76940_AppSampleUpdate(BQ76940_AppCtx_t *ctx)
     }
 
     /*
-     * 10. 读取硬件故障状态 SYS_STAT
+     * 6. 从 SYS_STAT 中提取当前激活的硬件故障位。
      */
-    ret = BQ76940_ProtectReadFaultStatus(&ctx->sys_stat);
-    if (ret != 0U)
-    {
-        printf("[HW FAULT] read SYS_STAT fail, ret = %d\r\n", ret);
-        return 23U;
-    }
-
-    /*
-     * 11. 提取当前激活的硬件故障位
-     */
-    ret = BQ76940_ProtectGetActiveFaultMask(ctx->sys_stat,
-                                            &ctx->fault_mask_active);
+    ret = BQ76940_ProtectGetActiveFaultMask(sample->sys_stat,
+                                            &sample->fault_mask_active);
     if (ret != 0U)
     {
         printf("[HW FAULT] get active mask fail, ret = %d\r\n", ret);
         return 24U;
+    }
+
+    return 0U;
+}
+
+
+uint8_t BQ76940_AppSampleCommit(BQ76940_AppCtx_t *ctx,
+                                const BQ76940_AppSampleData_t *sample)
+{
+    if ((ctx == 0) || (sample == 0))
+    {
+        return 1U;
+    }
+
+    /*
+     * 将局部采样快照提交到全局 app。
+     *
+     * 注意：
+     *   该函数会修改 BQ76940_AppCtx_t，
+     *   因此在 FreeRTOS 任务中调用时，应持有 g_bms_ctx_mutex。
+     */
+    memcpy(ctx->cell_raw,
+           sample->cell_raw,
+           sizeof(ctx->cell_raw));
+
+    memcpy(ctx->cell_mV,
+           sample->cell_mV,
+           sizeof(ctx->cell_mV));
+
+    ctx->pack_total_mV = sample->pack_total_mV;
+    ctx->cell_stats    = sample->cell_stats;
+
+    ctx->cc_raw           = sample->cc_raw;
+    ctx->pack_current_mA  = sample->pack_current_mA;
+    ctx->pack_current_dir = sample->pack_current_dir;
+
+    ctx->ts1_raw_adc = sample->ts1_raw_adc;
+    ctx->ts1_temp_dC = sample->ts1_temp_dC;
+
+    ctx->sys_stat          = sample->sys_stat;
+    ctx->fault_mask_active = sample->fault_mask_active;
+
+    return 0U;
+}
+
+
+uint8_t BQ76940_AppSampleUpdate(BQ76940_AppCtx_t *ctx)
+{
+    uint8_t ret;
+    BQ76940_AppSampleData_t sample;
+
+    if (ctx == 0)
+    {
+        return 1U;
+    }
+
+    /*
+     * 兼容旧接口：
+     *   1. 读取硬件数据
+     *   2. 处理采样数据
+     *   3. 提交到 app
+     *
+     * 注意：
+     *   该函数本身不负责加锁。
+     *   在 FreeRTOS 任务中，推荐直接调用
+     *   ReadHw / Process / Commit 三段式接口。
+     */
+    ret = BQ76940_AppSampleReadHw(&ctx->calib, &sample);
+    if (ret != 0U)
+    {
+        return ret;
+    }
+
+    ret = BQ76940_AppSampleProcess(&sample);
+    if (ret != 0U)
+    {
+        return ret;
+    }
+
+    ret = BQ76940_AppSampleCommit(ctx, &sample);
+    if (ret != 0U)
+    {
+        return ret;
     }
 
     return 0U;
@@ -1153,6 +1355,7 @@ uint8_t BQ76940_AppProtectUpdate(BQ76940_AppCtx_t *ctx)
 uint8_t BQ76940_AppBalanceUpdate(BQ76940_AppCtx_t *ctx)
 {
     uint8_t ret;
+    BQ76940_BalanceRequest_t req;
 
     if (ctx == 0)
     {
@@ -1160,13 +1363,30 @@ uint8_t BQ76940_AppBalanceUpdate(BQ76940_AppCtx_t *ctx)
     }
 
     /*
-     * 自动均衡控制：
-     * 根据单体压差、最低电压、电流大小等条件决定是否开启均衡。
+     * 兼容旧接口：
+     *   1. Decide  判断是否需要均衡动作
+     *   2. ApplyHw 执行 CELLBAL 写入 / 读回
+     *   3. Commit  更新 app 均衡状态
+     *
+     * 注意：
+     *   本函数本身不负责加锁。
+     *   FreeRTOS 任务中推荐直接使用 Decide / ApplyHw / Commit 三段式接口。
      */
-    ret = BQ76940_AppHandleAutoBalance(ctx);
+    ret = BQ76940_AppBalanceDecide(ctx, &req);
     if (ret != 0U)
     {
-        printf("[BALANCE AUTO] handle fail, ret = %d\r\n", ret);
+        return 10U;
+    }
+
+    ret = BQ76940_AppBalanceApplyHw(&req);
+    if (ret != 0U)
+    {
+        return 20U;
+    }
+
+    ret = BQ76940_AppBalanceCommit(ctx, &req);
+    if (ret != 0U)
+    {
         return 30U;
     }
 
@@ -1213,51 +1433,100 @@ uint8_t BQ76940_AppControlUpdate(BQ76940_AppCtx_t *ctx)
     return 0U;
 }
 
+//void BQ76940_AppPrintRuntime(const BQ76940_AppCtx_t *ctx)
+//{
+//    if (ctx == 0)
+//    {
+//        return;
+//    }
+
+//    printf("----------------------------------------\r\n");
+
+//    BQ76940_PrintAllMappedCellVoltages9(ctx->cell_raw,
+//                                        ctx->cell_mV,
+//                                        ctx->pack_total_mV);
+
+//    BQ76940_PrintCellStats9(&ctx->cell_stats, ctx->pack_total_mV);
+
+//    BQ76940_PrintAlarmFlags9(&ctx->alarm_state);
+
+//    BQ76940_PrintPackCurrent(&ctx->cc_raw,
+//                             ctx->pack_current_mA,
+//                             ctx->pack_current_dir);
+
+//    BQ76940_PrintCycleSummary9(ctx->pack_total_mV,
+//                               &ctx->cell_stats,
+//                               &ctx->alarm_state,
+//                               ctx->pack_current_mA,
+//                               ctx->pack_current_dir,
+//                               ctx->ts1_temp_dC,
+//                               ctx->ot_cutoff_active,
+//                               ctx->ut_chg_block_active,
+//                               ctx->hw_dsg_block_active,
+//                               ctx->hw_ocd_active,
+//                               ctx->hw_scd_active);
+
+//    BQ76940_PrintTS1Temp(ctx->ts1_raw_adc, ctx->ts1_temp_dC);
+
+//    BQ76940_PrintTempAlarmTs1(&ctx->alarm_state);
+//    BQ76940_PrintLowTempAlarmTs1(&ctx->alarm_state);
+
+//    BQ76940_ProtectPrintFaultStatus(ctx->sys_stat);
+
+//    BQ76940_PrintBalanceAutoState(ctx->bal_active,
+//                                  ctx->bal_target_label,
+//                                  &ctx->bal_auto_rd);
+
+//    BQ76200_ExecPrintState(&ctx->bq76200_exec);
+
+//    printf("----------------------------------------\r\n");
+//}
+
+
+#define BMS_PRINT_CELL_DETAIL_ENABLE    0U
+
+
 void BQ76940_AppPrintRuntime(const BQ76940_AppCtx_t *ctx)
 {
+    uint8_t alm_flags = 0U;
+    uint8_t prot_flags = 0U;
+
     if (ctx == 0)
     {
         return;
     }
 
-    printf("----------------------------------------\r\n");
-
+#if (BMS_PRINT_CELL_DETAIL_ENABLE != 0U)
     BQ76940_PrintAllMappedCellVoltages9(ctx->cell_raw,
                                         ctx->cell_mV,
                                         ctx->pack_total_mV);
+#endif
 
-    BQ76940_PrintCellStats9(&ctx->cell_stats, ctx->pack_total_mV);
+    if (ctx->alarm_state.uv_flag != 0U)   alm_flags |= 0x01U;
+    if (ctx->alarm_state.ov_flag != 0U)   alm_flags |= 0x02U;
+    if (ctx->alarm_state.diff_flag != 0U) alm_flags |= 0x04U;
+    if (ctx->alarm_state.ot_flag != 0U)   alm_flags |= 0x08U;
+    if (ctx->alarm_state.ut_flag != 0U)   alm_flags |= 0x10U;
 
-    BQ76940_PrintAlarmFlags9(&ctx->alarm_state);
+    if (ctx->ot_cutoff_active != 0U)    prot_flags |= 0x01U;
+    if (ctx->ut_chg_block_active != 0U) prot_flags |= 0x02U;
+    if (ctx->hw_dsg_block_active != 0U) prot_flags |= 0x04U;
+    if (ctx->hw_ocd_active != 0U)       prot_flags |= 0x08U;
+    if (ctx->hw_scd_active != 0U)       prot_flags |= 0x10U;
+    if (ctx->bal_active != 0U)          prot_flags |= 0x20U;
 
-    BQ76940_PrintPackCurrent(&ctx->cc_raw,
-                             ctx->pack_current_mA,
-                             ctx->pack_current_dir);
-
-    BQ76940_PrintCycleSummary9(ctx->pack_total_mV,
-                               &ctx->cell_stats,
-                               &ctx->alarm_state,
-                               ctx->pack_current_mA,
-                               ctx->pack_current_dir,
-                               ctx->ts1_temp_dC,
-                               ctx->ot_cutoff_active,
-                               ctx->ut_chg_block_active,
-                               ctx->hw_dsg_block_active,
-                               ctx->hw_ocd_active,
-                               ctx->hw_scd_active);
-
-    BQ76940_PrintTS1Temp(ctx->ts1_raw_adc, ctx->ts1_temp_dC);
-
-    BQ76940_PrintTempAlarmTs1(&ctx->alarm_state);
-    BQ76940_PrintLowTempAlarmTs1(&ctx->alarm_state);
-
-    BQ76940_ProtectPrintFaultStatus(ctx->sys_stat);
-
-    BQ76940_PrintBalanceAutoState(ctx->bal_active,
-                                  ctx->bal_target_label,
-                                  &ctx->bal_auto_rd);
-
-    BQ76200_ExecPrintState(&ctx->bq76200_exec);
-
-    printf("----------------------------------------\r\n");
+    printf("[BMS] P=%lumV MAX=VC%u:%umV MIN=VC%u:%umV D=%umV I=%ldmA T=%ddC ALM=%02X PROT=%02X BAL=%u:VC%u SYS=%02X\r\n",
+           (unsigned long)ctx->pack_total_mV,
+           ctx->cell_stats.max_cell_label,
+           ctx->cell_stats.max_mV,
+           ctx->cell_stats.min_cell_label,
+           ctx->cell_stats.min_mV,
+           ctx->cell_stats.diff_mV,
+           (long)ctx->pack_current_mA,
+           ctx->ts1_temp_dC,
+           alm_flags,
+           prot_flags,
+           ctx->bal_active,
+           ctx->bal_target_label,
+           ctx->sys_stat);
 }
