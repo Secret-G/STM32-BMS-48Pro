@@ -15,6 +15,16 @@ typedef struct
     int32_t  max_abs_current_mA;  /* 允许均衡的最大电流绝对值 */
 } BQ76940_BalanceConfig_t;
 
+
+typedef struct
+{
+    uint8_t bringup_attempt_count;   /* 上电 bring-up 尝试次数 */
+    uint8_t bringup_fault_active;    /* 上电 bring-up 是否最终失败 */
+    uint8_t bringup_last_stage;      /* 最近一次失败发生在哪个阶段 */
+    uint8_t bringup_last_error;      /* 最近一次失败的底层错误码 */
+} BQ76940_DiagState_t;
+
+
 /* BQ76940 应用层上下文
  * 这一层不是底层驱动，而是把“当前版本运行所需的数据”集中起来
  */
@@ -92,9 +102,14 @@ typedef struct
 		BQ76940_CellBalRegs_t bal_auto_wr;
 		BQ76940_CellBalRegs_t bal_auto_rd;
 		
+		
+				    /* 诊断状态 */
+    BQ76940_DiagState_t diag_state;
+		
 		/* BQ76200 执行层 */
     BQ76200_ExecCtx_t bq76200_exec;
-				
+		
+
 		
 } BQ76940_AppCtx_t;
 
@@ -117,6 +132,16 @@ uint8_t BQ76940_AppRunCycle(BQ76940_AppCtx_t *ctx);
 
 /*can发送函数*/
 void BQ76940_AppSendCanTelemetry(const BQ76940_AppCtx_t *ctx);
+
+
+/* 故障安全关断：关闭 BQ76200 驱动引脚，尝试关闭 BQ76940 FET 和均衡 */
+uint8_t BQ76940_AppForceSafeOff(BQ76940_AppCtx_t *ctx);
+
+
+/*故障错误发送can帧*/
+void BQ76940_AppSendBringUpFaultCan(const BQ76940_AppCtx_t *ctx,
+                                    uint8_t main_ret,
+                                    uint8_t safe_off_result);
 
 
 uint8_t BQ76940_AppSampleUpdate(BQ76940_AppCtx_t *ctx);

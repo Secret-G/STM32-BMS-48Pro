@@ -59,6 +59,11 @@ const char *BQ76200_ExecStateToString(BQ76200_ExecState_t state);
 /* 打印当前执行层状态 */
 void BQ76200_ExecPrintState(const BQ76200_ExecCtx_t *ctx);
 
+
+/* 强制进入安全关闭状态：CHG/DSG/CP/PCHG 全部关闭 */
+void BQ76200_ExecForceOff(BQ76200_ExecCtx_t *ctx);
+
+
 #ifdef __cplusplus
 }
 #endif

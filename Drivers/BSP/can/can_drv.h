@@ -14,6 +14,11 @@
 #define CAN_ID_BMS_CELL_9_STATUS  0x304U
 
 /*
+ * 新增故障帧
+ */
+#define CAN_ID_BMS_FAULT_STATUS    0x305U
+
+/*
  * CAN 驱动初始化
  * 返回 0 表示成功，非 0 表示失败
  */

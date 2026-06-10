@@ -17,6 +17,19 @@
  */
 #define BQ76940_CURRENT_ZERO_DEADBAND_mA   50
 
+
+/* BQ76940 上电 bring-up 最大尝试次数 */
+#define BQ76940_APP_BRINGUP_RETRY_LIMIT     3U
+
+/* BQ76940 bring-up 阶段码 */
+#define BQ76940_BRINGUP_STAGE_WAKE          1U
+#define BQ76940_BRINGUP_STAGE_BASIC         2U
+#define BQ76940_BRINGUP_STAGE_HW_CONFIG     3U
+#define BQ76940_BRINGUP_STAGE_STATUS        4U
+#define BQ76940_BRINGUP_STAGE_OCDSCD        5U
+#define BQ76940_BRINGUP_STAGE_SAMPLE        6U
+
+
 static int8_t BQ76940_AppJudgeCurrentDir(int32_t current_mA)
 {
     if (current_mA >= BQ76940_CURRENT_ZERO_DEADBAND_mA)
@@ -131,6 +144,42 @@ void BQ76940_AppSendCanTelemetry(const BQ76940_AppCtx_t *ctx)
     (void)CAN_DrvSendStd(CAN_ID_BMS_CELL_9_STATUS, data, 8);
 }
 
+
+void BQ76940_AppSendBringUpFaultCan(const BQ76940_AppCtx_t *ctx,
+                                    uint8_t main_ret,
+                                    uint8_t safe_off_result)
+{
+    uint8_t data[8];
+    uint8_t fault_flags = 0U;
+
+    if ((ctx == 0) || (CAN_DrvIsReady() == 0U))
+    {
+        return;
+    }
+
+    if (ctx->diag_state.bringup_fault_active != 0U)
+    {
+        fault_flags |= 0x01U;
+    }
+
+    if (safe_off_result != 0U)
+    {
+        fault_flags |= 0x02U;
+    }
+
+    data[0] = 0x01U;                                  /* BQ76940 bring-up fault */
+    data[1] = main_ret;                               /* main error code */
+    data[2] = ctx->diag_state.bringup_last_stage;     /* failed stage */
+    data[3] = ctx->diag_state.bringup_last_error;     /* low-level error */
+    data[4] = ctx->diag_state.bringup_attempt_count;  /* retry count */
+    data[5] = safe_off_result;                        /* safe-off result */
+    data[6] = fault_flags;                            /* flags */
+    data[7] = 0U;                                     /* reserved */
+
+    (void)CAN_DrvSendStd(CAN_ID_BMS_FAULT_STATUS, data, 8U);
+}
+
+
 void BQ76940_AppInitDefaultConfig(BQ76940_AppCtx_t *ctx)
 {
     if (ctx == 0)
@@ -227,75 +276,220 @@ static uint8_t BQ76940_AppPrintSysCtrl2Readback(const char *tag)
     return 0;
 }
 
+static void BQ76940_AppSetBringUpFault(BQ76940_AppCtx_t *ctx,
+                                       uint8_t stage,
+                                       uint8_t error)
+{
+    if (ctx == 0)
+    {
+        return;
+    }
+
+    ctx->diag_state.bringup_last_stage = stage;
+    ctx->diag_state.bringup_last_error = error;
+}
 
 
-uint8_t BQ76940_AppBringUpAndSelfTest(BQ76940_AppCtx_t *ctx)
+
+uint8_t BQ76940_AppForceSafeOff(BQ76940_AppCtx_t *ctx)
+{
+    uint8_t result = 0U;
+    uint8_t ret;
+    BQ76940_CellBalRegs_t zero_bal;
+
+    if (ctx == 0)
+    {
+        return 1U;
+    }
+
+    BQ76200_ExecForceOff(&ctx->bq76200_exec);
+
+    BQ76940_ClearCellBalRegs(&zero_bal);
+
+    ret = BQ76940_WriteCellBalRegs(&zero_bal);
+    if (ret == BQ76940_OK)
+    {
+        ctx->cellbal_wr = zero_bal;
+        ctx->cellbal_rd = zero_bal;
+        ctx->bal_auto_wr = zero_bal;
+        ctx->bal_auto_rd = zero_bal;
+        ctx->bal_active = 0U;
+        ctx->bal_target_label = 0U;
+    }
+    else
+    {
+        result |= 0x01U;
+    }
+
+    ret = BQ76940_SetFETState(0U, 0U);
+    if (ret != BQ76940_OK)
+    {
+        result |= 0x02U;
+    }
+
+    return result;
+}
+
+
+static uint8_t BQ76940_AppBringUpOnce(BQ76940_AppCtx_t *ctx)
 {
     uint8_t ret;
 
     if (ctx == 0)
     {
-        return 1;
+        return 1U;
     }
 
-    /* 1. 打印当前软件实验阈值 */
-    BQ76940_PrintAlarmThresholds9(&ctx->alarm_th);
-
-    printf("\r\n============================\r\n");
-    printf("BQ76940 9-Cell Voltage Test\r\n");
-    printf("============================\r\n");
-
-    /* 2. 唤醒 BQ */
+    /* 1. 唤醒 BQ76940 */
     printf("MCU_WAKE_BQ start...\r\n");
     BQ_WAKE_Pulse();
     printf("MCU_WAKE_BQ done.\r\n");
 
-    /* 3. 硬件保护 bring-up */
+    delay_ms(20);
+
+    /* 2. 最小 bring-up：初始化寄存器、读取基础寄存器、读取 ADC 校准 */
     ret = BQ76940_ProtectBringUp(&ctx->regs, &ctx->calib);
-    if (ret != 0)
+    if (ret != 0U)
     {
-        return 11;
+        BQ76940_AppSetBringUpFault(ctx,
+                                   BQ76940_BRINGUP_STAGE_BASIC,
+                                   ret);
+        return 11U;
     }
 
     printf("BQ76940_InitForBringUp ok.\r\n");
     printf("BQ76940_ReadBasicRegs ok.\r\n");
     BQ76940_PrintBasicRegs(&ctx->regs);
 
-    printf("\r\n[ADC Calib]\r\n");
-    printf("GAIN_uV_per_LSB = %d\r\n", ctx->calib.gain_uV_per_lsb);
-    printf("OFFSET_mV       = %d\r\n", ctx->calib.offset_mV);
+//    printf("\r\n[ADC Calib]\r\n");
+//    printf("GAIN_uV_per_LSB = %d\r\n", ctx->calib.gain_uV_per_lsb);
+//    printf("OFFSET_mV       = %d\r\n", ctx->calib.offset_mV);
 
-    /* 4. 加载硬件保护参数 */
-    ret = BQ76940_ProtectLoadConfig(&ctx->hw_cfg, &ctx->calib, &ctx->regs);
-    if (ret != 0)
+    /* 3. 加载硬件 OV / UV 保护参数 */
+    ret = BQ76940_ProtectLoadConfig(&ctx->hw_cfg,
+                                    &ctx->calib,
+                                    &ctx->regs);
+    if (ret != 0U)
     {
-        return 12;
+        BQ76940_AppSetBringUpFault(ctx,
+                                   BQ76940_BRINGUP_STAGE_HW_CONFIG,
+                                   ret);
+        return 12U;
     }
 
     BQ76940_PrintBasicRegs(&ctx->regs);
 
-    /* 5. 读取并打印当前硬件状态 */
+    /* 4. 读取当前硬件状态 */
     ret = BQ76940_ProtectReadStatus(&ctx->sys_stat, &ctx->sys_ctrl2);
-    if (ret != 0)
+    if (ret != 0U)
     {
-        return 13;
-    }
-		
-		    /* 继续加载 OCD / SCD 硬件保护参数 */
-    ret = BQ76940_ProtectLoadOcdScd(&ctx->ocdscd_cfg, &ctx->regs);
-    if (ret != 0)
-    {
-        return 14;
+        BQ76940_AppSetBringUpFault(ctx,
+                                   BQ76940_BRINGUP_STAGE_STATUS,
+                                   ret);
+        return 13U;
     }
 
-    printf("\r\n[OCD/SCD CONFIG]\r\n");
-    printf("PROTECT1 = 0x%02X\r\n", ctx->regs.protect1);
-    printf("PROTECT2 = 0x%02X\r\n", ctx->regs.protect2);
-		
+    /* 5. 加载 OCD / SCD 硬件保护参数 */
+    ret = BQ76940_ProtectLoadOcdScd(&ctx->ocdscd_cfg, &ctx->regs);
+    if (ret != 0U)
+    {
+        BQ76940_AppSetBringUpFault(ctx,
+                                   BQ76940_BRINGUP_STAGE_OCDSCD,
+                                   ret);
+        return 14U;
+    }
+
+//    printf("\r\n[OCD/SCD CONFIG]\r\n");
+//    printf("PROTECT1 = 0x%02X\r\n", ctx->regs.protect1);
+//    printf("PROTECT2 = 0x%02X\r\n", ctx->regs.protect2);
+
     BQ76940_ProtectPrintStatus(ctx->sys_stat, ctx->sys_ctrl2);
 
-    return 0;
+    /*
+     * 6. 采样链路自检
+     * 目的：
+     * - 验证 9 节电压读取链路
+     * - 验证 CC 电流读取链路
+     * - 验证 TS1 温度读取链路
+     * - 验证 SYS_STAT 运行状态读取链路
+     */
+    ret = BQ76940_AppSampleUpdate(ctx);
+    if (ret != 0U)
+    {
+        BQ76940_AppSetBringUpFault(ctx,
+                                   BQ76940_BRINGUP_STAGE_SAMPLE,
+                                   ret);
+        return 15U;
+    }
+
+    printf("[BQ76940 SELFTEST] sample chain ok.\r\n");
+
+    return 0U;
 }
+
+
+uint8_t BQ76940_AppBringUpAndSelfTest(BQ76940_AppCtx_t *ctx)
+{
+    uint8_t ret;
+    uint8_t attempt;
+
+    if (ctx == 0)
+    {
+        return 1U;
+    }
+
+    /* 1. 打印当前软件实验阈值 */
+    BQ76940_PrintAlarmThresholds9(&ctx->alarm_th);
+
+    printf("\r\n============================\r\n");
+    printf("BQ76940 Bring-up Self Test\r\n");
+    printf("============================\r\n");
+
+		/*上电前先清楚所有故障*/
+    ctx->diag_state.bringup_attempt_count = 0U;
+    ctx->diag_state.bringup_fault_active  = 0U;
+    ctx->diag_state.bringup_last_stage    = 0U;
+    ctx->diag_state.bringup_last_error    = 0U;
+
+    for (attempt = 1U;
+         attempt <= BQ76940_APP_BRINGUP_RETRY_LIMIT;
+         attempt++)
+    {
+        ctx->diag_state.bringup_attempt_count = attempt;
+
+        printf("\r\n[BQ76940 BRINGUP] attempt %d/%d\r\n",
+               attempt,
+               BQ76940_APP_BRINGUP_RETRY_LIMIT);
+
+        ret = BQ76940_AppBringUpOnce(ctx);
+        if (ret == 0U)
+        {
+            ctx->diag_state.bringup_fault_active = 0U;
+
+            printf("[BQ76940 BRINGUP] success, attempt = %d\r\n", attempt);
+            return 0U;
+        }
+
+        printf("[BQ76940 BRINGUP] fail, attempt = %d, ret = %d, stage = %d, error = %d\r\n",
+               attempt,
+               ret,
+               ctx->diag_state.bringup_last_stage,
+               ctx->diag_state.bringup_last_error);
+
+        delay_ms(100);
+    }
+
+    ctx->diag_state.bringup_fault_active = 1U;
+
+    printf("[BQ76940 BRINGUP] final fail, attempts = %d, stage = %d, error = %d\r\n",
+           ctx->diag_state.bringup_attempt_count,
+           ctx->diag_state.bringup_last_stage,
+           ctx->diag_state.bringup_last_error);
+
+    return 100U;
+}
+
+
 
 
 static uint8_t BQ76940_AppHandleTempProtect(BQ76940_AppCtx_t *ctx)

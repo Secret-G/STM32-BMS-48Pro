@@ -35,6 +35,31 @@ uint8_t BQ76200_ExecInit(BQ76200_ExecCtx_t *ctx)
 }
 
 
+void BQ76200_ExecForceOff(BQ76200_ExecCtx_t *ctx)
+{
+    /*
+     * 故障兜底：确保执行口已经被初始化。
+     * 即使前面已经初始化过，再调用一次也可以接受。
+     */
+    BQ76200_PortInit();
+
+    if (ctx != 0)
+    {
+        ctx->last_state = ctx->state;
+        ctx->state = BQ76200_EXEC_STATE_OFF;
+    }
+
+    /*
+     * 强制关闭所有 BQ76200 驱动相关引脚：
+     * CHG_EN  = 0
+     * DSG_EN  = 0
+     * CP_EN   = 0
+     * PCHG_EN = 0
+     */
+    BQ76200_ExecApplyState(BQ76200_EXEC_STATE_OFF);
+}
+
+
 /* ==============================
  * 执行层状态更新
  * ============================== */

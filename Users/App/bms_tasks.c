@@ -356,6 +356,8 @@ static void BMS_ControlTask(void *argument)
 static void BMS_AuxTask(void *argument)
 {
     BQ76940_AppCtx_t *app = (BQ76940_AppCtx_t *)argument;
+		
+		BQ76940_AppCtx_t snapshot;
 
     for (;;)
     {
@@ -363,13 +365,18 @@ static void BMS_AuxTask(void *argument)
 
         if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
         {
-            BQ76940_AppPrintRuntime(app);
+						snapshot = *app;
+            
             xSemaphoreGive(g_bms_ctx_mutex);
+					
+						BQ76940_AppPrintRuntime(&snapshot);
         }
 
         vTaskDelay(pdMS_TO_TICKS(BMS_AUX_TASK_PERIOD_MS));
     }
 }
+
+
 
 #if (BMS_ENABLE_GAUGE_TASK != 0U)
 static void BMS_GaugeTask(void *argument)

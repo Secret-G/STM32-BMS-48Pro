@@ -7,9 +7,9 @@
     printf("SYS_STAT  = 0x%02X\r\n", regs->sys_stat);
     printf("SYS_CTRL1 = 0x%02X\r\n", regs->sys_ctrl1);
     printf("SYS_CTRL2 = 0x%02X\r\n", regs->sys_ctrl2);
-    printf("PROTECT1  = 0x%02X\r\n", regs->protect1);
-    printf("PROTECT2  = 0x%02X\r\n", regs->protect2);
-    printf("PROTECT3  = 0x%02X\r\n", regs->protect3);
+//    printf("PROTECT1  = 0x%02X\r\n", regs->protect1);
+//    printf("PROTECT2  = 0x%02X\r\n", regs->protect2);
+//    printf("PROTECT3  = 0x%02X\r\n", regs->protect3);
 		printf("OV_TRIP  = 0x%02X\r\n", regs->ov_trip);
     printf("UV_TRIP  = 0x%02X\r\n", regs->uv_trip);
     printf("CC_CFG    = 0x%02X\r\n", regs->cc_cfg);
