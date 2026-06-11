@@ -25,6 +25,8 @@ static uint8_t BQ76940_AppIsBalanceAllowed(const BQ76940_AppCtx_t *ctx)
     if (ctx->hw_dsg_block_active != 0U) return 0;
     if (ctx->hw_ocd_active != 0U) return 0;
     if (ctx->hw_scd_active != 0U) return 0;
+		
+		if (ctx->runtime_diag.fault_active != 0U) return 0;
 
     /* 电流太大时先不均衡 */
     if (abs_current_mA > ctx->bal_cfg.max_abs_current_mA) return 0;

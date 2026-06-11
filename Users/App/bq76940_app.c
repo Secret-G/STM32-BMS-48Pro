@@ -80,8 +80,15 @@ void BQ76940_AppInitDefaultConfig(BQ76940_AppCtx_t *ctx)
 		ctx->hw_dsg_block_active        = 0;
 		ctx->hw_fault_recover_once_enable = 0;
 		
+		//初始化运行就诊
+		BQ76940_AppRuntimeDiagInit(&ctx->runtime_diag);
+		
 		BQ76940_ClearCellBalRegs(&ctx->cellbal_wr);
 		BQ76940_ClearCellBalRegs(&ctx->cellbal_rd);
+		
+		
+
+		
 		/* BQ76200 执行层初始化 */
     BQ76200_ExecInit(&ctx->bq76200_exec);
 

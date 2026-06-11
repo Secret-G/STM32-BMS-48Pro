@@ -458,6 +458,16 @@
               <FileType>1</FileType>
               <FilePath>..\..\Users\App\bq34z100_app.c</FilePath>
             </File>
+            <File>
+              <FileName>bq76940_app_hw_fault.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Users\App\bq76940_app_hw_fault.c</FilePath>
+            </File>
+            <File>
+              <FileName>bq76940_app_runtime_diag.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Users\App\bq76940_app_runtime_diag.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

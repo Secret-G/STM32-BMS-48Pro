@@ -27,9 +27,10 @@ typedef enum
  * ============================== */
 typedef struct
 {
-    uint8_t ot_cutoff_active;      /* 过温：1=充放都关 */
-    uint8_t ut_chg_block_active;   /* 低温：1=只禁止充电 */
-    uint8_t hw_dsg_block_active;   /* OCD/SCD：1=只禁止放电 */
+    uint8_t ot_cutoff_active;       /* 过温：1=充放都关 */
+    uint8_t ut_chg_block_active;    /* 低温：1=只禁止充电 */
+    uint8_t hw_dsg_block_active;    /* OCD/SCD：1=只禁止放电 */
+    uint8_t runtime_fault_active;   /* 运行时故障：1=全部关闭 */
 } BQ76200_ExecInput_t;
 
 

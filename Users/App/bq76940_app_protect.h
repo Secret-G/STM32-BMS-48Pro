@@ -7,36 +7,6 @@
 #define BQ76940_PROTECT_EVENT_PRINT_ENABLE  1U
 
 /*
- * OCD/SCD 保护动作类型
- */
-#define BQ76940_OCDSCD_ACTION_NONE        0U
-#define BQ76940_OCDSCD_ACTION_DSG_OFF     1U
-#define BQ76940_OCDSCD_ACTION_DSG_ON      2U
-
-/*
- * OCD/SCD 保护请求
- *
- * 作用：
- *   将 OCD/SCD 保护拆成三段：
- *   1. Decide：根据 ctx 当前状态生成请求
- *   2. ApplyHw：根据请求写 BQ76940 DSG 位
- *   3. Commit：将执行结果提交回 ctx
- */
-typedef struct
-{
-    uint8_t action;
-
-    uint8_t sys_stat_snapshot;
-    uint8_t hw_fault_now;
-
-    uint8_t ocd_now;
-    uint8_t scd_now;
-
-    uint8_t recover_request;
-} BQ76940_OcdScdRequest_t;
-
-
-/*
  * OT 过温保护动作类型
  */
 #define BQ76940_OT_ACTION_NONE        0U
@@ -109,17 +79,6 @@ struct BQ76940_AppCtx;
  *   Decide -> ApplyHw -> Commit。
  */
 uint8_t BQ76940_AppProtectUpdateBase(struct BQ76940_AppCtx *ctx);
-
-/*ocd csd相关*/
-void BQ76940_AppOcdScdRequestClear(BQ76940_OcdScdRequest_t *req);
-
-uint8_t BQ76940_AppOcdScdDecide(const struct BQ76940_AppCtx *ctx,
-                                BQ76940_OcdScdRequest_t *req);
-
-uint8_t BQ76940_AppOcdScdApplyHw(const BQ76940_OcdScdRequest_t *req);
-
-uint8_t BQ76940_AppOcdScdCommit(struct BQ76940_AppCtx *ctx,
-                                const BQ76940_OcdScdRequest_t *req);
 
 
 //过温保护的相关函数

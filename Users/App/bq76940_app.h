@@ -10,6 +10,8 @@
 #include "bq76940_app_can.h"
 #include "bq76940_app_sample.h"
 #include "bq76940_app_protect.h"
+#include "bq76940_app_hw_fault.h"
+#include "bq76940_app_runtime_diag.h"
 
 
 typedef struct
@@ -103,8 +105,13 @@ typedef struct BQ76940_AppCtx
 				    /* Õï¶Ï×´Ì¬ */
     BQ76940_DiagState_t diag_state;
 		
+		/* ÔËÐÐÊ±Õï¶Ï×´Ì¬ */
+		BQ76940_RuntimeDiag_t runtime_diag;
+		
 		/* BQ76200 Ö´ÐÐ²ã */
     BQ76200_ExecCtx_t bq76200_exec;
+		
+
 		
 
 		

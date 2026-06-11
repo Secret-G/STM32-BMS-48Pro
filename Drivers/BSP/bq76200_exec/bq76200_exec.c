@@ -76,7 +76,11 @@ uint8_t BQ76200_ExecUpdate(BQ76200_ExecCtx_t *ctx,
     /*
      * 状态优先级：
      *
-     * 1. OT 过温最高优先级：
+     * 0. Runtime fault 最高优先级：
+     *    运行时通信/采样链路故障，系统状态不可信，
+     *    进入最保守 OFF 状态，CHG/DSG/CP/PCHG 全部关闭。
+     *
+     * 1. OT 过温：
      *    充电、放电都禁止
      *
      * 2. UT 和 OCD/SCD 同时存在：
@@ -90,12 +94,12 @@ uint8_t BQ76200_ExecUpdate(BQ76200_ExecCtx_t *ctx,
      *
      * 5. 无故障：
      *    正常打开充放电
-     *
-     * 说明：
-     * PRECHARGE 当前第一版仅保留状态定义，
-     * 暂未在这里引入实际状态切换逻辑。
      */
-    if (input->ot_cutoff_active != 0U)
+    if (input->runtime_fault_active != 0U)
+    {
+        next_state = BQ76200_EXEC_STATE_OFF;
+    }
+    else if (input->ot_cutoff_active != 0U)
     {
         next_state = BQ76200_EXEC_STATE_CHG_DSG_BLOCK;
     }
@@ -117,7 +121,9 @@ uint8_t BQ76200_ExecUpdate(BQ76200_ExecCtx_t *ctx,
         next_state = BQ76200_EXEC_STATE_NORMAL_ON;
     }
 
-    /* 只有发生状态变化时，才更新 last_state */
+    /*
+     * 更新执行层状态记录
+     */
     if (ctx->state != next_state)
     {
         ctx->last_state = ctx->state;
@@ -126,7 +132,6 @@ uint8_t BQ76200_ExecUpdate(BQ76200_ExecCtx_t *ctx,
 
     /*
      * 第一版每轮都刷新 GPIO。
-     * 这样调试最直观，后面再优化成状态变化才刷新也可以。
      */
     BQ76200_ExecApplyState(ctx->state);
 
