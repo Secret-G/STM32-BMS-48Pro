@@ -6,6 +6,7 @@
 #include "bq76940_protect.h"
 #include "bq76200_exec.h"
 #include "bq76940_app_balance.h"
+#include "bq76940_app_control.h"
 
 
 typedef struct
@@ -332,7 +333,6 @@ uint8_t BQ76940_AppUtProtectCommit(BQ76940_AppCtx_t *ctx,
 
 uint8_t BQ76940_AppSampleUpdate(BQ76940_AppCtx_t *ctx);
 uint8_t BQ76940_AppProtectUpdate(BQ76940_AppCtx_t *ctx);
-uint8_t BQ76940_AppControlUpdate(BQ76940_AppCtx_t *ctx);
 void    BQ76940_AppPrintRuntime(const BQ76940_AppCtx_t *ctx);
 void    BQ76940_AppSendCanTelemetry(const BQ76940_AppCtx_t *ctx);
 
