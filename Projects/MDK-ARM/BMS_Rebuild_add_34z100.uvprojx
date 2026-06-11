@@ -419,6 +419,11 @@
               <FilePath>..\..\Users\App\bq76940_app.c</FilePath>
             </File>
             <File>
+              <FileName>bq76940_app_balance.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Users\App\bq76940_app_balance.c</FilePath>
+            </File>
+            <File>
               <FileName>bms_tasks.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\Users\App\bms_tasks.c</FilePath>

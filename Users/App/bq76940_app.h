@@ -5,60 +5,7 @@
 #include "bq76940_alarm.h"
 #include "bq76940_protect.h"
 #include "bq76200_exec.h"
-
-
-typedef struct
-{
-    uint16_t diff_enter_mV;       /* 压差进入阈值 */
-    uint16_t diff_exit_mV;        /* 压差退出阈值 */
-    uint16_t min_cell_mV;         /* 允许均衡的最低最高单体电压门限 */
-    int32_t  max_abs_current_mA;  /* 允许均衡的最大电流绝对值 */
-} BQ76940_BalanceConfig_t;
-
-/*
- * 自动均衡动作类型
- *
- * NONE:
- *   本轮不需要操作 CELLBAL。
- *
- * START:
- *   本轮需要开启某个单体的均衡。
- *
- * STOP:
- *   本轮需要关闭所有自动均衡。
- */
-#define BQ76940_BAL_ACTION_NONE      0U
-#define BQ76940_BAL_ACTION_START     1U
-#define BQ76940_BAL_ACTION_STOP      2U
-
-/*
- * 自动均衡停止原因
- */
-#define BQ76940_BAL_REASON_NONE          0U
-#define BQ76940_BAL_REASON_NOT_ALLOWED   1U
-#define BQ76940_BAL_REASON_DIFF_EXIT     2U
-
-/*
- * 自动均衡请求结构体
- *
- * 作用：
- *   把“均衡判断”和“CELLBAL 硬件写入”拆开。
- *
- * 使用流程：
- *   1. Decide  阶段：根据 app 状态生成 req
- *   2. ApplyHw 阶段：根据 req 写 BQ76940 CELLBAL
- *   3. Commit  阶段：将执行结果提交回 app
- */
-typedef struct
-{
-    uint8_t action;        /* NONE / START / STOP */
-    uint8_t target_label;  /* START 时的目标电芯编号 */
-    uint8_t reason;        /* STOP 原因 */
-
-    BQ76940_CellBalRegs_t wr;  /* 准备写入的 CELLBAL */
-    BQ76940_CellBalRegs_t rd;  /* 写入后读回的 CELLBAL */
-} BQ76940_BalanceRequest_t;
-
+#include "bq76940_app_balance.h"
 
 
 typedef struct
@@ -137,7 +84,7 @@ typedef struct
 /* BQ76940 应用层上下文
  * 这一层不是底层驱动，而是把“当前版本运行所需的数据”集中起来
  */
-typedef struct
+typedef struct BQ76940_AppCtx
 {
     /* 硬件寄存器与校准 */
     BQ76940_BasicRegs_t regs;
@@ -333,18 +280,6 @@ uint8_t BQ76940_AppSampleCommit(BQ76940_AppCtx_t *ctx,
                                 const BQ76940_AppSampleData_t *sample);
 
 
-/*自动均衡相关*/
-void BQ76940_AppBalanceRequestClear(BQ76940_BalanceRequest_t *req);
-
-uint8_t BQ76940_AppBalanceDecide(const BQ76940_AppCtx_t *ctx,
-                                  BQ76940_BalanceRequest_t *req);
-
-uint8_t BQ76940_AppBalanceApplyHw(BQ76940_BalanceRequest_t *req);
-
-uint8_t BQ76940_AppBalanceCommit(BQ76940_AppCtx_t *ctx,
-                                  const BQ76940_BalanceRequest_t *req);
-
-
 /*
  * 保护基础更新：
  *   1. UV / OV / DIFF 软件告警
@@ -397,7 +332,6 @@ uint8_t BQ76940_AppUtProtectCommit(BQ76940_AppCtx_t *ctx,
 
 uint8_t BQ76940_AppSampleUpdate(BQ76940_AppCtx_t *ctx);
 uint8_t BQ76940_AppProtectUpdate(BQ76940_AppCtx_t *ctx);
-uint8_t BQ76940_AppBalanceUpdate(BQ76940_AppCtx_t *ctx);
 uint8_t BQ76940_AppControlUpdate(BQ76940_AppCtx_t *ctx);
 void    BQ76940_AppPrintRuntime(const BQ76940_AppCtx_t *ctx);
 void    BQ76940_AppSendCanTelemetry(const BQ76940_AppCtx_t *ctx);
