@@ -8,6 +8,8 @@
 #include "bq76940_app_balance.h"
 #include "bq76940_app_control.h"
 #include "bq76940_app_can.h"
+#include "bq76940_app_sample.h"
+#include "bq76940_app_protect.h"
 
 
 typedef struct
@@ -18,69 +20,6 @@ typedef struct
     uint8_t bringup_last_error;      /* 最近一次失败的底层错误码 */
 } BQ76940_DiagState_t;
 
-
-
-/*
- * BQ76940 采样快照数据
- *
- * 作用：
- *   用于 FreeRTOS 任务中实现“先读硬件，再提交全局状态”的结构。
- *
- * 设计目的：
- *   1. I2C 锁只保护硬件读取过程
- *   2. ctx 锁只保护 app 全局结构体更新
- *   3. 避免拿着全局锁长时间访问 I2C
- */
-typedef struct
-{
-    uint16_t cell_raw[BQ76940_CELL_COUNT_9];
-    uint16_t cell_mV[BQ76940_CELL_COUNT_9];
-
-    uint32_t pack_total_mV;
-    BQ76940_CellStats9_t cell_stats;
-
-    BQ76940_CCRaw_t cc_raw;
-    int32_t pack_current_mA;
-    int8_t pack_current_dir;
-
-    uint16_t ts1_raw_adc;
-    int16_t ts1_temp_dC;
-
-    uint8_t sys_stat;
-    uint8_t fault_mask_active;
-} BQ76940_AppSampleData_t;
-
-
-
-
-/*
- * OCD/SCD 保护动作类型
- */
-#define BQ76940_OCDSCD_ACTION_NONE        0U
-#define BQ76940_OCDSCD_ACTION_DSG_OFF     1U
-#define BQ76940_OCDSCD_ACTION_DSG_ON      2U
-
-/*
- * OCD/SCD 保护请求
- *
- * 作用：
- *   将 OCD/SCD 保护拆成三段：
- *   1. Decide：根据 ctx 当前状态生成请求
- *   2. ApplyHw：根据请求写 BQ76940 DSG 位
- *   3. Commit：将执行结果提交回 ctx
- */
-typedef struct
-{
-    uint8_t action;
-
-    uint8_t sys_stat_snapshot;
-    uint8_t hw_fault_now;
-
-    uint8_t ocd_now;
-    uint8_t scd_now;
-
-    uint8_t recover_request;
-} BQ76940_OcdScdRequest_t;
 
 
 /* BQ76940 应用层上下文
@@ -176,63 +115,6 @@ typedef struct BQ76940_AppCtx
 
 
 
-/*
- * OT 过温保护动作类型
- */
-#define BQ76940_OT_ACTION_NONE        0U
-#define BQ76940_OT_ACTION_FET_OFF     1U
-#define BQ76940_OT_ACTION_FET_ON      2U
-
-/*
- * OT 过温保护请求
- *
- * 作用：
- *   将 OT 过温保护拆成三段：
- *   1. Decide：根据 app 当前状态判断是否需要动作
- *   2. ApplyHw：根据请求写 BQ76940 CHG / DSG
- *   3. Commit：将动作结果提交回 app
- */
-typedef struct
-{
-    uint8_t action;
-
-    uint8_t ot_now;
-    uint8_t ov_now;
-    uint8_t uv_now;
-
-    uint8_t ot_cutoff_active_snapshot;
-} BQ76940_OtProtectRequest_t;
-
-/*
- * UT 低温保护动作类型
- */
-#define BQ76940_UT_ACTION_NONE        0U
-#define BQ76940_UT_ACTION_CHG_OFF     1U
-#define BQ76940_UT_ACTION_CHG_ON      2U
-
-/*
- * UT 低温保护请求
- *
- * 作用：
- *   将 UT 低温保护拆成三段：
- *   1. Decide：根据 app 当前状态判断是否需要动作
- *   2. ApplyHw：根据请求写 BQ76940 CHG 位
- *   3. Commit：将动作结果提交回 app
- */
-typedef struct
-{
-    uint8_t action;
-
-    uint8_t ut_now;
-    uint8_t ov_now;
-    uint8_t ot_now;
-
-    uint8_t ot_cutoff_active_snapshot;
-    uint8_t ut_chg_block_active_snapshot;
-} BQ76940_UtProtectRequest_t;
-
-
-
 /* 初始化默认配置
  * 1. 软件实验阈值
  * 2. 硬件保护目标值
@@ -253,92 +135,7 @@ uint8_t BQ76940_AppForceSafeOff(BQ76940_AppCtx_t *ctx);
 
 
 
-/*
- * 只读取 BQ76940 硬件数据。
- * 该函数内部会访问 I2C，总线锁应由上层任务持有。
- */
-uint8_t BQ76940_AppSampleReadHw(const BQ76940_AdcCalib_t *calib,
-                                BQ76940_AppSampleData_t *sample);
-
-/*
- * 对采样快照进行计算处理。
- * 该函数不访问 I2C，也不修改全局 app。
- */
-uint8_t BQ76940_AppSampleProcess(BQ76940_AppSampleData_t *sample);
-
-/*
- * 将采样快照提交到 app 全局上下文。
- * 该函数应在持有 ctx mutex 时调用。
- */
-uint8_t BQ76940_AppSampleCommit(BQ76940_AppCtx_t *ctx,
-                                const BQ76940_AppSampleData_t *sample);
-
-
-/*
- * 保护基础更新：
- *   1. UV / OV / DIFF 软件告警
- *   2. OT 过温告警
- *   3. UT 低温告警
- *   4. OT 联动保护
- *   5. UT 联动保护
- *
- * 注意：
- *   不包含 OCD / SCD 处理。
- *   OCD / SCD 在 FreeRTOS ProtectTask 中走三段式：
- *   Decide -> ApplyHw -> Commit。
- */
-uint8_t BQ76940_AppProtectUpdateBase(BQ76940_AppCtx_t *ctx);
-
-/*ocd csd相关*/
-void BQ76940_AppOcdScdRequestClear(BQ76940_OcdScdRequest_t *req);
-
-uint8_t BQ76940_AppOcdScdDecide(const BQ76940_AppCtx_t *ctx,
-                                BQ76940_OcdScdRequest_t *req);
-
-uint8_t BQ76940_AppOcdScdApplyHw(const BQ76940_OcdScdRequest_t *req);
-
-uint8_t BQ76940_AppOcdScdCommit(BQ76940_AppCtx_t *ctx,
-                                const BQ76940_OcdScdRequest_t *req);
-
-
-//过温保护的相关函数
-void BQ76940_AppOtProtectRequestClear(BQ76940_OtProtectRequest_t *req);
-
-uint8_t BQ76940_AppOtProtectDecide(const BQ76940_AppCtx_t *ctx,
-                                    BQ76940_OtProtectRequest_t *req);
-
-uint8_t BQ76940_AppOtProtectApplyHw(const BQ76940_OtProtectRequest_t *req);
-
-uint8_t BQ76940_AppOtProtectCommit(BQ76940_AppCtx_t *ctx,
-                                    const BQ76940_OtProtectRequest_t *req);
-
-//低温保护的相关函数
-void BQ76940_AppUtProtectRequestClear(BQ76940_UtProtectRequest_t *req);
-
-uint8_t BQ76940_AppUtProtectDecide(const BQ76940_AppCtx_t *ctx,
-                                    BQ76940_UtProtectRequest_t *req);
-
-uint8_t BQ76940_AppUtProtectApplyHw(const BQ76940_UtProtectRequest_t *req);
-
-uint8_t BQ76940_AppUtProtectCommit(BQ76940_AppCtx_t *ctx,
-                                    const BQ76940_UtProtectRequest_t *req);
-
-
-uint8_t BQ76940_AppSampleUpdate(BQ76940_AppCtx_t *ctx);
-uint8_t BQ76940_AppProtectUpdate(BQ76940_AppCtx_t *ctx);
 void    BQ76940_AppPrintRuntime(const BQ76940_AppCtx_t *ctx);
-
-/*
- * 只更新保护相关告警状态：
- *   UV / OV / DIFF
- *   OT / UT
- *
- * 注意：
- *   本函数不执行 CHG / DSG / CELLBAL 等硬件动作。
- *   不访问 I2C。
- */
-uint8_t BQ76940_AppProtectUpdateAlarms(BQ76940_AppCtx_t *ctx);
-
 
 #endif
 

@@ -434,6 +434,16 @@
               <FilePath>..\..\Users\App\bq76940_app_can.c</FilePath>
             </File>
             <File>
+              <FileName>bq76940_app_sample.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Users\App\bq76940_app_sample.c</FilePath>
+            </File>
+            <File>
+              <FileName>bq76940_app_protect.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Users\App\bq76940_app_protect.c</FilePath>
+            </File>
+            <File>
               <FileName>bms_tasks.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\Users\App\bms_tasks.c</FilePath>
