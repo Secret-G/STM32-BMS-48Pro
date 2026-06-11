@@ -364,13 +364,27 @@ static void BMS_SampleTask(void *argument)
 static void BMS_CANTask(void *argument)
 {
     BQ76940_AppCtx_t *app = (BQ76940_AppCtx_t *)argument;
+    BQ76940_AppCtx_t snapshot;
 
     for (;;)
     {
+        /*
+         * CANTask 不访问 I2C。
+         *
+         * 正确做法：
+         *   1. 短时间拿 ctx mutex
+         *   2. 复制 app 快照
+         *   3. 释放 ctx mutex
+         *   4. 锁外发送 CAN
+         *
+         * 这样可以避免 CAN 发送过程长时间占用全局状态锁。
+         */
         if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
         {
-            BQ76940_AppSendCanTelemetry(app);
+            snapshot = *app;
             xSemaphoreGive(g_bms_ctx_mutex);
+
+            BQ76940_AppSendCanTelemetry(&snapshot);
         }
 
         vTaskDelay(pdMS_TO_TICKS(BMS_CAN_TASK_PERIOD_MS));
@@ -634,31 +648,30 @@ static void BMS_ControlTask(void *argument)
             uint8_t ret = 0U;
 
             /*
-             * ControlTask 可能会写 BQ76940 的 CHG / DSG 控制位，
-             * 也可能会更新 BQ76200 执行层状态。
+             * ControlTask 当前只负责 BQ76200 执行层控制。
              *
-             * 其中 BQ76940 FET 控制依赖 I2C，因此这里也要持有 I2C 锁。
+             * BQ76200 通过 GPIO 控制：
+             *   CHG_EN / DSG_EN / CP_EN / PCHG_EN
+             *
+             * 不访问 BQ76940 I2C，因此不需要 i2c_mutex。
+             *
+             * 但这里会读取保护状态，并更新 ctx->bq76200_exec，
+             * 所以需要 ctx_mutex。
              */
             if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
             {
-                if (xSemaphoreTake(g_i2c_bus_mutex,
-                                   pdMS_TO_TICKS(BMS_I2C_MUTEX_TIMEOUT_MS)) == pdTRUE)
-                {
-                    ret = BQ76940_AppControlUpdate(app);
-
-                    xSemaphoreGive(g_i2c_bus_mutex);
-                }
-                else
-                {
-                    ret = BMS_TASK_RET_I2C_LOCK_TIMEOUT;
-                }
+                ret = BQ76940_AppControlUpdate(app);
 
                 xSemaphoreGive(g_bms_ctx_mutex);
+            }
+            else
+            {
+                ret = 1U;
             }
 
             if (ret != 0U)
             {
-                printf("[BMS_ControlTask] control update fail, ret = %d\r\n", ret);
+                printf("[BMS_ControlTask] control fail, ret = %d\r\n", ret);
             }
         }
     }
@@ -667,20 +680,22 @@ static void BMS_ControlTask(void *argument)
 static void BMS_AuxTask(void *argument)
 {
     BQ76940_AppCtx_t *app = (BQ76940_AppCtx_t *)argument;
-		
-		BQ76940_AppCtx_t snapshot;
+    BQ76940_AppCtx_t snapshot;
 
     for (;;)
     {
         led1_toggle();
 
+        /*
+         * printf 很慢，所以不能拿着 ctx mutex 打印。
+         * 这里只复制快照，锁外打印。
+         */
         if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
         {
-						snapshot = *app;
-            
+            snapshot = *app;
             xSemaphoreGive(g_bms_ctx_mutex);
-					
-						BQ76940_AppPrintRuntime(&snapshot);
+
+            BQ76940_AppPrintRuntime(&snapshot);
         }
 
         vTaskDelay(pdMS_TO_TICKS(BMS_AUX_TASK_PERIOD_MS));
@@ -696,9 +711,25 @@ static void BMS_GaugeTask(void *argument)
 
     for (;;)
     {
-        uint8_t ret;
+        uint8_t ret = 0U;
 
-        ret = BQ34Z100_AppRunCycle(&g_bq34z100_ctx);
+        /*
+         * BQ34Z100 访问 I2C / SMBus，
+         * 和 BQ76940 共用 SoftI2C1 总线，
+         * 所以必须拿 i2c mutex。
+         */
+        if (xSemaphoreTake(g_i2c_bus_mutex,
+                           pdMS_TO_TICKS(BMS_I2C_MUTEX_TIMEOUT_MS)) == pdTRUE)
+        {
+            ret = BQ34Z100_AppRunCycle(&g_bq34z100_ctx);
+
+            xSemaphoreGive(g_i2c_bus_mutex);
+        }
+        else
+        {
+            ret = BMS_TASK_RET_I2C_LOCK_TIMEOUT;
+        }
+
         if (ret == 0U)
         {
             BQ34Z100_AppPrint(&g_bq34z100_ctx);
