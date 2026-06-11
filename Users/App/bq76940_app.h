@@ -137,9 +137,9 @@ uint8_t BQ76940_AppRunCycle(BQ76940_AppCtx_t *ctx);
 
 
 /* 故障安全关断：关闭 BQ76200 驱动引脚，尝试关闭 BQ76940 FET 和均衡 */
+uint8_t BQ76940_AppForceExternalOff(BQ76940_AppCtx_t *ctx);
+uint8_t BQ76940_AppForceAfeOff(BQ76940_AppCtx_t *ctx);
 uint8_t BQ76940_AppForceSafeOff(BQ76940_AppCtx_t *ctx);
-
-
 
 
 void    BQ76940_AppPrintRuntime(const BQ76940_AppCtx_t *ctx);

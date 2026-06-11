@@ -340,6 +340,22 @@ static void BMS_SampleTask(void *argument)
                 fault_stage = BQ76940_RT_STAGE_I2C_LOCK;
             }
         }
+				
+				
+				/*
+				 * RuntimeDiag 测试代码：
+				 * 第 10~12 轮人为制造连续 3 次采样失败。
+				 * 测完一定要删除。
+				 */
+				static uint8_t rt_test_cnt = 0U;
+				rt_test_cnt++;
+
+				if ((rt_test_cnt >= 10U) && (rt_test_cnt <= 12U))
+				{
+						ret = 99U;
+						fault_code = BQ76940_RT_FAULT_SAMPLE_READ;
+						fault_stage = BQ76940_RT_STAGE_SAMPLE_READ_HW;
+				}
 
         /*
          * 3. 采样数据处理
@@ -436,9 +452,12 @@ static void BMS_RuntimeTask(void *argument)
         {
             uint8_t need_safe_off = 0U;
             uint8_t safe_off_result = 0U;
+            uint8_t retry_allowed = 0U;
 
             /*
              * 1. 读取并消费 Safe-Off 请求
+             *
+             * 这里只访问 runtime_diag 状态，所以只需要 ctx mutex。
              */
             if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
             {
@@ -446,34 +465,61 @@ static void BMS_RuntimeTask(void *argument)
                 xSemaphoreGive(g_bms_ctx_mutex);
             }
 
-            /*
-             * 2. 执行 Safe-Off
-             *
-             * 第一版为了快速闭环，直接复用 BQ76940_AppForceSafeOff()。
-             * 这个函数会：
-             *   - ForceOff BQ76200
-             *   - 清 CELLBAL
-             *   - 关闭 BQ76940 CHG/DSG
-             *
-             * 注意：
-             *   这里是异常路径，允许比正常任务更保守。
-             */
-            if (need_safe_off != 0U)
+            if (need_safe_off == 0U)
             {
+                continue;
+            }
+
+            /*
+             * 2. 立即关闭外部 BQ76200 执行层
+             *
+             * 这一步不需要 I2C，必须优先执行。
+             * 即使 I2C 总线被占用或异常，外部驱动也能先进入 OFF。
+             */
+            if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
+            {
+                (void)BQ76940_AppForceExternalOff(app);
+                xSemaphoreGive(g_bms_ctx_mutex);
+            }
+
+            /*
+             * 立刻通知 ControlTask，让 BQ76200 执行层刷新一次。
+             */
+            xSemaphoreGive(g_control_sem);
+
+            /*
+             * 3. 尝试关闭 BQ76940 AFE
+             *
+             * 如果失败，则根据 RuntimeDiag 的 retry_allowed 快速重试。
+             */
+            do
+            {
+                retry_allowed = 0U;
+                safe_off_result = 0U;
+
                 if (xSemaphoreTake(g_i2c_bus_mutex,
                                    pdMS_TO_TICKS(BMS_I2C_MUTEX_TIMEOUT_MS)) == pdTRUE)
                 {
                     if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
                     {
-                        safe_off_result = BQ76940_AppForceSafeOff(app);
+                        /*
+                         * ForceAfeOff 会：
+                         * - 清 CELLBAL
+                         * - 关闭 BQ76940 CHG/DSG
+                         */
+                        safe_off_result = BQ76940_AppForceAfeOff(app);
 
                         BQ76940_AppRuntimeDiagCommitSafeOffResult(app,
-                                                                  safe_off_result);
+                                                                  safe_off_result,
+                                                                  &retry_allowed);
 
                         xSemaphoreGive(g_bms_ctx_mutex);
                     }
                     else
                     {
+                        /*
+                         * ctx 锁失败，记录为 Safe-Off 失败。
+                         */
                         safe_off_result = BQ76940_RT_FAULT_CTX_LOCK;
                     }
 
@@ -481,24 +527,40 @@ static void BMS_RuntimeTask(void *argument)
                 }
                 else
                 {
+                    /*
+                     * I2C 锁超时，说明当前无法访问 BQ76940。
+                     * 但是 BQ76200 已经提前关闭，所以外部执行层是安全的。
+                     */
                     safe_off_result = BMS_TASK_RET_I2C_LOCK_TIMEOUT;
 
                     if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
                     {
                         BQ76940_AppRuntimeDiagCommitSafeOffResult(app,
-                                                                  safe_off_result);
+                                                                  safe_off_result,
+                                                                  &retry_allowed);
                         xSemaphoreGive(g_bms_ctx_mutex);
                     }
                 }
 
                 /*
-                 * 3. 主动通知 ControlTask。
-                 *
-                 * 因为 runtime fault 会阻断 Sample -> Protect -> Balance 主链，
-                 * 所以这里必须主动唤醒 ControlTask 刷新 BQ76200 执行层。
+                 * Safe-Off 失败且允许快速重试，则延迟一小段时间再试。
                  */
-                xSemaphoreGive(g_control_sem);
-            }
+                if (retry_allowed != 0U)
+                {
+                    vTaskDelay(pdMS_TO_TICKS(BQ76940_RT_SAFE_OFF_RETRY_DELAY_MS));
+                }
+
+            } while ((safe_off_result != 0U) &&
+                     (retry_allowed != 0U));
+
+            /*
+             * 4. 再通知一次 ControlTask
+             *
+             * 作用：
+             * - 确保 runtime_fault_active 下 BQ76200 保持 OFF
+             * - 后续如果 control 里增加更多动作，也能被触发
+             */
+            xSemaphoreGive(g_control_sem);
         }
     }
 }
@@ -545,15 +607,49 @@ static void BMS_ProtectTask(void *argument)
         if (xSemaphoreTake(g_protect_sem, portMAX_DELAY) == pdTRUE)
         {
             uint8_t ret = 0U;
+            uint8_t runtime_fault = 0U;
+
             BQ76940_OtProtectRequest_t ot_req;
             BQ76940_UtProtectRequest_t ut_req;
             BQ76940_OcdScdRequest_t ocdscd_req;
 
             /*
+             * 0. Runtime fault 门控
+             *
+             * 作用：
+             *   防止旧的 protect_sem 被消费后，
+             *   ProtectTask 继续基于旧采样数据执行保护/均衡链路。
+             *
+             * 注意：
+             *   这里不做 Safe-Off。
+             *   Safe-Off 由 RuntimeTask 统一处理。
+             */
+            if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
+            {
+                runtime_fault = BQ76940_AppRuntimeDiagIsFaultActive(app);
+                xSemaphoreGive(g_bms_ctx_mutex);
+            }
+            else
+            {
+                ret = 1U;
+            }
+
+            if ((ret == 0U) && (runtime_fault != 0U))
+            {
+                /*
+                 * 已经进入 Runtime fault：
+                 * - 不更新软件保护
+                 * - 不执行 OT/UT/OCDSCD 动作
+                 * - 不继续 give g_balance_sem
+                 */
+                continue;
+            }
+
+            /*
              * 1. Base + Decide 阶段
              *
              * Base:
-             *   - 更新 UV / OV / DIFF / OT / UT 告警
+             *   - 更新 UV / OV / DIFF / OT / UT 软件告警
              *
              * OT Decide:
              *   - 判断是否需要 CHG/DSG OFF 或 ON
@@ -562,34 +658,37 @@ static void BMS_ProtectTask(void *argument)
              *   - 判断是否需要 CHG OFF 或 ON
              *
              * OCD/SCD Decide:
-             *   - 判断是否需要 DSG OFF 或 ON
+             *   - 根据 SYS_STAT 判断是否需要 DSG OFF 或 ON
              *
-             * 这一步不主动访问 I2C。
+             * 这一步只读取/更新 app 状态，不主动访问 I2C。
              */
-            if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
+            if (ret == 0U)
             {
-                ret = BQ76940_AppProtectUpdateBase(app);
-
-                if (ret == 0U)
+                if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
                 {
-                    ret = BQ76940_AppOtProtectDecide(app, &ot_req);
-                }
+                    ret = BQ76940_AppProtectUpdateBase(app);
 
-                if (ret == 0U)
+                    if (ret == 0U)
+                    {
+                        ret = BQ76940_AppOtProtectDecide(app, &ot_req);
+                    }
+
+                    if (ret == 0U)
+                    {
+                        ret = BQ76940_AppUtProtectDecide(app, &ut_req);
+                    }
+
+                    if (ret == 0U)
+                    {
+                        ret = BQ76940_AppOcdScdDecide(app, &ocdscd_req);
+                    }
+
+                    xSemaphoreGive(g_bms_ctx_mutex);
+                }
+                else
                 {
-                    ret = BQ76940_AppUtProtectDecide(app, &ut_req);
+                    ret = 1U;
                 }
-
-                if (ret == 0U)
-                {
-                    ret = BQ76940_AppOcdScdDecide(app, &ocdscd_req);
-                }
-
-                xSemaphoreGive(g_bms_ctx_mutex);
-            }
-            else
-            {
-                ret = 1U;
             }
 
             /*
@@ -603,7 +702,7 @@ static void BMS_ProtectTask(void *argument)
              *   2. UT
              *   3. OCD/SCD
              *
-             * 这样较安全：
+             * 这样更安全：
              *   - OT 可同时关 CHG/DSG
              *   - UT 可进一步确保 CHG 关闭
              *   - OCD/SCD 可进一步确保 DSG 关闭
@@ -646,7 +745,10 @@ static void BMS_ProtectTask(void *argument)
             /*
              * 3. Commit 阶段
              *
-             * 将 OT / UT / OCDSCD 结果提交回 app。
+             * 将 OT / UT / OCDSCD 的执行结果提交回 app。
+             *
+             * 注意：
+             *   Commit 不访问 I2C，只修改 app 状态。
              */
             if (ret == 0U)
             {
@@ -666,6 +768,11 @@ static void BMS_ProtectTask(void *argument)
 
                     /*
                      * 保护阶段完成后，继续通知 BalanceTask。
+                     *
+                     * 注意：
+                     *   如果 runtime fault 已经 active，
+                     *   前面第 0 步已经 continue 了，
+                     *   所以这里不会在故障状态下继续接力。
                      */
                     if (ret == 0U)
                     {
@@ -697,18 +804,24 @@ static void BMS_BalanceTask(void *argument)
         if (xSemaphoreTake(g_balance_sem, portMAX_DELAY) == pdTRUE)
         {
             uint8_t ret = 0U;
-            BQ76940_BalanceRequest_t req;
+            uint8_t runtime_fault = 0U;
+
+            BQ76940_BalanceRequest_t bal_req;
 
             /*
-             * 1. Decide 阶段：
-             *    只读取 app 当前状态，判断是否需要开启/关闭均衡。
+             * 0. Runtime fault 门控
              *
-             *    这一步不访问 I2C。
-             *    所以只需要 ctx mutex。
+             * 作用：
+             *   防止旧的 balance_sem 被消费后，
+             *   BalanceTask 继续基于旧采样数据执行均衡。
+             *
+             * 注意：
+             *   如果故障发生前已经在均衡，
+             *   RuntimeTask 的 Safe-Off 会负责清 CELLBAL。
              */
             if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
             {
-                ret = BQ76940_AppBalanceDecide(app, &req);
+                runtime_fault = BQ76940_AppRuntimeDiagIsFaultActive(app);
                 xSemaphoreGive(g_bms_ctx_mutex);
             }
             else
@@ -716,20 +829,50 @@ static void BMS_BalanceTask(void *argument)
                 ret = 1U;
             }
 
+            if ((ret == 0U) && (runtime_fault != 0U))
+            {
+                /*
+                 * 已经进入 Runtime fault：
+                 * - 不再执行均衡 Decide
+                 * - 不再写 CELLBAL
+                 * - 主动通知 ControlTask，让 BQ76200 保持 OFF
+                 */
+                xSemaphoreGive(g_control_sem);
+                continue;
+            }
+
             /*
-             * 2. ApplyHw 阶段：
-             *    如果需要操作 CELLBAL，则拿 I2C mutex。
+             * 1. Decide 阶段
              *
-             *    只有 BQ76940_AppBalanceApplyHw() 会访问 I2C。
+             * 只读取 app 状态，生成本轮均衡请求。
+             * 不访问 I2C。
              */
             if (ret == 0U)
             {
-                if (req.action != BQ76940_BAL_ACTION_NONE)
+                if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
+                {
+                    ret = BQ76940_AppBalanceDecide(app, &bal_req);
+                    xSemaphoreGive(g_bms_ctx_mutex);
+                }
+                else
+                {
+                    ret = 2U;
+                }
+            }
+
+            /*
+             * 2. ApplyHw 阶段
+             *
+             * 只有 START / STOP 需要写 CELLBAL 时才访问 I2C。
+             */
+            if (ret == 0U)
+            {
+                if (bal_req.action != BQ76940_BAL_ACTION_NONE)
                 {
                     if (xSemaphoreTake(g_i2c_bus_mutex,
                                        pdMS_TO_TICKS(BMS_I2C_MUTEX_TIMEOUT_MS)) == pdTRUE)
                     {
-                        ret = BQ76940_AppBalanceApplyHw(&req);
+                        ret = BQ76940_AppBalanceApplyHw(&bal_req);
 
                         xSemaphoreGive(g_i2c_bus_mutex);
                     }
@@ -741,22 +884,18 @@ static void BMS_BalanceTask(void *argument)
             }
 
             /*
-             * 3. Commit 阶段：
-             *    将均衡结果提交回 app。
+             * 3. Commit 阶段
              *
-             *    这一步不访问 I2C，只修改 app。
+             * 将均衡执行结果提交回 app。
              */
             if (ret == 0U)
             {
                 if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
                 {
-                    ret = BQ76940_AppBalanceCommit(app, &req);
+                    ret = BQ76940_AppBalanceCommit(app, &bal_req);
 
                     /*
-                     * 均衡阶段完成后通知 ControlTask。
-                     * 注意：
-                     *   即使本轮 req.action == NONE，只要 ret == 0，
-                     *   也应该继续接力给 ControlTask。
+                     * 均衡阶段结束后，继续通知 ControlTask。
                      */
                     if (ret == 0U)
                     {
@@ -767,7 +906,7 @@ static void BMS_BalanceTask(void *argument)
                 }
                 else
                 {
-                    ret = 2U;
+                    ret = 3U;
                 }
             }
 

@@ -140,8 +140,26 @@ static void BQ76940_AppSetBringUpFault(BQ76940_AppCtx_t *ctx,
 }
 
 
+uint8_t BQ76940_AppForceExternalOff(BQ76940_AppCtx_t *ctx)
+{
+    if (ctx == 0)
+    {
+        return 1U;
+    }
 
-uint8_t BQ76940_AppForceSafeOff(BQ76940_AppCtx_t *ctx)
+    /*
+     * 外部执行层紧急关断：
+     * - 不访问 I2C
+     * - 只操作 BQ76200 GPIO 执行层状态
+     * - RuntimeTask 被唤醒后应优先执行它
+     */
+    BQ76200_ExecForceOff(&ctx->bq76200_exec);
+
+    return 0U;
+}
+
+
+uint8_t BQ76940_AppForceAfeOff(BQ76940_AppCtx_t *ctx)
 {
     uint8_t result = 0U;
     uint8_t ret;
@@ -152,8 +170,15 @@ uint8_t BQ76940_AppForceSafeOff(BQ76940_AppCtx_t *ctx)
         return 1U;
     }
 
-    BQ76200_ExecForceOff(&ctx->bq76200_exec);
-
+    /*
+     * AFE 安全关断：
+     * - 清 CELLBAL
+     * - 关闭 BQ76940 CHG / DSG
+     *
+     * 注意：
+     * 本函数会访问 BQ76940 I2C。
+     * 调用前，上层 RuntimeTask 应已经拿到 g_i2c_bus_mutex。
+     */
     BQ76940_ClearCellBalRegs(&zero_bal);
 
     ret = BQ76940_WriteCellBalRegs(&zero_bal);
@@ -168,18 +193,44 @@ uint8_t BQ76940_AppForceSafeOff(BQ76940_AppCtx_t *ctx)
     }
     else
     {
+        /*
+         * bit0：CELLBAL 清除失败
+         */
         result |= 0x01U;
     }
 
     ret = BQ76940_SetFETState(0U, 0U);
     if (ret != BQ76940_OK)
     {
+        /*
+         * bit1：CHG/DSG 关闭失败
+         */
         result |= 0x02U;
     }
 
     return result;
 }
 
+
+uint8_t BQ76940_AppForceSafeOff(BQ76940_AppCtx_t *ctx)
+{
+    uint8_t result;
+
+    if (ctx == 0)
+    {
+        return 1U;
+    }
+
+    /*
+     * 兼容旧接口：
+     * 1. 先关闭外部 BQ76200
+     * 2. 再关闭 BQ76940 AFE
+     */
+    result = BQ76940_AppForceExternalOff(ctx);
+    result |= BQ76940_AppForceAfeOff(ctx);
+
+    return result;
+}
 
 static uint8_t BQ76940_AppBringUpOnce(BQ76940_AppCtx_t *ctx)
 {

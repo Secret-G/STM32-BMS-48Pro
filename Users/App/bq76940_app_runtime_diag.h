@@ -5,10 +5,23 @@
 
 /*
  * RuntimeDiag V1 参数
+ *
+ * 说明：
+ * - 连续采样失败 3 次，进入 runtime fault。
+ * - 第一版先关闭自动恢复，进入故障后保持锁存。
+ * - Safe-Off 失败后最多快速重试 3 次。
  */
 #define BQ76940_RT_SAMPLE_FAIL_LIMIT        3U
 #define BQ76940_RT_SAMPLE_RECOVER_LIMIT     5U
-#define BQ76940_RT_FAULT_AUTO_RECOVER       1U
+
+/* 第一版建议关闭自动恢复：故障进入后不自动恢复输出 */
+#define BQ76940_RT_FAULT_AUTO_RECOVER       0U
+
+/* Safe-Off 快速重试次数 */
+#define BQ76940_RT_SAFE_OFF_RETRY_LIMIT     3U
+
+/* Safe-Off 重试间隔，单位 ms */
+#define BQ76940_RT_SAFE_OFF_RETRY_DELAY_MS  50U
 
 /*
  * 运行时故障码
@@ -39,8 +52,11 @@ typedef struct
 {
     uint8_t fault_active;          /* 运行时故障是否锁存 */
     uint8_t safe_off_requested;    /* 是否请求 RuntimeTask 执行 Safe-Off */
-    uint8_t safe_off_done;         /* Safe-Off 是否已执行 */
-    uint8_t safe_off_result;       /* Safe-Off 结果 */
+    uint8_t safe_off_done;         /* Safe-Off 是否已经成功完成 */
+    uint8_t safe_off_result;       /* 最近一次 Safe-Off 结果 */
+
+    uint8_t safe_off_retry_count;  /* Safe-Off 快速重试次数 */
+    uint8_t safe_off_failed;       /* Safe-Off 多次失败后置 1 */
 
     uint8_t sample_fail_count;     /* 连续采样失败次数 */
     uint8_t sample_success_count;  /* 连续采样成功次数 */
@@ -49,7 +65,8 @@ typedef struct
     uint8_t last_fault_stage;      /* 最近故障阶段 */
     uint8_t last_ret;              /* 最近底层返回值 */
 
-    uint16_t total_sample_fail_count; /* 总采样失败次数 */
+    uint16_t total_sample_fail_count;   /* 总采样失败次数 */
+    uint16_t total_safe_off_fail_count; /* Safe-Off 总失败次数 */
 } BQ76940_RuntimeDiag_t;
 
 
@@ -72,7 +89,8 @@ void BQ76940_AppRuntimeDiagTakeSafeOffRequest(struct BQ76940_AppCtx *ctx,
                                               uint8_t *need_safe_off);
 
 void BQ76940_AppRuntimeDiagCommitSafeOffResult(struct BQ76940_AppCtx *ctx,
-                                               uint8_t safe_off_result);
+                                               uint8_t safe_off_result,
+                                               uint8_t *retry_allowed);
 
 #endif
 

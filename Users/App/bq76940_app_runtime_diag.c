@@ -14,6 +14,9 @@ void BQ76940_AppRuntimeDiagInit(BQ76940_RuntimeDiag_t *diag)
     diag->safe_off_requested = 0U;
     diag->safe_off_done = 0U;
     diag->safe_off_result = 0U;
+		
+		diag->safe_off_retry_count = 0U;
+		diag->safe_off_failed = 0U;
 
     diag->sample_fail_count = 0U;
     diag->sample_success_count = 0U;
@@ -23,6 +26,7 @@ void BQ76940_AppRuntimeDiagInit(BQ76940_RuntimeDiag_t *diag)
     diag->last_ret = 0U;
 
     diag->total_sample_fail_count = 0U;
+		diag->total_safe_off_fail_count = 0U;
 }
 
 uint8_t BQ76940_AppRuntimeDiagIsFaultActive(const BQ76940_AppCtx_t *ctx)
@@ -53,6 +57,10 @@ void BQ76940_AppRuntimeDiagRecordSampleOk(BQ76940_AppCtx_t *ctx,
 
     diag = &ctx->runtime_diag;
 
+    /*
+     * 采样成功只能说明“本轮采样事实成功”。
+     * 第一版不在这里自动恢复 runtime fault。
+     */
     diag->sample_fail_count = 0U;
 
     if (diag->sample_success_count < 255U)
@@ -61,13 +69,20 @@ void BQ76940_AppRuntimeDiagRecordSampleOk(BQ76940_AppCtx_t *ctx,
     }
 
 #if (BQ76940_RT_FAULT_AUTO_RECOVER != 0U)
+    /*
+     * 调试阶段如需自动恢复，可打开宏。
+     * 正式第一版建议关闭，防止故障刚恢复几次就重新导通。
+     */
     if ((diag->fault_active != 0U) &&
-        (diag->sample_success_count >= BQ76940_RT_SAMPLE_RECOVER_LIMIT))
+        (diag->sample_success_count >= BQ76940_RT_SAMPLE_RECOVER_LIMIT) &&
+        (diag->safe_off_done != 0U))
     {
         diag->fault_active = 0U;
         diag->safe_off_requested = 0U;
         diag->safe_off_done = 0U;
         diag->safe_off_result = 0U;
+        diag->safe_off_retry_count = 0U;
+        diag->safe_off_failed = 0U;
 
         diag->last_fault_code = BQ76940_RT_FAULT_NONE;
         diag->last_fault_stage = BQ76940_RT_STAGE_NONE;
@@ -140,6 +155,15 @@ void BQ76940_AppRuntimeDiagRecordSampleFail(BQ76940_AppCtx_t *ctx,
         diag->safe_off_requested = 1U;
         diag->safe_off_done = 0U;
         diag->safe_off_result = 0U;
+			
+			
+			
+			  /*
+				 * 第一次进入 runtime fault 时，重置 Safe-Off 重试状态。
+				 */
+				diag->safe_off_retry_count = 0U;
+				diag->safe_off_failed = 0U;
+			
 
         if (enter_fault != 0)
         {
@@ -185,9 +209,15 @@ void BQ76940_AppRuntimeDiagTakeSafeOffRequest(BQ76940_AppCtx_t *ctx,
 }
 
 void BQ76940_AppRuntimeDiagCommitSafeOffResult(BQ76940_AppCtx_t *ctx,
-                                               uint8_t safe_off_result)
+                                               uint8_t safe_off_result,
+                                               uint8_t *retry_allowed)
 {
     BQ76940_RuntimeDiag_t *diag;
+
+    if (retry_allowed != 0)
+    {
+        *retry_allowed = 0U;
+    }
 
     if (ctx == 0)
     {
@@ -196,16 +226,77 @@ void BQ76940_AppRuntimeDiagCommitSafeOffResult(BQ76940_AppCtx_t *ctx,
 
     diag = &ctx->runtime_diag;
 
-    diag->safe_off_done = 1U;
     diag->safe_off_result = safe_off_result;
 
+    /*
+     * 情况 1：Safe-Off 成功
+     *
+     * 成功后进入“故障保持”效果：
+     * - fault_active 仍然保持 1
+     * - safe_off_done = 1
+     * - 不自动恢复
+     */
     if (safe_off_result == 0U)
     {
+        diag->safe_off_done = 1U;
+        diag->safe_off_requested = 0U;
+        diag->safe_off_failed = 0U;
+
         printf("[RTF] SAFE-OFF done\r\n");
+        return;
     }
-    else
+
+    /*
+     * 情况 2：Safe-Off 失败
+     *
+     * 注意：
+     * - 故障不能清除
+     * - 记录失败次数
+     * - 如果没超过重试次数，允许 RuntimeTask 再试一次
+     */
+    diag->safe_off_done = 0U;
+
+    if (diag->safe_off_retry_count < 255U)
     {
-        printf("[RTF] SAFE-OFF fail, result=0x%02X\r\n",
-               safe_off_result);
+        diag->safe_off_retry_count++;
     }
+
+    if (diag->total_safe_off_fail_count < 65535U)
+    {
+        diag->total_safe_off_fail_count++;
+    }
+
+    diag->last_fault_code = BQ76940_RT_FAULT_SAFE_OFF_FAIL;
+    diag->last_fault_stage = BQ76940_RT_STAGE_SAFE_OFF;
+    diag->last_ret = safe_off_result;
+
+    printf("[RTF] SAFE-OFF fail result=0x%02X retry=%d\r\n",
+           safe_off_result,
+           diag->safe_off_retry_count);
+
+    /*
+     * 快速重试还没超过上限，则允许 RuntimeTask 继续重试。
+     */
+    if (diag->safe_off_retry_count < BQ76940_RT_SAFE_OFF_RETRY_LIMIT)
+    {
+        diag->safe_off_requested = 1U;
+
+        if (retry_allowed != 0)
+        {
+            *retry_allowed = 1U;
+        }
+
+        return;
+    }
+
+    /*
+     * 超过快速重试上限：
+     * - 标记 Safe-Off 失败
+     * - 保持 fault_active = 1
+     * - 后续可以降低频率重试，或者等待人工处理
+     */
+    diag->safe_off_failed = 1U;
+    diag->safe_off_requested = 0U;
+
+    printf("[RTF] SAFE-OFF FAILED, hold fault\r\n");
 }
