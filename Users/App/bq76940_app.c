@@ -30,6 +30,11 @@
 #define BQ76940_BRINGUP_STAGE_SAMPLE        6U
 
 
+
+
+#define BQ76940_PROTECT_DBG_ENABLE          0U
+#define BQ76940_PROTECT_EVENT_PRINT_ENABLE  1U
+
 static int8_t BQ76940_AppJudgeCurrentDir(int32_t current_mA)
 {
     if (current_mA >= BQ76940_CURRENT_ZERO_DEADBAND_mA)
@@ -259,22 +264,22 @@ void BQ76940_AppInitDefaultConfig(BQ76940_AppCtx_t *ctx)
 }
 
 
-static uint8_t BQ76940_AppPrintSysCtrl2Readback(const char *tag)
-{
-    uint8_t sys_ctrl2;
+//static uint8_t BQ76940_AppPrintSysCtrl2Readback(const char *tag)
+//{
+//    uint8_t sys_ctrl2;
 
-    if (BQ76940_ReadReg(BQ76940_REG_SYS_CTRL2, &sys_ctrl2) != BQ76940_OK)
-    {
-        return 1;
-    }
+//    if (BQ76940_ReadReg(BQ76940_REG_SYS_CTRL2, &sys_ctrl2) != BQ76940_OK)
+//    {
+//        return 1;
+//    }
 
-    printf("[%s]\r\n", tag);
-    printf("SYS_CTRL2 = 0x%02X\r\n", sys_ctrl2);
-    printf("DSG_ON    = %d\r\n", (sys_ctrl2 & BQ76940_SYS_CTRL2_DSG_ON) ? 1 : 0);
-    printf("CHG_ON    = %d\r\n", (sys_ctrl2 & BQ76940_SYS_CTRL2_CHG_ON) ? 1 : 0);
+//    printf("[%s]\r\n", tag);
+//    printf("SYS_CTRL2 = 0x%02X\r\n", sys_ctrl2);
+//    printf("DSG_ON    = %d\r\n", (sys_ctrl2 & BQ76940_SYS_CTRL2_DSG_ON) ? 1 : 0);
+//    printf("CHG_ON    = %d\r\n", (sys_ctrl2 & BQ76940_SYS_CTRL2_CHG_ON) ? 1 : 0);
 
-    return 0;
-}
+//    return 0;
+//}
 
 static void BQ76940_AppSetBringUpFault(BQ76940_AppCtx_t *ctx,
                                        uint8_t stage,
@@ -494,127 +499,527 @@ uint8_t BQ76940_AppBringUpAndSelfTest(BQ76940_AppCtx_t *ctx)
 
 static uint8_t BQ76940_AppHandleTempProtect(BQ76940_AppCtx_t *ctx)
 {
-		uint8_t ret;
-	
+    uint8_t ret;
+    BQ76940_OtProtectRequest_t req;
+
     if (ctx == 0)
     {
-        return 1;
+        return 1U;
     }
-		
-		if((ctx->alarm_state.ot_flag != 0U) && (ctx->ot_cutoff_active == 0U))
-		{
-				ret = BQ76940_SetFETState(0,0);
-			
-				if(ret != 0U)
-				{
-						return 2;
-				}
-				
-				printf("------------------------------------------------------\r\n");
-				printf("[TEMP PROTECT]\r\n");
-        printf("开始关闭\r\n");
-				
-				ctx->ot_cutoff_active = 1;
-				
-        printf("OT active -> CHG=OFF, DSG=OFF\r\n");
-				printf("------------------------------------------------------\r\n");
-		}
-		
-		else if((ctx->alarm_state.ot_flag == 0U) && (ctx->ot_cutoff_active != 0U))
-		{
-				if((ctx->alarm_state.ov_flag == 0U) &&(ctx->alarm_state.uv_flag == 0U))
-				{
-						ret = BQ76940_SetFETState(1,1);
-						if(ret != 0U)
-						{
-								return 3;
-							
-						}
-						printf("------------------------------------------------------\r\n");	
-						printf("[TEMP PROTECT]\r\n");						
-						printf("开始开启\r\n");
-						
-						ctx->ot_cutoff_active =0;
-			
-            printf("OT recover -> CHG=ON, DSG=ON\r\n");
-						printf("------------------------------------------------------\r\n");
-				}
-		}
-		
-		return 0;
+
+    /*
+     * 兼容旧接口：
+     *   1. Decide  只判断
+     *   2. ApplyHw 只写硬件
+     *   3. Commit  只更新 ctx
+     *
+     * 注意：
+     *   本函数本身不负责加锁。
+     *   后续在 FreeRTOS ProtectTask 中，应直接调用三段式接口。
+     */
+    ret = BQ76940_AppOtProtectDecide(ctx, &req);
+    if (ret != 0U)
+    {
+        return 10U;
+    }
+
+    ret = BQ76940_AppOtProtectApplyHw(&req);
+    if (ret != 0U)
+    {
+        return 20U;
+    }
+
+    ret = BQ76940_AppOtProtectCommit(ctx, &req);
+    if (ret != 0U)
+    {
+        return 30U;
+    }
+
+    return 0U;
+}
+
+void BQ76940_AppOtProtectRequestClear(BQ76940_OtProtectRequest_t *req)
+{
+    if (req == 0)
+    {
+        return;
+    }
+
+    req->action = BQ76940_OT_ACTION_NONE;
+
+    req->ot_now = 0U;
+    req->ov_now = 0U;
+    req->uv_now = 0U;
+
+    req->ot_cutoff_active_snapshot = 0U;
+}
+
+uint8_t BQ76940_AppOtProtectDecide(const BQ76940_AppCtx_t *ctx,
+                                    BQ76940_OtProtectRequest_t *req)
+{
+    if ((ctx == 0) || (req == 0))
+    {
+        return 1U;
+    }
+
+    BQ76940_AppOtProtectRequestClear(req);
+
+    /*
+     * 保存当前保护相关状态快照。
+     *
+     * 注意：
+     *   Decide 阶段只读取 ctx，不访问 BQ76940 I2C，
+     *   也不修改 ctx。
+     */
+    req->ot_now = ctx->alarm_state.ot_flag;
+    req->ov_now = ctx->alarm_state.ov_flag;
+    req->uv_now = ctx->alarm_state.uv_flag;
+
+    req->ot_cutoff_active_snapshot = ctx->ot_cutoff_active;
+
+    /*
+     * 情况 1：
+     * OT 过温触发，并且当前还没有进入 OT 截止状态。
+     * 需要关闭 CHG / DSG。
+     */
+    if ((req->ot_now != 0U) &&
+        (req->ot_cutoff_active_snapshot == 0U))
+    {
+        req->action = BQ76940_OT_ACTION_FET_OFF;
+        return 0U;
+    }
+
+    /*
+     * 情况 2：
+     * OT 已恢复，并且之前处于 OT 截止状态。
+     *
+     * 保持你原来的逻辑：
+     *   只有当前没有 OV / UV 时，才允许恢复 CHG / DSG。
+     */
+    if ((req->ot_now == 0U) &&
+        (req->ot_cutoff_active_snapshot != 0U))
+    {
+        if ((req->ov_now == 0U) &&
+            (req->uv_now == 0U))
+        {
+            req->action = BQ76940_OT_ACTION_FET_ON;
+            return 0U;
+        }
+    }
+
+    /*
+     * 情况 3：
+     * 本轮不需要硬件动作。
+     */
+    req->action = BQ76940_OT_ACTION_NONE;
+
+    return 0U;
+}
+
+uint8_t BQ76940_AppOtProtectApplyHw(const BQ76940_OtProtectRequest_t *req)
+{
+    uint8_t ret;
+
+    if (req == 0)
+    {
+        return 1U;
+    }
+
+    /*
+     * 无动作时，不访问 I2C。
+     */
+    if (req->action == BQ76940_OT_ACTION_NONE)
+    {
+        return 0U;
+    }
+
+    /*
+     * OT active：
+     *   CHG = OFF
+     *   DSG = OFF
+     */
+    if (req->action == BQ76940_OT_ACTION_FET_OFF)
+    {
+        ret = BQ76940_SetFETState(0U, 0U);
+        if (ret != 0U)
+        {
+            return 2U;
+        }
+
+        return 0U;
+    }
+
+    /*
+     * OT recover：
+     *   CHG = ON
+     *   DSG = ON
+     *
+     * 注意：
+     *   是否允许恢复已经在 Decide 阶段判断。
+     */
+    if (req->action == BQ76940_OT_ACTION_FET_ON)
+    {
+        ret = BQ76940_SetFETState(1U, 1U);
+        if (ret != 0U)
+        {
+            return 3U;
+        }
+
+        return 0U;
+    }
+
+    return 4U;
 }
 
 
-static uint8_t BQ76940_AppHandleLowTempProtect(BQ76940_AppCtx_t *ctx)
+uint8_t BQ76940_AppOtProtectCommit(BQ76940_AppCtx_t *ctx,
+                                    const BQ76940_OtProtectRequest_t *req)
+{
+    if ((ctx == 0) || (req == 0))
+    {
+        return 1U;
+    }
+
+    /*
+     * 无动作时，不修改 ctx。
+     */
+    if (req->action == BQ76940_OT_ACTION_NONE)
+    {
+        return 0U;
+    }
+
+    /*
+     * OT 触发后，提交截止状态。
+     */
+    if (req->action == BQ76940_OT_ACTION_FET_OFF)
+    {
+        ctx->ot_cutoff_active = 1U;
+
+#if (BQ76940_PROTECT_EVENT_PRINT_ENABLE != 0U)
+        printf("[PROT] OT -> CHG OFF, DSG OFF\r\n");
+#endif
+
+        return 0U;
+    }
+
+    /*
+     * OT 恢复后，清除截止状态。
+     */
+    if (req->action == BQ76940_OT_ACTION_FET_ON)
+    {
+        ctx->ot_cutoff_active = 0U;
+
+#if (BQ76940_PROTECT_EVENT_PRINT_ENABLE != 0U)
+        printf("[PROT] OT recover -> CHG ON, DSG ON\r\n");
+#endif
+
+        return 0U;
+    }
+
+    return 2U;
+}
+
+
+uint8_t BQ76940_AppProtectUpdateAlarms(BQ76940_AppCtx_t *ctx)
 {
     uint8_t ret;
 
     if (ctx == 0)
     {
-        return 1;
+        return 1U;
     }
 
-//    printf("[LOW TEMP PROTECT DBG]\r\n");
-//    printf("UT_FLAG = %d\r\n", ctx->alarm_state.ut_flag);
-//    printf("UT_CHG_BLOCK_ACTIVE = %d\r\n", ctx->ut_chg_block_active);
-
-    /* 1. 首次进入低温：只关 CHG，不关 DSG */
-    if ((ctx->alarm_state.ut_flag != 0U) && (ctx->ut_chg_block_active == 0U))
+    /*
+     * 1. 更新单体电压相关软件告警：
+     *    UV / OV / DIFF
+     */
+    ret = BQ76940_UpdateAlarmState9(ctx->cell_mV,
+                                    &ctx->cell_stats,
+                                    &ctx->alarm_th,
+                                    &ctx->alarm_state);
+    if (ret != 0U)
     {
-        ret = BQ76940_SetCHGState(0);
+        return 13U;
+    }
+
+    /*
+     * 2. 更新 TS1 过温告警
+     */
+    ret = BQ76940_UpdateTempAlarmTs1(ctx->ts1_temp_dC,
+                                     &ctx->alarm_th,
+                                     &ctx->alarm_state);
+    if (ret != 0U)
+    {
+        printf("[TEMP ALARM] update fail, ret = %d\r\n", ret);
+        return 20U;
+    }
+
+    /*
+     * 3. 更新 TS1 低温告警
+     */
+    ret = BQ76940_UpdateLowTempAlarmTs1(ctx->ts1_temp_dC,
+                                        &ctx->alarm_th,
+                                        &ctx->alarm_state);
+    if (ret != 0U)
+    {
+        printf("[LOW TEMP ALARM] update fail, ret = %d\r\n", ret);
+        return 22U;
+    }
+
+    return 0U;
+}
+
+static uint8_t BQ76940_AppHandleLowTempProtect(BQ76940_AppCtx_t *ctx)
+{
+    uint8_t ret;
+    BQ76940_UtProtectRequest_t req;
+
+    if (ctx == 0)
+    {
+        return 1U;
+    }
+
+    /*
+     * 兼容旧接口：
+     *   1. Decide  只判断
+     *   2. ApplyHw 只写硬件
+     *   3. Commit  只更新 ctx
+     *
+     * 注意：
+     *   本函数本身不负责加锁。
+     *   后续在 FreeRTOS ProtectTask 中，应直接调用三段式接口。
+     */
+    ret = BQ76940_AppUtProtectDecide(ctx, &req);
+    if (ret != 0U)
+    {
+        return 10U;
+    }
+
+    ret = BQ76940_AppUtProtectApplyHw(&req);
+    if (ret != 0U)
+    {
+        return 20U;
+    }
+
+    ret = BQ76940_AppUtProtectCommit(ctx, &req);
+    if (ret != 0U)
+    {
+        return 30U;
+    }
+
+    return 0U;
+}
+
+
+void BQ76940_AppUtProtectRequestClear(BQ76940_UtProtectRequest_t *req)
+{
+    if (req == 0)
+    {
+        return;
+    }
+
+    req->action = BQ76940_UT_ACTION_NONE;
+
+    req->ut_now = 0U;
+    req->ov_now = 0U;
+    req->ot_now = 0U;
+
+    req->ot_cutoff_active_snapshot  = 0U;
+    req->ut_chg_block_active_snapshot = 0U;
+}
+
+uint8_t BQ76940_AppUtProtectDecide(const BQ76940_AppCtx_t *ctx,
+                                    BQ76940_UtProtectRequest_t *req)
+{
+    if ((ctx == 0) || (req == 0))
+    {
+        return 1U;
+    }
+
+    BQ76940_AppUtProtectRequestClear(req);
+
+    /*
+     * 保存当前保护相关状态快照。
+     *
+     * Decide 阶段只读取 ctx：
+     *   - 不访问 BQ76940 I2C
+     *   - 不修改 ctx
+     */
+    req->ut_now = ctx->alarm_state.ut_flag;
+    req->ov_now = ctx->alarm_state.ov_flag;
+    req->ot_now = ctx->alarm_state.ot_flag;
+
+    req->ot_cutoff_active_snapshot   = ctx->ot_cutoff_active;
+    req->ut_chg_block_active_snapshot = ctx->ut_chg_block_active;
+
+    /*
+     * 情况 1：
+     * UT 低温触发，并且当前还没有进入 CHG 阻断状态。
+     *
+     * 低温保护策略：
+     *   只关闭 CHG，不关闭 DSG。
+     */
+    if ((req->ut_now != 0U) &&
+        (req->ut_chg_block_active_snapshot == 0U))
+    {
+        req->action = BQ76940_UT_ACTION_CHG_OFF;
+        return 0U;
+    }
+
+    /*
+     * 情况 2：
+     * UT 已恢复，并且之前处于 CHG 阻断状态。
+     *
+     * 保持你原来的恢复条件：
+     *   - 当前没有 OV
+     *   - 当前没有 OT
+     *   - 当前没有 OT 截止状态
+     */
+    if ((req->ut_now == 0U) &&
+        (req->ut_chg_block_active_snapshot != 0U))
+    {
+        if ((req->ov_now == 0U) &&
+            (req->ot_now == 0U) &&
+            (req->ot_cutoff_active_snapshot == 0U))
+        {
+            req->action = BQ76940_UT_ACTION_CHG_ON;
+            return 0U;
+        }
+    }
+
+    /*
+     * 情况 3：
+     * 本轮不需要硬件动作。
+     */
+    req->action = BQ76940_UT_ACTION_NONE;
+
+    return 0U;
+}
+
+uint8_t BQ76940_AppUtProtectApplyHw(const BQ76940_UtProtectRequest_t *req)
+{
+    uint8_t ret;
+
+    if (req == 0)
+    {
+        return 1U;
+    }
+
+    /*
+     * 无动作时，不访问 I2C。
+     */
+    if (req->action == BQ76940_UT_ACTION_NONE)
+    {
+        return 0U;
+    }
+
+    /*
+     * UT active：
+     *   CHG = OFF
+     *   DSG = unchanged
+     */
+    if (req->action == BQ76940_UT_ACTION_CHG_OFF)
+    {
+        ret = BQ76940_SetCHGState(0U);
         if (ret != 0U)
         {
-            return 2;
+            return 2U;
         }
 
-        ctx->ut_chg_block_active = 1U;
-
-        /* 读回 SYS_CTRL2，确认是否真的只关了 CHG */
+#if (BQ76940_PROTECT_DBG_ENABLE != 0U)
+        /*
+         * 读回 SYS_CTRL2 只用于调试确认。
+         * 默认关闭，避免增加 I2C 访问和 Flash 字符串。
+         */
         ret = BQ76940_AppPrintSysCtrl2Readback("UT ACTIVE READBACK");
         if (ret != 0U)
         {
-            return 4;
+            return 4U;
         }
+#endif
 
-//        printf("------------------------------------------------------\r\n");
-//        printf("[LOW TEMP PROTECT]\r\n");
-//        printf("UT active -> CHG=OFF, DSG unchanged\r\n");
-//        printf("------------------------------------------------------\r\n");
+        return 0U;
     }
-    /* 2. 低温恢复：若当前没有 OV / OT，再恢复 CHG */
-    else if ((ctx->alarm_state.ut_flag == 0U) && (ctx->ut_chg_block_active != 0U))
+
+    /*
+     * UT recover：
+     *   CHG = ON
+     *   DSG = unchanged
+     *
+     * 是否允许恢复已经在 Decide 阶段判断。
+     */
+    if (req->action == BQ76940_UT_ACTION_CHG_ON)
     {
-        if ((ctx->alarm_state.ov_flag == 0U) &&
-            (ctx->alarm_state.ot_flag == 0U) &&
-            (ctx->ot_cutoff_active == 0U))
+        ret = BQ76940_SetCHGState(1U);
+        if (ret != 0U)
         {
-            ret = BQ76940_SetCHGState(1);
-            if (ret != 0U)
-            {
-                return 3;
-            }
-
-            ctx->ut_chg_block_active = 0U;
-
-            /* 读回 SYS_CTRL2，确认 CHG 已恢复 */
-            ret = BQ76940_AppPrintSysCtrl2Readback("UT RECOVER READBACK");
-            if (ret != 0U)
-            {
-                return 5;
-            }
-
-            printf("------------------------------------------------------\r\n");
-            printf("[LOW TEMP PROTECT]\r\n");
-            printf("UT recover -> CHG=ON, DSG unchanged\r\n");
-            printf("------------------------------------------------------\r\n");
+            return 3U;
         }
+
+#if (BQ76940_PROTECT_DBG_ENABLE != 0U)
+        /*
+         * 恢复后读回 SYS_CTRL2，仅用于调试确认。
+         */
+        ret = BQ76940_AppPrintSysCtrl2Readback("UT RECOVER READBACK");
+        if (ret != 0U)
+        {
+            return 5U;
+        }
+#endif
+
+        return 0U;
     }
 
-    return 0;
+    return 6U;
 }
 
-#define BQ76940_PROTECT_DBG_ENABLE          0U
-#define BQ76940_PROTECT_EVENT_PRINT_ENABLE  1U
+uint8_t BQ76940_AppUtProtectCommit(BQ76940_AppCtx_t *ctx,
+                                    const BQ76940_UtProtectRequest_t *req)
+{
+    if ((ctx == 0) || (req == 0))
+    {
+        return 1U;
+    }
+
+    /*
+     * 无动作时，不修改 ctx。
+     */
+    if (req->action == BQ76940_UT_ACTION_NONE)
+    {
+        return 0U;
+    }
+
+    /*
+     * UT 触发后，提交 CHG 阻断状态。
+     */
+    if (req->action == BQ76940_UT_ACTION_CHG_OFF)
+    {
+        ctx->ut_chg_block_active = 1U;
+
+#if (BQ76940_PROTECT_EVENT_PRINT_ENABLE != 0U)
+        printf("[PROT] UT -> CHG OFF\r\n");
+#endif
+
+        return 0U;
+    }
+
+    /*
+     * UT 恢复后，清除 CHG 阻断状态。
+     */
+    if (req->action == BQ76940_UT_ACTION_CHG_ON)
+    {
+        ctx->ut_chg_block_active = 0U;
+
+#if (BQ76940_PROTECT_EVENT_PRINT_ENABLE != 0U)
+        printf("[PROT] UT recover -> CHG ON\r\n");
+#endif
+
+        return 0U;
+    }
+
+    return 2U;
+}
+
 
 void BQ76940_AppOcdScdRequestClear(BQ76940_OcdScdRequest_t *req)
 {
@@ -885,82 +1290,21 @@ static uint8_t BQ76940_AppHandleOcdScdProtect(BQ76940_AppCtx_t *ctx)
 
 uint8_t BQ76940_AppProtectUpdateBase(BQ76940_AppCtx_t *ctx)
 {
-    uint8_t ret;
-
     if (ctx == 0)
     {
         return 1U;
     }
 
     /*
-     * 1. 更新单体电压相关软件告警：
-     *    UV / OV / DIFF
-     */
-    ret = BQ76940_UpdateAlarmState9(ctx->cell_mV,
-                                    &ctx->cell_stats,
-                                    &ctx->alarm_th,
-                                    &ctx->alarm_state);
-    if (ret != 0U)
-    {
-        return 13U;
-    }
-
-    /*
-     * 2. 更新 TS1 过温告警
-     */
-    ret = BQ76940_UpdateTempAlarmTs1(ctx->ts1_temp_dC,
-                                     &ctx->alarm_th,
-                                     &ctx->alarm_state);
-    if (ret != 0U)
-    {
-        printf("[TEMP ALARM] update fail, ret = %d\r\n", ret);
-        return 20U;
-    }
-
-    /*
-     * 3. 更新 TS1 低温告警
-     */
-    ret = BQ76940_UpdateLowTempAlarmTs1(ctx->ts1_temp_dC,
-                                        &ctx->alarm_th,
-                                        &ctx->alarm_state);
-    if (ret != 0U)
-    {
-        printf("[LOW TEMP ALARM] update fail, ret = %d\r\n", ret);
-        return 22U;
-    }
-
-    /*
-     * 4. 处理过温联动控制：
-     *    OT 生效时，充放电都禁止。
+     * Base 阶段只做告警更新：
+     *   - UV / OV / DIFF
+     *   - OT
+     *   - UT
      *
-     * 注意：
-     *   这里当前仍然是旧结构，
-     *   内部可能会访问 BQ76940 I2C。
-     *   后续会继续拆成 Decide / ApplyHw / Commit。
+     * 不执行 CHG / DSG / CELLBAL 等硬件动作。
+     * 不访问 I2C。
      */
-    ret = BQ76940_AppHandleTempProtect(ctx);
-    if (ret != 0U)
-    {
-        printf("[TEMP PROTECT] handle fail, ret = %d\r\n", ret);
-        return 21U;
-    }
-
-    /*
-     * 5. 处理低温联动控制：
-     *    UT 生效时，只禁止充电。
-     *
-     * 注意：
-     *   这里当前仍然是旧结构，
-     *   后续会继续拆。
-     */
-    ret = BQ76940_AppHandleLowTempProtect(ctx);
-    if (ret != 0U)
-    {
-        printf("[LOW TEMP PROTECT] handle fail, ret = %d\r\n", ret);
-        return 25U;
-    }
-
-    return 0U;
+    return BQ76940_AppProtectUpdateAlarms(ctx);
 }
 
 

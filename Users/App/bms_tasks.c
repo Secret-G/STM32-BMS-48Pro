@@ -389,25 +389,40 @@ static void BMS_ProtectTask(void *argument)
         if (xSemaphoreTake(g_protect_sem, portMAX_DELAY) == pdTRUE)
         {
             uint8_t ret = 0U;
+            BQ76940_OtProtectRequest_t ot_req;
+            BQ76940_UtProtectRequest_t ut_req;
             BQ76940_OcdScdRequest_t ocdscd_req;
 
             /*
-             * 1. Base + Decide 阶段：
+             * 1. Base + Decide 阶段
              *
-             * Base：
-             *   - 更新 UV / OV / DIFF 软件告警
-             *   - 更新 OT / UT 温度告警
-             *   - 当前阶段仍包含 OT / UT 旧联动保护
+             * Base:
+             *   - 更新 UV / OV / DIFF / OT / UT 告警
              *
-             * OcdScdDecide：
-             *   - 只根据 app 当前状态判断是否需要 DSG_OFF / DSG_ON
-             *   - 不访问 I2C
+             * OT Decide:
+             *   - 判断是否需要 CHG/DSG OFF 或 ON
              *
-             * 所以这里持有 ctx mutex。
+             * UT Decide:
+             *   - 判断是否需要 CHG OFF 或 ON
+             *
+             * OCD/SCD Decide:
+             *   - 判断是否需要 DSG OFF 或 ON
+             *
+             * 这一步不主动访问 I2C。
              */
             if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
             {
                 ret = BQ76940_AppProtectUpdateBase(app);
+
+                if (ret == 0U)
+                {
+                    ret = BQ76940_AppOtProtectDecide(app, &ot_req);
+                }
+
+                if (ret == 0U)
+                {
+                    ret = BQ76940_AppUtProtectDecide(app, &ut_req);
+                }
 
                 if (ret == 0U)
                 {
@@ -422,19 +437,46 @@ static void BMS_ProtectTask(void *argument)
             }
 
             /*
-             * 2. OCD / SCD ApplyHw 阶段：
+             * 2. ApplyHw 阶段
              *
-             * 只有真正需要修改 BQ76940 DSG 位时，
+             * 只有真正需要写 BQ76940 FET / CHG / DSG 时，
              * 才申请 I2C mutex。
+             *
+             * 执行顺序：
+             *   1. OT
+             *   2. UT
+             *   3. OCD/SCD
+             *
+             * 这样较安全：
+             *   - OT 可同时关 CHG/DSG
+             *   - UT 可进一步确保 CHG 关闭
+             *   - OCD/SCD 可进一步确保 DSG 关闭
              */
             if (ret == 0U)
             {
-                if (ocdscd_req.action != BQ76940_OCDSCD_ACTION_NONE)
+                if ((ot_req.action != BQ76940_OT_ACTION_NONE) ||
+                    (ut_req.action != BQ76940_UT_ACTION_NONE) ||
+                    (ocdscd_req.action != BQ76940_OCDSCD_ACTION_NONE))
                 {
                     if (xSemaphoreTake(g_i2c_bus_mutex,
                                        pdMS_TO_TICKS(BMS_I2C_MUTEX_TIMEOUT_MS)) == pdTRUE)
                     {
-                        ret = BQ76940_AppOcdScdApplyHw(&ocdscd_req);
+                        if (ot_req.action != BQ76940_OT_ACTION_NONE)
+                        {
+                            ret = BQ76940_AppOtProtectApplyHw(&ot_req);
+                        }
+
+                        if ((ret == 0U) &&
+                            (ut_req.action != BQ76940_UT_ACTION_NONE))
+                        {
+                            ret = BQ76940_AppUtProtectApplyHw(&ut_req);
+                        }
+
+                        if ((ret == 0U) &&
+                            (ocdscd_req.action != BQ76940_OCDSCD_ACTION_NONE))
+                        {
+                            ret = BQ76940_AppOcdScdApplyHw(&ocdscd_req);
+                        }
 
                         xSemaphoreGive(g_i2c_bus_mutex);
                     }
@@ -446,16 +488,25 @@ static void BMS_ProtectTask(void *argument)
             }
 
             /*
-             * 3. OCD / SCD Commit 阶段：
+             * 3. Commit 阶段
              *
-             * 将 OCD / SCD 锁存状态、DSG 阻断状态、恢复请求状态
-             * 提交回 app。
+             * 将 OT / UT / OCDSCD 结果提交回 app。
              */
             if (ret == 0U)
             {
                 if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
                 {
-                    ret = BQ76940_AppOcdScdCommit(app, &ocdscd_req);
+                    ret = BQ76940_AppOtProtectCommit(app, &ot_req);
+
+                    if (ret == 0U)
+                    {
+                        ret = BQ76940_AppUtProtectCommit(app, &ut_req);
+                    }
+
+                    if (ret == 0U)
+                    {
+                        ret = BQ76940_AppOcdScdCommit(app, &ocdscd_req);
+                    }
 
                     /*
                      * 保护阶段完成后，继续通知 BalanceTask。

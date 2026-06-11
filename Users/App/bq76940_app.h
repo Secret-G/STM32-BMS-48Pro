@@ -226,6 +226,64 @@ typedef struct
 
 
 
+
+/*
+ * OT 过温保护动作类型
+ */
+#define BQ76940_OT_ACTION_NONE        0U
+#define BQ76940_OT_ACTION_FET_OFF     1U
+#define BQ76940_OT_ACTION_FET_ON      2U
+
+/*
+ * OT 过温保护请求
+ *
+ * 作用：
+ *   将 OT 过温保护拆成三段：
+ *   1. Decide：根据 app 当前状态判断是否需要动作
+ *   2. ApplyHw：根据请求写 BQ76940 CHG / DSG
+ *   3. Commit：将动作结果提交回 app
+ */
+typedef struct
+{
+    uint8_t action;
+
+    uint8_t ot_now;
+    uint8_t ov_now;
+    uint8_t uv_now;
+
+    uint8_t ot_cutoff_active_snapshot;
+} BQ76940_OtProtectRequest_t;
+
+/*
+ * UT 低温保护动作类型
+ */
+#define BQ76940_UT_ACTION_NONE        0U
+#define BQ76940_UT_ACTION_CHG_OFF     1U
+#define BQ76940_UT_ACTION_CHG_ON      2U
+
+/*
+ * UT 低温保护请求
+ *
+ * 作用：
+ *   将 UT 低温保护拆成三段：
+ *   1. Decide：根据 app 当前状态判断是否需要动作
+ *   2. ApplyHw：根据请求写 BQ76940 CHG 位
+ *   3. Commit：将动作结果提交回 app
+ */
+typedef struct
+{
+    uint8_t action;
+
+    uint8_t ut_now;
+    uint8_t ov_now;
+    uint8_t ot_now;
+
+    uint8_t ot_cutoff_active_snapshot;
+    uint8_t ut_chg_block_active_snapshot;
+} BQ76940_UtProtectRequest_t;
+
+
+
 /* 初始化默认配置
  * 1. 软件实验阈值
  * 2. 硬件保护目标值
@@ -314,6 +372,27 @@ uint8_t BQ76940_AppOcdScdCommit(BQ76940_AppCtx_t *ctx,
                                 const BQ76940_OcdScdRequest_t *req);
 
 
+//过温保护的相关函数
+void BQ76940_AppOtProtectRequestClear(BQ76940_OtProtectRequest_t *req);
+
+uint8_t BQ76940_AppOtProtectDecide(const BQ76940_AppCtx_t *ctx,
+                                    BQ76940_OtProtectRequest_t *req);
+
+uint8_t BQ76940_AppOtProtectApplyHw(const BQ76940_OtProtectRequest_t *req);
+
+uint8_t BQ76940_AppOtProtectCommit(BQ76940_AppCtx_t *ctx,
+                                    const BQ76940_OtProtectRequest_t *req);
+
+//低温保护的相关函数
+void BQ76940_AppUtProtectRequestClear(BQ76940_UtProtectRequest_t *req);
+
+uint8_t BQ76940_AppUtProtectDecide(const BQ76940_AppCtx_t *ctx,
+                                    BQ76940_UtProtectRequest_t *req);
+
+uint8_t BQ76940_AppUtProtectApplyHw(const BQ76940_UtProtectRequest_t *req);
+
+uint8_t BQ76940_AppUtProtectCommit(BQ76940_AppCtx_t *ctx,
+                                    const BQ76940_UtProtectRequest_t *req);
 
 
 uint8_t BQ76940_AppSampleUpdate(BQ76940_AppCtx_t *ctx);
@@ -322,6 +401,18 @@ uint8_t BQ76940_AppBalanceUpdate(BQ76940_AppCtx_t *ctx);
 uint8_t BQ76940_AppControlUpdate(BQ76940_AppCtx_t *ctx);
 void    BQ76940_AppPrintRuntime(const BQ76940_AppCtx_t *ctx);
 void    BQ76940_AppSendCanTelemetry(const BQ76940_AppCtx_t *ctx);
+
+/*
+ * 只更新保护相关告警状态：
+ *   UV / OV / DIFF
+ *   OT / UT
+ *
+ * 注意：
+ *   本函数不执行 CHG / DSG / CELLBAL 等硬件动作。
+ *   不访问 I2C。
+ */
+uint8_t BQ76940_AppProtectUpdateAlarms(BQ76940_AppCtx_t *ctx);
+
 
 #endif
 
