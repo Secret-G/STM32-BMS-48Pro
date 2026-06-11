@@ -7,6 +7,7 @@
 #include "bq76200_exec.h"
 #include "bq76940_app_balance.h"
 #include "bq76940_app_control.h"
+#include "bq76940_app_can.h"
 
 
 typedef struct
@@ -245,18 +246,10 @@ uint8_t BQ76940_AppBringUpAndSelfTest(BQ76940_AppCtx_t *ctx);
 /* 周期运行一次 */
 uint8_t BQ76940_AppRunCycle(BQ76940_AppCtx_t *ctx);
 
-/*can发送函数*/
-void BQ76940_AppSendCanTelemetry(const BQ76940_AppCtx_t *ctx);
-
 
 /* 故障安全关断：关闭 BQ76200 驱动引脚，尝试关闭 BQ76940 FET 和均衡 */
 uint8_t BQ76940_AppForceSafeOff(BQ76940_AppCtx_t *ctx);
 
-
-/*故障错误发送can帧*/
-void BQ76940_AppSendBringUpFaultCan(const BQ76940_AppCtx_t *ctx,
-                                    uint8_t main_ret,
-                                    uint8_t safe_off_result);
 
 
 
@@ -334,7 +327,6 @@ uint8_t BQ76940_AppUtProtectCommit(BQ76940_AppCtx_t *ctx,
 uint8_t BQ76940_AppSampleUpdate(BQ76940_AppCtx_t *ctx);
 uint8_t BQ76940_AppProtectUpdate(BQ76940_AppCtx_t *ctx);
 void    BQ76940_AppPrintRuntime(const BQ76940_AppCtx_t *ctx);
-void    BQ76940_AppSendCanTelemetry(const BQ76940_AppCtx_t *ctx);
 
 /*
  * 只更新保护相关告警状态：
