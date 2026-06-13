@@ -94,21 +94,6 @@ static void BMS_EnterFaultStopMode(void)
     }
 }
 
-/*
- * 功能：
- *   BQ76940 上电初始化 / 自检失败后的系统故障处理。
- *
- * 流程：
- *   1. 打印故障信息
- *   2. 强制安全关断
- *   3. 发送 CAN 初始化失败报文 0x305
- *   4. LED 快闪提示
- *   5. 进入 STOP 低功耗故障保持态
- *
- * 注意：
- *   该函数运行时 FreeRTOS 还没有启动，
- *   所以这里不能依赖任何 RTOS 任务。
- */
 static void BMS_BringUpFaultHandler(BQ76940_AppCtx_t *app, uint8_t err)
 {
     uint8_t safe_off_result;
@@ -119,14 +104,40 @@ static void BMS_BringUpFaultHandler(BQ76940_AppCtx_t *app, uint8_t err)
     /*
      * 1. 安全优先：
      *    初始化失败后，不能假设 CHG / DSG / CP / PCHG 仍然处于安全状态。
-     *    这里先强制关闭 BQ76200 驱动引脚，
-     *    并尽力关闭 BQ76940 内部 FET 和均衡寄存器。
+     *
+     *    先强制关闭 BQ76200 外部执行层。
+     *    这一步不依赖 I2C。
      */
-    safe_off_result = BQ76940_AppForceSafeOff(app);
+    if (app != 0)
+    {
+        (void)BQ76940_AppForceExternalOff(app);
+    }
 
     /*
-     * 2. 进入 STOP 前发送几次 CAN 故障帧。
-     *    因为进入 STOP 后 CAN 不会继续周期发送。
+     * 2. 再尽力关闭 BQ76940 AFE：
+     *    - 清 CELLBAL
+     *    - 关闭 BQ76940 CHG / DSG
+     *
+     *    注意：
+     *    Bring-up 阶段通常还没有启动 FreeRTOS 调度器，
+     *    所以这里一般不需要拿 g_i2c_bus_mutex。
+     */
+    safe_off_result = BQ76940_AppForceAfeOffHw();
+
+    /*
+     * 3. 提交软件状态。
+     *
+     *    如果 CELLBAL 关闭成功，才清软件均衡状态；
+     *
+     *    Bring-up 阶段还没启动多任务，一般不需要 ctx mutex。
+     */
+    if (app != 0)
+    {
+        BQ76940_AppForceAfeOffCommit(app, safe_off_result);
+    }
+
+    /*
+     * 4. 进入 STOP 前发送几次 CAN 故障帧。
      *
      *    0x305 用于表示 BQ76940 初始化 / 自检失败。
      */
@@ -136,7 +147,7 @@ static void BMS_BringUpFaultHandler(BQ76940_AppCtx_t *app, uint8_t err)
         delay_ms(100);
     }
 
-    /*
+       /*
      * 3. LED 快闪几次，作为本地故障提示。
      *    注意：进入 STOP 后 LED 不会继续闪烁，
      *    所以报警动作要放在进入 STOP 之前。
@@ -155,6 +166,9 @@ static void BMS_BringUpFaultHandler(BQ76940_AppCtx_t *app, uint8_t err)
      */
     BMS_EnterFaultStopMode();
 }
+
+
+
 
 int main(void)
 {

@@ -11,4 +11,6 @@ void BQ76940_AppSendBringUpFaultCan(const struct BQ76940_AppCtx *ctx,
                                     uint8_t main_ret,
                                     uint8_t safe_off_result);
 
+void BQ76940_AppSendRuntimeFaultCan(const struct BQ76940_AppCtx *ctx);
+
 #endif

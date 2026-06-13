@@ -137,3 +137,37 @@ void BQ76940_AppSendBringUpFaultCan(const BQ76940_AppCtx_t *ctx,
 }
 
 
+
+void BQ76940_AppSendRuntimeFaultCan(const BQ76940_AppCtx_t *ctx)
+{
+    uint8_t data[8];
+    uint8_t flags = 0U;
+
+    if ((ctx == 0) || (CAN_DrvIsReady() == 0U))
+    {
+        return;
+    }
+    if (ctx->runtime_diag.fault_active != 0U)
+    {
+        flags |= 0x01U;
+    }
+    if (ctx->runtime_diag.safe_off_done != 0U)
+    {
+        flags |= 0x02U;
+    }
+    if (ctx->runtime_diag.safe_off_failed != 0U)
+    {
+        flags |= 0x04U;
+    }
+
+    data[0] = 0x02U;
+    data[1] = ctx->runtime_diag.last_fault_code;
+    data[2] = ctx->runtime_diag.last_fault_stage;
+    data[3] = ctx->runtime_diag.last_ret;
+    data[4] = ctx->runtime_diag.safe_off_result;
+    data[5] = flags;
+    data[6] = ctx->runtime_diag.sample_fail_count;
+    data[7] = ctx->runtime_diag.safe_off_retry_count;
+
+    (void)CAN_DrvSendStd(CAN_ID_BMS_FAULT_STATUS, data, 8U);
+}

@@ -35,6 +35,20 @@
 #define BQ76940_RT_FAULT_SAFE_OFF_FAIL      0x06U
 
 /*
+ * Safe-Off 执行结果位
+ *
+ * 注意：
+ * 这里是 bit mask，可以组合。
+ * 例如：
+ * 0x03 = CELLBAL 失败 + AFE FET 失败
+ */
+#define SAFE_OFF_FAIL_NONE       0x00U
+#define SAFE_OFF_FAIL_CELLBAL    0x01U
+#define SAFE_OFF_FAIL_AFE_FET    0x02U
+#define SAFE_OFF_FAIL_I2C_LOCK   0x04U
+#define SAFE_OFF_FAIL_CTX_LOCK   0x08U
+
+/*
  * 运行时故障阶段码
  */
 #define BQ76940_RT_STAGE_NONE               0x00U

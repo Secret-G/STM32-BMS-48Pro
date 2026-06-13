@@ -14,9 +14,9 @@ void BQ76940_AppRuntimeDiagInit(BQ76940_RuntimeDiag_t *diag)
     diag->safe_off_requested = 0U;
     diag->safe_off_done = 0U;
     diag->safe_off_result = 0U;
-		
-		diag->safe_off_retry_count = 0U;
-		diag->safe_off_failed = 0U;
+
+    diag->safe_off_retry_count = 0U;
+    diag->safe_off_failed = 0U;
 
     diag->sample_fail_count = 0U;
     diag->sample_success_count = 0U;
@@ -26,7 +26,7 @@ void BQ76940_AppRuntimeDiagInit(BQ76940_RuntimeDiag_t *diag)
     diag->last_ret = 0U;
 
     diag->total_sample_fail_count = 0U;
-		diag->total_safe_off_fail_count = 0U;
+    diag->total_safe_off_fail_count = 0U;
 }
 
 uint8_t BQ76940_AppRuntimeDiagIsFaultActive(const BQ76940_AppCtx_t *ctx)
@@ -38,7 +38,6 @@ uint8_t BQ76940_AppRuntimeDiagIsFaultActive(const BQ76940_AppCtx_t *ctx)
 
     return ctx->runtime_diag.fault_active;
 }
-
 
 void BQ76940_AppRuntimeDiagRecordSampleOk(BQ76940_AppCtx_t *ctx,
                                           uint8_t *recovered)
@@ -101,7 +100,6 @@ void BQ76940_AppRuntimeDiagRecordSampleOk(BQ76940_AppCtx_t *ctx,
 #endif
 }
 
-
 void BQ76940_AppRuntimeDiagRecordSampleFail(BQ76940_AppCtx_t *ctx,
                                             uint8_t fault_code,
                                             uint8_t fault_stage,
@@ -155,15 +153,12 @@ void BQ76940_AppRuntimeDiagRecordSampleFail(BQ76940_AppCtx_t *ctx,
         diag->safe_off_requested = 1U;
         diag->safe_off_done = 0U;
         diag->safe_off_result = 0U;
-			
-			
-			
-			  /*
-				 * 第一次进入 runtime fault 时，重置 Safe-Off 重试状态。
-				 */
-				diag->safe_off_retry_count = 0U;
-				diag->safe_off_failed = 0U;
-			
+
+        /*
+         * 第一次进入 runtime fault 时，重置 Safe-Off 重试状态。
+         */
+        diag->safe_off_retry_count = 0U;
+        diag->safe_off_failed = 0U;
 
         if (enter_fault != 0)
         {

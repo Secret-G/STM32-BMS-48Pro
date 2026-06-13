@@ -158,79 +158,60 @@ uint8_t BQ76940_AppForceExternalOff(BQ76940_AppCtx_t *ctx)
     return 0U;
 }
 
-
-uint8_t BQ76940_AppForceAfeOff(BQ76940_AppCtx_t *ctx)
+uint8_t BQ76940_AppForceAfeOffHw(void)
 {
-    uint8_t result = 0U;
+    uint8_t result = SAFE_OFF_FAIL_NONE;
     uint8_t ret;
     BQ76940_CellBalRegs_t zero_bal;
 
-    if (ctx == 0)
-    {
-        return 1U;
-    }
-
-    /*
-     * AFE 安全关断：
-     * - 清 CELLBAL
-     * - 关闭 BQ76940 CHG / DSG
-     *
-     * 注意：
-     * 本函数会访问 BQ76940 I2C。
-     * 调用前，上层 RuntimeTask 应已经拿到 g_i2c_bus_mutex。
-     */
     BQ76940_ClearCellBalRegs(&zero_bal);
 
     ret = BQ76940_WriteCellBalRegs(&zero_bal);
-    if (ret == BQ76940_OK)
+    if (ret != 0U)
     {
-        ctx->cellbal_wr = zero_bal;
-        ctx->cellbal_rd = zero_bal;
-        ctx->bal_auto_wr = zero_bal;
-        ctx->bal_auto_rd = zero_bal;
-        ctx->bal_active = 0U;
-        ctx->bal_target_label = 0U;
-    }
-    else
-    {
-        /*
-         * bit0：CELLBAL 清除失败
-         */
-        result |= 0x01U;
+        result |= SAFE_OFF_FAIL_CELLBAL;
     }
 
     ret = BQ76940_SetFETState(0U, 0U);
-    if (ret != BQ76940_OK)
+    if (ret != 0U)
     {
-        /*
-         * bit1：CHG/DSG 关闭失败
-         */
-        result |= 0x02U;
+        result |= SAFE_OFF_FAIL_AFE_FET;
     }
 
     return result;
 }
 
 
-uint8_t BQ76940_AppForceSafeOff(BQ76940_AppCtx_t *ctx)
+void BQ76940_AppForceAfeOffCommit(BQ76940_AppCtx_t *ctx,
+                                  uint8_t safe_off_result)
 {
-    uint8_t result;
-
     if (ctx == 0)
     {
-        return 1U;
+        return;
     }
 
     /*
-     * 兼容旧接口：
-     * 1. 先关闭外部 BQ76200
-     * 2. 再关闭 BQ76940 AFE
+     * 只有满足以下条件，才能确认 CELLBAL 已经写入成功：
+     * 1. 已经成功取得 I2C 总线锁；
+     * 2. CELLBAL 寄存器写入没有失败。
+     *
+     * FET 关闭失败不影响均衡状态的提交，因为二者是独立操作。
      */
-    result = BQ76940_AppForceExternalOff(ctx);
-    result |= BQ76940_AppForceAfeOff(ctx);
+    if ((safe_off_result &
+         (SAFE_OFF_FAIL_I2C_LOCK |
+          SAFE_OFF_FAIL_CELLBAL)) == 0U)
+    {
+        ctx->bal_active = 0U;
+        ctx->bal_target_label = 0U;
 
-    return result;
+        BQ76940_ClearCellBalRegs(&ctx->cellbal_wr);
+        BQ76940_ClearCellBalRegs(&ctx->cellbal_rd);
+        BQ76940_ClearCellBalRegs(&ctx->bal_auto_wr);
+        BQ76940_ClearCellBalRegs(&ctx->bal_auto_rd);
+    }
 }
+
+
 
 static uint8_t BQ76940_AppBringUpOnce(BQ76940_AppCtx_t *ctx)
 {
