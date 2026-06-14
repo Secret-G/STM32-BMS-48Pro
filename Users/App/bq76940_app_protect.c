@@ -1,4 +1,5 @@
 #include "bq76940_app.h"
+#include "bms_log.h"
 #include "bq76940_app_protect.h"
 
 
@@ -203,7 +204,7 @@ uint8_t BQ76940_AppOtProtectCommit(BQ76940_AppCtx_t *ctx,
         ctx->ot_cutoff_active = 1U;
 
 #if (BQ76940_PROTECT_EVENT_PRINT_ENABLE != 0U)
-        printf("[PROT] OT -> CHG OFF, DSG OFF\r\n");
+        BMS_LOG_PROTECT("[PROT] OT off\r\n");
 #endif
 
         return 0U;
@@ -217,7 +218,7 @@ uint8_t BQ76940_AppOtProtectCommit(BQ76940_AppCtx_t *ctx,
         ctx->ot_cutoff_active = 0U;
 
 #if (BQ76940_PROTECT_EVENT_PRINT_ENABLE != 0U)
-        printf("[PROT] OT recover -> CHG ON, DSG ON\r\n");
+        BMS_LOG_PROTECT("[PROT] OT recover\r\n");
 #endif
 
         return 0U;
@@ -257,7 +258,7 @@ uint8_t BQ76940_AppProtectUpdateAlarms(BQ76940_AppCtx_t *ctx)
                                      &ctx->alarm_state);
     if (ret != 0U)
     {
-        printf("[TEMP ALARM] update fail, ret = %d\r\n", ret);
+        BMS_LOG_ERROR("[PROT] temp alarm:%d\r\n", ret);
         return 20U;
     }
 
@@ -269,7 +270,7 @@ uint8_t BQ76940_AppProtectUpdateAlarms(BQ76940_AppCtx_t *ctx)
                                         &ctx->alarm_state);
     if (ret != 0U)
     {
-        printf("[LOW TEMP ALARM] update fail, ret = %d\r\n", ret);
+        BMS_LOG_ERROR("[PROT] low alarm:%d\r\n", ret);
         return 22U;
     }
 
@@ -504,7 +505,7 @@ uint8_t BQ76940_AppUtProtectCommit(BQ76940_AppCtx_t *ctx,
         ctx->ut_chg_block_active = 1U;
 
 #if (BQ76940_PROTECT_EVENT_PRINT_ENABLE != 0U)
-        printf("[PROT] UT -> CHG OFF\r\n");
+        BMS_LOG_PROTECT("[PROT] UT CHG off\r\n");
 #endif
 
         return 0U;
@@ -518,7 +519,7 @@ uint8_t BQ76940_AppUtProtectCommit(BQ76940_AppCtx_t *ctx,
         ctx->ut_chg_block_active = 0U;
 
 #if (BQ76940_PROTECT_EVENT_PRINT_ENABLE != 0U)
-        printf("[PROT] UT recover -> CHG ON\r\n");
+        BMS_LOG_PROTECT("[PROT] UT recover\r\n");
 #endif
 
         return 0U;
@@ -581,7 +582,7 @@ uint8_t BQ76940_AppProtectUpdate(BQ76940_AppCtx_t *ctx)
                                      &ctx->alarm_state);
     if (ret != 0U)
     {
-        printf("[TEMP ALARM] update fail, ret = %d\r\n", ret);
+        BMS_LOG_ERROR("[PROT] temp alarm:%d\r\n", ret);
         return 20U;
     }
 
@@ -593,7 +594,7 @@ uint8_t BQ76940_AppProtectUpdate(BQ76940_AppCtx_t *ctx)
                                         &ctx->alarm_state);
     if (ret != 0U)
     {
-        printf("[LOW TEMP ALARM] update fail, ret = %d\r\n", ret);
+        BMS_LOG_ERROR("[PROT] low alarm:%d\r\n", ret);
         return 22U;
     }
 
@@ -604,7 +605,7 @@ uint8_t BQ76940_AppProtectUpdate(BQ76940_AppCtx_t *ctx)
     ret = BQ76940_AppHandleTempProtect(ctx);
     if (ret != 0U)
     {
-        printf("[TEMP PROTECT] handle fail, ret = %d\r\n", ret);
+        BMS_LOG_ERROR("[PROT] temp:%d\r\n", ret);
         return 21U;
     }
 
@@ -615,7 +616,7 @@ uint8_t BQ76940_AppProtectUpdate(BQ76940_AppCtx_t *ctx)
     ret = BQ76940_AppHandleLowTempProtect(ctx);
     if (ret != 0U)
     {
-        printf("[LOW TEMP PROTECT] handle fail, ret = %d\r\n", ret);
+        BMS_LOG_ERROR("[PROT] low:%d\r\n", ret);
         return 25U;
     }
 
@@ -625,7 +626,7 @@ uint8_t BQ76940_AppProtectUpdate(BQ76940_AppCtx_t *ctx)
     ret = BQ76940_AppHandleOcdScdProtect(ctx);
     if (ret != 0U)
     {
-        printf("[OCD/SCD PROTECT] handle fail, ret = %d\r\n", ret);
+        BMS_LOG_ERROR("[PROT] OCD/SCD:%d\r\n", ret);
         return 27U;
     }
 

@@ -1,4 +1,5 @@
 #include "sys.h"
+#include "bms_log.h"
 #include "delay.h"
 #include "led.h"
 #include "uart1.h"
@@ -10,8 +11,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "stdio.h"
-
-
+#include "bq76940_alert_sim.h"
 
 /*
  * 功能：
@@ -35,14 +35,13 @@
  */
 static void BMS_EnterFaultStopMode(void)
 {
-	
-	
-	    /*
+
+    /*
      * 调试用：允许 MCU 进入 STOP 后仍保持调试连接。
      * 注意：这会增加低功耗下的功耗，正式版本不要依赖它。
      */
     HAL_DBGMCU_EnableDBGStopMode();
-	
+
     /*
      * 进入低功耗前先关闭 LED，避免故障保持态下持续耗电。
      */
@@ -77,11 +76,11 @@ static void BMS_EnterFaultStopMode(void)
      *
      * 当前没有主动配置唤醒源，
      * 设计目标是故障后等待人工复位 / 重新上电。
-		 
-		 
+
+
      */
-		 
-		 printf("enter low\r\n");
+
+    BMS_LOG_RUNTIME("[MAIN] stop\r\n");
     HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
 
     /*
@@ -99,7 +98,7 @@ static void BMS_BringUpFaultHandler(BQ76940_AppCtx_t *app, uint8_t err)
     uint8_t safe_off_result;
     uint8_t i;
 
-    printf("[MAIN] BQ76940 bring-up fault, err = %d\r\n", err);
+    BMS_LOG_ERROR("[MAIN] bringup:%d\r\n", err);
 
     /*
      * 1. 安全优先：
@@ -147,7 +146,7 @@ static void BMS_BringUpFaultHandler(BQ76940_AppCtx_t *app, uint8_t err)
         delay_ms(100);
     }
 
-       /*
+    /*
      * 3. LED 快闪几次，作为本地故障提示。
      *    注意：进入 STOP 后 LED 不会继续闪烁，
      *    所以报警动作要放在进入 STOP 之前。
@@ -167,9 +166,6 @@ static void BMS_BringUpFaultHandler(BQ76940_AppCtx_t *app, uint8_t err)
     BMS_EnterFaultStopMode();
 }
 
-
-
-
 int main(void)
 {
     uint8_t ret = 0;
@@ -182,41 +178,41 @@ int main(void)
     uart1_init(115200);
     IO_CTRL_Init();
     SoftI2C1_Init();
-	
-		ret = CAN_DrvInit();
-		if (ret != 0)
-		{
-				printf("[MAIN] CAN_DrvInit fail, ret = %d\r\n", ret);
-		}
-		else
-		{
-				printf("[MAIN] CAN_DrvInit ok\r\n");
-		}
+    BQ76940_AlertSimInit();
+
+    ret = CAN_DrvInit();
+    if (ret != 0)
+    {
+        BMS_LOG_ERROR("[MAIN] CAN:%d\r\n", ret);
+    }
+    else
+    {
+        BMS_LOG_CAN("[MAIN] CAN ok\r\n");
+    }
 
     /* 1. 初始化默认配置 */
     BQ76940_AppInitDefaultConfig(&app);
 
-		/* 2. 上电 bring-up + 自检 */
-		ret = BQ76940_AppBringUpAndSelfTest(&app);
-		if (ret != 0U)
-		{
-				printf("BQ76940_AppBringUpAndSelfTest fail, ret = %d\r\n", ret);
+    /* 2. 上电 bring-up + 自检 */
+    ret = BQ76940_AppBringUpAndSelfTest(&app);
+    if (ret != 0U)
+    {
+        BMS_LOG_ERROR("[MAIN] selftest:%d\r\n", ret);
 
-				/*
-				 * BQ76940 初始化失败：
-				 * 不创建 FreeRTOS 任务，
-				 * 直接进入故障处理流程。
-				 */
-				BMS_BringUpFaultHandler(&app, ret);
-			
-				printf("进入低功耗模式\r\n");
-			
-		}
+        /*
+         * BQ76940 初始化失败：
+         * 不创建 FreeRTOS 任务，
+         * 直接进入故障处理流程。
+         */
+        BMS_BringUpFaultHandler(&app, ret);
+
+        BMS_LOG_RUNTIME("[MAIN] low power\r\n");
+    }
 
     /* 3. 创建最小任务框架 */
     if (BMS_TasksCreate(&app) != pdPASS)
     {
-        printf("[MAIN] BMS_TasksCreate fail\r\n");
+        BMS_LOG_ERROR("[MAIN] tasks fail\r\n");
         while (1)
         {
         }

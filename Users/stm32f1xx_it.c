@@ -24,6 +24,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include "bq76940_alert_sim.h"
+
 extern void xPortSysTickHandler(void);
    
 /** @addtogroup STM32F1xx_HAL_Examples
@@ -155,3 +157,18 @@ void SysTick_Handler(void)
 /**
   * @}
   */
+	
+	
+
+void EXTI15_10_IRQHandler(void)
+{
+    HAL_GPIO_EXTI_IRQHandler(BQ76940_ALERT_SIM_GPIO_PIN);
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    if (GPIO_Pin == BQ76940_ALERT_SIM_GPIO_PIN)
+    {
+        BQ76940_AlertSimOnExti();
+    }
+}

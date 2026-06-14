@@ -1,4 +1,5 @@
 #include "bq76940_app.h"
+#include "bms_log.h"
 #include "bq76940_app_hw_fault.h"
 
 
@@ -163,6 +164,15 @@ uint8_t BQ76940_AppOcdScdCommit(BQ76940_AppCtx_t *ctx,
         return 1U;
     }
 
+        /*
+     * 锁存本次硬件故障触发时的 SYS_STAT 快照。
+     * 注意：
+     *   ctx->sys_stat 后续可能被 SampleTask 读取真实 SYS_STAT 覆盖成 0，
+     *   所以这里单独保存曾经触发过的硬件故障位。
+     */
+    ctx->hw_fault_sys_stat_latched |=
+        (uint8_t)(req->sys_stat_snapshot & BQ76940_SYS_STAT_HW_LATCH_MASK);
+
     /*
      * 锁存当前是否发生过 OCD / SCD。
      * 即使本轮没有硬件动作，也要记录当前故障状态。
@@ -178,7 +188,7 @@ uint8_t BQ76940_AppOcdScdCommit(BQ76940_AppCtx_t *ctx,
     }
 
 #if (BQ76940_PROTECT_DBG_ENABLE != 0U)
-    printf("[OCD/SCD DBG] SYS=%02X OCD=%u SCD=%u DSG_BLK=%u\r\n",
+    BMS_LOG_TEST_HW_FAULT("[HW] SYS:%02X O:%u S:%u B:%u\r\n",
            req->sys_stat_snapshot,
            ctx->hw_ocd_active,
            ctx->hw_scd_active,
@@ -193,18 +203,24 @@ uint8_t BQ76940_AppOcdScdCommit(BQ76940_AppCtx_t *ctx,
         ctx->hw_dsg_block_active = 1U;
 
 #if (BQ76940_PROTECT_EVENT_PRINT_ENABLE != 0U)
-        if (req->scd_now != 0U)
-        {
-            printf("[HW] SCD -> DSG OFF\r\n");
-        }
-        else if (req->ocd_now != 0U)
-        {
-            printf("[HW] OCD -> DSG OFF\r\n");
-        }
-        else
-        {
-            printf("[HW] OCD/SCD -> DSG OFF\r\n");
-        }
+
+    if ((req->scd_now != 0U) && (req->ocd_now != 0U))
+    {
+        BMS_LOG_TEST_HW_FAULT("[HW] OCD/SCD block\r\n");
+    }
+    else if (req->scd_now != 0U)
+    {
+        BMS_LOG_TEST_HW_FAULT("[HW] SCD block\r\n");
+    }
+    else if (req->ocd_now != 0U)
+    {
+        BMS_LOG_TEST_HW_FAULT("[HW] OCD block\r\n");
+    }
+    else
+    {
+        BMS_LOG_TEST_HW_FAULT("[HW] no latch\r\n");
+    }
+
 #endif
     }
     /*
@@ -218,7 +234,7 @@ uint8_t BQ76940_AppOcdScdCommit(BQ76940_AppCtx_t *ctx,
         ctx->hw_fault_recover_once_enable = 0U;
 
 #if (BQ76940_PROTECT_EVENT_PRINT_ENABLE != 0U)
-        printf("[HW] OCD/SCD recover -> DSG ON\r\n");
+        BMS_LOG_HW_FAULT("[HW] recover DSG on\r\n");
 #endif
     }
 

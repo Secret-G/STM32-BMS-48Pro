@@ -1,4 +1,5 @@
 #include "can_drv.h"
+#include "bms_log.h"
 #include "stdio.h"
 
 static CAN_HandleTypeDef hcan;
@@ -49,7 +50,7 @@ uint8_t CAN_DrvInit(void)
      */
     if (HAL_CAN_Init(&hcan) != HAL_OK)
     {
-        printf("[CAN] HAL_CAN_Init fail\r\n");
+        BMS_LOG_ERROR("[CAN] init fail\r\n");
         return 1;
     }
 
@@ -71,7 +72,7 @@ uint8_t CAN_DrvInit(void)
 
     if (HAL_CAN_ConfigFilter(&hcan, &filter) != HAL_OK)
     {
-        printf("[CAN] HAL_CAN_ConfigFilter fail\r\n");
+        BMS_LOG_ERROR("[CAN] filter fail\r\n");
         return 2;
     }
 
@@ -80,13 +81,13 @@ uint8_t CAN_DrvInit(void)
      */
     if (HAL_CAN_Start(&hcan) != HAL_OK)
     {
-        printf("[CAN] HAL_CAN_Start fail\r\n");
+        BMS_LOG_ERROR("[CAN] start fail\r\n");
         return 3;
     }
 
     can_ready = 1U;
 
-    printf("[CAN] init ok, baud = 500kbps\r\n");
+    BMS_LOG_CAN("[CAN] 500k ok\r\n");
 
     return 0;
 }

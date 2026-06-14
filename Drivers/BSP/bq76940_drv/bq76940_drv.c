@@ -1,4 +1,5 @@
 #include "bq76940_drv.h"
+#include "bms_log.h"
 #include "soft_i2c1.h"
 #include "delay.h"
 #include <math.h>
@@ -748,14 +749,14 @@ uint8_t BQ76940_CC_ReadRaw(BQ76940_CCRaw_t *cc)
     ret = BQ76940_ReadReg(BQ76940_REG_CC_HI,&buf[0]);
     if (ret != 0)
     {
-        printf("[CC CMP] ReadReg HI fail, ret=%d\r\n", ret);
+        BMS_LOG_ERROR("[CC] HI:%d\r\n", ret);
         return 2;
     }
 
     ret = BQ76940_ReadReg(BQ76940_REG_CC_LO, &buf[1]);
     if (ret != 0)
     {
-        printf("[CC CMP] ReadReg LO fail, ret=%d\r\n", ret);
+        BMS_LOG_ERROR("[CC] LO:%d\r\n", ret);
         return 3;
     }
 		

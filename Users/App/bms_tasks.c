@@ -5,9 +5,11 @@
 #include "bms_tasks.h"
 
 #include "stdio.h"
+#include "bms_log.h"
 #include "led.h"
 #include "bq34z100_app.h"
 #include "bq76200_exec_port.h"
+#include "bq76940_alert_sim.h"
 
 #define BMS_SAMPLE_TASK_STACK_WORDS 512U
 #define BMS_PROTECT_TASK_STACK_WORDS 512U
@@ -18,6 +20,7 @@
 #define BMS_AUX_TASK_STACK_WORDS 256U
 #define BMS_RUNTIME_TASK_STACK_WORDS 512U
 
+#define BMS_HW_FAULT_TASK_PRIORITY     (tskIDLE_PRIORITY + 5U)
 #define BMS_RUNTIME_TASK_PRIORITY (tskIDLE_PRIORITY + 4U)
 #define BMS_SAMPLE_TASK_PRIORITY (tskIDLE_PRIORITY + 4U)
 #define BMS_PROTECT_TASK_PRIORITY (tskIDLE_PRIORITY + 3U)
@@ -74,14 +77,13 @@ static volatile uint8_t g_afe_write_inhibit = 0U;
  */
 static SemaphoreHandle_t g_bms_ctx_mutex = NULL;
 
-
-
-
 /*-----------------运行异常测试宏--------------*/
-#define BMS_TEST_FORCE_RUNTIME_FAULT      0U
-#define BMS_TEST_FORCE_FAIL_START_CYCLE   5U
-#define BMS_TEST_FORCE_FAIL_TIMES         3U
-#define BMS_TEST_SAFE_OFF_READBACK_ENABLE 1U
+#define BMS_TEST_FORCE_RUNTIME_FAULT 0U
+#define BMS_TEST_FORCE_FAIL_START_CYCLE 5U
+#define BMS_TEST_FORCE_FAIL_TIMES 3U
+#define BMS_TEST_SAFE_OFF_READBACK_ENABLE 0U
+
+#define BMS_TEST_FAKE_HW_FAULT_SYS_STAT   (BQ76940_SYS_STAT_OCD | BQ76940_SYS_STAT_SCD)
 
 /*-------------------------------------------*/
 /*
@@ -94,6 +96,7 @@ static SemaphoreHandle_t g_protect_sem = NULL;
 static SemaphoreHandle_t g_balance_sem = NULL;
 static SemaphoreHandle_t g_control_sem = NULL;
 static SemaphoreHandle_t g_runtime_sem = NULL;
+static SemaphoreHandle_t g_hw_fault_sem = NULL;
 
 static void BMS_SampleTask(void *argument);
 static void BMS_ProtectTask(void *argument);
@@ -101,9 +104,15 @@ static void BMS_BalanceTask(void *argument);
 static void BMS_ControlTask(void *argument);
 static void BMS_CANTask(void *argument);
 static void BMS_RuntimeTask(void *argument);
+static void BMS_HwFaultTask(void *argument);
+
+#if (BMS_TEST_FAKE_ALERT_EXTI != 0U)
+static void BMS_AlertSimTestTask(void *argument);
+#endif
 
 static void BMS_AfeWriteInhibitSet(void);
 static uint8_t BMS_AfeWriteIsInhibited(void);
+static uint8_t BMS_HwFaultReadSysStat(uint8_t *sys_stat);
 
 #if (BMS_TEST_SAFE_OFF_READBACK_ENABLE != 0U)
 static void BMS_RuntimeSafeOffReadback(BQ76940_AppCtx_t *app);
@@ -119,7 +128,7 @@ void vApplicationStackOverflowHook(TaskHandle_t task, char *task_name)
 {
     (void)task;
 
-    printf("[FreeRTOS] Stack overflow: %s\r\n",
+    BMS_LOG_ERROR("[RTOS] stack:%s\r\n",
            (task_name != NULL) ? task_name : "unknown");
 
     taskDISABLE_INTERRUPTS();
@@ -130,7 +139,7 @@ void vApplicationStackOverflowHook(TaskHandle_t task, char *task_name)
 
 void vApplicationMallocFailedHook(void)
 {
-    printf("[FreeRTOS] Malloc failed\r\n");
+    BMS_LOG_ERROR("[RTOS] malloc fail\r\n");
 
     taskDISABLE_INTERRUPTS();
     while (1)
@@ -155,7 +164,7 @@ BaseType_t BMS_TasksCreate(BQ76940_AppCtx_t *app)
     g_bms_ctx_mutex = xSemaphoreCreateMutex();
     if (g_bms_ctx_mutex == NULL)
     {
-        printf("[FreeRTOS] create ctx mutex fail\r\n");
+        BMS_LOG_ERROR("[RTOS] ctx mutex fail\r\n");
         return pdFAIL;
     }
 
@@ -171,7 +180,7 @@ BaseType_t BMS_TasksCreate(BQ76940_AppCtx_t *app)
     g_i2c_bus_mutex = xSemaphoreCreateMutex();
     if (g_i2c_bus_mutex == NULL)
     {
-        printf("[FreeRTOS] create i2c mutex fail\r\n");
+        BMS_LOG_ERROR("[RTOS] i2c mutex fail\r\n");
         return pdFAIL;
     }
 
@@ -186,13 +195,15 @@ BaseType_t BMS_TasksCreate(BQ76940_AppCtx_t *app)
     g_balance_sem = xSemaphoreCreateBinary();
     g_control_sem = xSemaphoreCreateBinary();
     g_runtime_sem = xSemaphoreCreateBinary();
+    g_hw_fault_sem = xSemaphoreCreateBinary();
 
     if ((g_protect_sem == NULL) ||
         (g_balance_sem == NULL) ||
         (g_control_sem == NULL) ||
-        (g_runtime_sem == NULL))
+        (g_runtime_sem == NULL) ||
+        (g_hw_fault_sem == NULL))
     {
-        printf("[FreeRTOS] create bms sem fail\r\n");
+        BMS_LOG_ERROR("[RTOS] sem fail\r\n");
         return pdFAIL;
     }
 
@@ -204,7 +215,18 @@ BaseType_t BMS_TasksCreate(BQ76940_AppCtx_t *app)
                          NULL);
     if (result != pdPASS)
     {
-        printf("[FreeRTOS] create BMS_SampleTask fail\r\n");
+        BMS_LOG_ERROR("[RTOS] sample task fail\r\n");
+        return result;
+    }
+    result = xTaskCreate(BMS_HwFaultTask,
+                         "BMS_HwFault",
+                         384U,
+                         app,
+                         BMS_HW_FAULT_TASK_PRIORITY,
+                         NULL);
+    if (result != pdPASS)
+    {
+        BMS_LOG_ERROR("[RTOS] hw task fail\r\n");
         return result;
     }
 
@@ -216,7 +238,7 @@ BaseType_t BMS_TasksCreate(BQ76940_AppCtx_t *app)
                          NULL);
     if (result != pdPASS)
     {
-        printf("[FreeRTOS] create BMS_ProtectTask fail\r\n");
+        BMS_LOG_ERROR("[RTOS] protect task fail\r\n");
         return result;
     }
 
@@ -228,7 +250,7 @@ BaseType_t BMS_TasksCreate(BQ76940_AppCtx_t *app)
                          NULL);
     if (result != pdPASS)
     {
-        printf("[FreeRTOS] create BMS_BalanceTask fail\r\n");
+        BMS_LOG_ERROR("[RTOS] balance task fail\r\n");
         return result;
     }
 
@@ -240,7 +262,7 @@ BaseType_t BMS_TasksCreate(BQ76940_AppCtx_t *app)
                          NULL);
     if (result != pdPASS)
     {
-        printf("[FreeRTOS] create BMS_ControlTask fail\r\n");
+        BMS_LOG_ERROR("[RTOS] control task fail\r\n");
         return result;
     }
 
@@ -252,7 +274,7 @@ BaseType_t BMS_TasksCreate(BQ76940_AppCtx_t *app)
                          NULL);
     if (result != pdPASS)
     {
-        printf("[FreeRTOS] create BMS_RuntimeTask fail\r\n");
+        BMS_LOG_ERROR("[RTOS] runtime task fail\r\n");
         return result;
     }
 
@@ -264,7 +286,7 @@ BaseType_t BMS_TasksCreate(BQ76940_AppCtx_t *app)
                          NULL);
     if (result != pdPASS)
     {
-        printf("[FreeRTOS] create BMS_CANTask fail\r\n");
+        BMS_LOG_ERROR("[RTOS] CAN task fail\r\n");
         return result;
     }
 
@@ -279,7 +301,7 @@ BaseType_t BMS_TasksCreate(BQ76940_AppCtx_t *app)
                          NULL);
     if (result != pdPASS)
     {
-        printf("[FreeRTOS] create BMS_GaugeTask fail\r\n");
+        BMS_LOG_ERROR("[RTOS] gauge task fail\r\n");
         return result;
     }
 #endif
@@ -292,9 +314,24 @@ BaseType_t BMS_TasksCreate(BQ76940_AppCtx_t *app)
                          NULL);
     if (result != pdPASS)
     {
-        printf("[FreeRTOS] create BMS_AuxTask fail\r\n");
+        BMS_LOG_ERROR("[RTOS] aux task fail\r\n");
         return result;
     }
+
+		
+#if (BMS_TEST_FAKE_ALERT_EXTI != 0U)
+    result = xTaskCreate(BMS_AlertSimTestTask,
+                         "AlertSimTest",
+                         256U,
+                         NULL,
+                         tskIDLE_PRIORITY + 1U,
+                         NULL);
+    if (result != pdPASS)
+    {
+        BMS_LOG_ERROR("[RTOS] alert test task fail\r\n");
+        return result;
+    }
+#endif
 
     return pdPASS;
 }
@@ -308,8 +345,9 @@ static void BMS_SampleTask(void *argument)
     uint8_t fault_stage;
     uint8_t enter_fault;
     uint8_t recovered;
-	
-	#if (BMS_TEST_FORCE_RUNTIME_FAULT != 0U)
+	  uint8_t notify_protect = 0U;
+
+#if (BMS_TEST_FORCE_RUNTIME_FAULT != 0U)
     uint8_t test_cycle_count = 0U;
     uint8_t test_fail_left = 0U;
 #endif
@@ -324,8 +362,7 @@ static void BMS_SampleTask(void *argument)
         fault_stage = BQ76940_RT_STAGE_NONE;
         enter_fault = 0U;
         recovered = 0U;
-			
-			
+
 #if (BMS_TEST_FORCE_RUNTIME_FAULT != 0U)
         if (test_cycle_count < 255U)
         {
@@ -335,7 +372,7 @@ static void BMS_SampleTask(void *argument)
         if (test_cycle_count == BMS_TEST_FORCE_FAIL_START_CYCLE)
         {
             test_fail_left = BMS_TEST_FORCE_FAIL_TIMES;
-            printf("[TEST] runtime fault inject start\r\n");
+            BMS_LOG_TEST_HW_FAULT("[TEST] runtime inject\r\n");
         }
 #endif
 
@@ -379,7 +416,7 @@ static void BMS_SampleTask(void *argument)
                 fault_stage = BQ76940_RT_STAGE_I2C_LOCK;
             }
         }
-				#if (BMS_TEST_FORCE_RUNTIME_FAULT != 0U)
+#if (BMS_TEST_FORCE_RUNTIME_FAULT != 0U)
         /*
          * 测试用：在任务正常跑起来后，连续制造几次采样失败。
          * 目的：触发 RuntimeDiag 连续失败计数，最终进入 runtime fault。
@@ -392,10 +429,9 @@ static void BMS_SampleTask(void *argument)
             fault_code = BQ76940_RT_FAULT_SAMPLE_READ;
             fault_stage = BQ76940_RT_STAGE_SAMPLE_READ_HW;
 
-            printf("[TEST] force sample fail, left = %d\r\n", test_fail_left);
+            BMS_LOG_TEST_HW_FAULT("[TEST] sample fail:%d\r\n", test_fail_left);
         }
 #endif
-				
 
         /*
          * 3. 采样数据处理
@@ -414,7 +450,7 @@ static void BMS_SampleTask(void *argument)
          * 4. 提交采样结果 + RuntimeDiag 成功记录
          */
 
-         uint8_t notify_protect = 0U;
+
 
         if (ret == 0U)
         {
@@ -443,7 +479,7 @@ static void BMS_SampleTask(void *argument)
 
                 xSemaphoreGive(g_bms_ctx_mutex);
 
-                if(notify_protect != 0)
+                if (notify_protect != 0)
                 {
                     xSemaphoreGive(g_protect_sem);
                 }
@@ -469,7 +505,7 @@ static void BMS_SampleTask(void *argument)
                                                        ret,
                                                        &enter_fault);
 
-                if(enter_fault != 0)
+                if (enter_fault != 0)
                 {
                     BMS_AfeWriteInhibitSet();
                 }
@@ -488,7 +524,7 @@ static void BMS_SampleTask(void *argument)
                 xSemaphoreGive(g_runtime_sem);
             }
 
-            printf("[BMS_SampleTask] sample fail, ret=%d code=%d stage=%d\r\n",
+            BMS_LOG_PERIODIC("[RT] sample fail:%d/%d/%d\r\n",
                    ret,
                    fault_code,
                    fault_stage);
@@ -531,9 +567,8 @@ static void BMS_RuntimeTask(void *argument)
              */
             if (need_safe_off == 0U)
             {
-				printf("[BMS_RuntimeTask] Safe-Off request accepted\r\n");
+                BMS_LOG_RUNTIME("[RT] no safe-off req\r\n");
                 continue;
-							
             }
 
             /*
@@ -553,7 +588,7 @@ static void BMS_RuntimeTask(void *argument)
             if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
             {
                 (void)BQ76940_AppForceExternalOff(app);
-							printf("[BMS_RuntimeTask] BQ76200 external off done\r\n");
+                BMS_LOG_RUNTIME("[RT] ext off\r\n");
 
                 xSemaphoreGive(g_bms_ctx_mutex);
             }
@@ -645,7 +680,7 @@ static void BMS_RuntimeTask(void *argument)
                     retry_allowed = 0U;
                 }
 
-                printf("[BMS_RuntimeTask] AFE safe-off result = 0x%02X, retry_allowed = %d\r\n",
+                BMS_LOG_RUNTIME("[RT] AFE off:%02X retry:%d\r\n",
                        safe_off_result,
                        retry_allowed);
 
@@ -702,7 +737,7 @@ static void BMS_CANTask(void *argument)
 
             BQ76940_AppSendCanTelemetry(&snapshot);
 
-            if(snapshot.runtime_diag.fault_active != 0)
+            if (snapshot.runtime_diag.fault_active != 0)
             {
                 BQ76940_AppSendRuntimeFaultCan(&snapshot);
             }
@@ -725,7 +760,6 @@ static void BMS_ProtectTask(void *argument)
 
             BQ76940_OtProtectRequest_t ot_req;
             BQ76940_UtProtectRequest_t ut_req;
-            BQ76940_OcdScdRequest_t ocdscd_req;
 
             /*
              * 0. Runtime fault 门控
@@ -753,7 +787,6 @@ static void BMS_ProtectTask(void *argument)
                 /*
                  * 已经进入 Runtime fault：
                  * - 不更新软件保护
-                 * - 不执行 OT/UT/OCDSCD 动作
                  * - 不继续 give g_balance_sem
                  */
                 continue;
@@ -770,9 +803,6 @@ static void BMS_ProtectTask(void *argument)
              *
              * UT Decide:
              *   - 判断是否需要 CHG OFF 或 ON
-             *
-             * OCD/SCD Decide:
-             *   - 根据 SYS_STAT 判断是否需要 DSG OFF 或 ON
              *
              * 这一步只读取/更新 app 状态，不主动访问 I2C。
              */
@@ -791,12 +821,6 @@ static void BMS_ProtectTask(void *argument)
                     {
                         ret = BQ76940_AppUtProtectDecide(app, &ut_req);
                     }
-
-                    if (ret == 0U)
-                    {
-                        ret = BQ76940_AppOcdScdDecide(app, &ocdscd_req);
-                    }
-
                     xSemaphoreGive(g_bms_ctx_mutex);
                 }
                 else
@@ -814,21 +838,17 @@ static void BMS_ProtectTask(void *argument)
              * 执行顺序：
              *   1. OT
              *   2. UT
-             *   3. OCD/SCD
              *
              * 这样更安全：
              *   - OT 可同时关 CHG/DSG
              *   - UT 可进一步确保 CHG 关闭
-             *   - OCD/SCD 可进一步确保 DSG 关闭
              */
             if (ret == 0U)
             {
                 if ((ot_req.action != BQ76940_OT_ACTION_NONE) ||
-                    (ut_req.action != BQ76940_UT_ACTION_NONE) ||
-                    (ocdscd_req.action != BQ76940_OCDSCD_ACTION_NONE))
+                    (ut_req.action != BQ76940_UT_ACTION_NONE) )
                 {
-                    if (xSemaphoreTake(g_i2c_bus_mutex,
-                                       pdMS_TO_TICKS(BMS_I2C_MUTEX_TIMEOUT_MS)) == pdTRUE)
+                    if (xSemaphoreTake(g_i2c_bus_mutex,pdMS_TO_TICKS(BMS_I2C_MUTEX_TIMEOUT_MS)) == pdTRUE)
                     {
 
                         if (BMS_AfeWriteIsInhibited() != 0U)
@@ -848,13 +868,6 @@ static void BMS_ProtectTask(void *argument)
                         {
                             ret = BQ76940_AppUtProtectApplyHw(&ut_req);
                         }
-
-                        if ((ret == 0U) &&
-                            (ocdscd_req.action != BQ76940_OCDSCD_ACTION_NONE))
-                        {
-                            ret = BQ76940_AppOcdScdApplyHw(&ocdscd_req);
-                        }
-
                         xSemaphoreGive(g_i2c_bus_mutex);
                     }
                     else
@@ -895,11 +908,6 @@ static void BMS_ProtectTask(void *argument)
                         ret = BQ76940_AppUtProtectCommit(app, &ut_req);
                     }
 
-                    if (ret == 0U)
-                    {
-                        ret = BQ76940_AppOcdScdCommit(app, &ocdscd_req);
-                    }
-
                     /*
                      * 保护阶段完成后，继续通知 BalanceTask。
                      *
@@ -923,7 +931,7 @@ static void BMS_ProtectTask(void *argument)
 
             if (ret != 0U)
             {
-                printf("[BMS_ProtectTask] protect fail, ret = %d\r\n", ret);
+                BMS_LOG_ERROR("[PROT] fail:%d\r\n", ret);
             }
         }
     }
@@ -1064,7 +1072,7 @@ static void BMS_BalanceTask(void *argument)
 
             if (ret != 0U)
             {
-                printf("[BMS_BalanceTask] balance fail, ret = %d\r\n", ret);
+                BMS_LOG_ERROR("[BAL] fail:%d\r\n", ret);
             }
         }
     }
@@ -1104,7 +1112,7 @@ static void BMS_ControlTask(void *argument)
 
             if (ret != 0U)
             {
-                printf("[BMS_ControlTask] control fail, ret = %d\r\n", ret);
+                BMS_LOG_ERROR("[CTRL] fail:%d\r\n", ret);
             }
         }
     }
@@ -1113,23 +1121,28 @@ static void BMS_ControlTask(void *argument)
 static void BMS_AuxTask(void *argument)
 {
     BQ76940_AppCtx_t *app = (BQ76940_AppCtx_t *)argument;
-    BQ76940_AppCtx_t snapshot;
+
+#if (BMS_LOG_PERIODIC_ENABLE == 0U)
+    (void)app;
+#endif
 
     for (;;)
     {
         led1_toggle();
 
-        /*
-         * printf 很慢，所以不能拿着 ctx mutex 打印。
-         * 这里只复制快照，锁外打印。
-         */
-        if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
+#if (BMS_LOG_PERIODIC_ENABLE != 0U)
         {
-            snapshot = *app;
-            xSemaphoreGive(g_bms_ctx_mutex);
+            BQ76940_AppCtx_t snapshot;
 
-            BQ76940_AppPrintRuntime(&snapshot);
+            /* Copy under the mutex, print after releasing it. */
+            if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
+            {
+                snapshot = *app;
+                xSemaphoreGive(g_bms_ctx_mutex);
+                BQ76940_AppPrintRuntime(&snapshot);
+            }
         }
+#endif
 
         vTaskDelay(pdMS_TO_TICKS(BMS_AUX_TASK_PERIOD_MS));
     }
@@ -1167,7 +1180,7 @@ static void BMS_GaugeTask(void *argument)
         }
         else
         {
-            printf("[BMS_GaugeTask] BQ34Z100 run fail, ret = %d, last_error = %d\r\n",
+            BMS_LOG_ERROR("[GAUGE] fail:%d/%d\r\n",
                    ret,
                    g_bq34z100_ctx.last_error);
         }
@@ -1247,22 +1260,254 @@ static void BMS_RuntimeSafeOffReadback(BQ76940_AppCtx_t *app)
          (cp_en == 0U) &&
          (pchg_en == 0U) &&
          (fault_active != 0U) &&
-         (inhibited != 0U)) ? 1U : 0U;
+         (inhibited != 0U))
+            ? 1U
+            : 0U;
 
-    printf("[RTF-RB] I2C: BAL_RET=%u CTRL2_RET=%u BAL=%02X/%02X/%02X CTRL2=%02X\r\n",
+    BMS_LOG_TEST_HW_FAULT("[TEST] RB I2C:%u/%u %02X/%02X/%02X/%02X\r\n",
            cellbal_ret,
            sys_ctrl2_ret,
            cellbal.cellbal1,
            cellbal.cellbal2,
            cellbal.cellbal3,
            sys_ctrl2);
-    printf("[RTF-RB] GPIO: CHG=%u DSG=%u CP=%u PCHG=%u FAULT=%u INHIBIT=%u\r\n",
+    BMS_LOG_TEST_HW_FAULT("[TEST] RB GPIO:%u/%u/%u/%u F:%u I:%u\r\n",
            chg_en,
            dsg_en,
            cp_en,
            pchg_en,
            fault_active,
            inhibited);
-    printf("[RTF-RB] %s\r\n", (readback_pass != 0U) ? "PASS" : "FAIL");
+    BMS_LOG_TEST_HW_FAULT("[TEST] RB:%s\r\n", (readback_pass != 0U) ? "PASS" : "FAIL");
 }
 #endif
+
+void BMS_HwFaultNotifyFromISR(void)
+{
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+    if (g_hw_fault_sem != NULL)
+    {
+        xSemaphoreGiveFromISR(g_hw_fault_sem,
+                              &xHigherPriorityTaskWoken);
+    }
+
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+}
+
+static void BMS_HwFaultTask(void *argument)
+{
+    BQ76940_AppCtx_t *app = (BQ76940_AppCtx_t*)argument;
+
+    for (;;)
+    {
+        if (xSemaphoreTake(g_hw_fault_sem, portMAX_DELAY) == pdTRUE)
+        {
+            uint8_t ret = 0U;
+            uint8_t apply_ret = 0U;
+            uint8_t commit_ret = 0U;
+            uint8_t notify_control = 0U;
+            uint8_t sys_stat = 0U;
+
+            BQ76940_OcdScdRequest_t req;
+
+            BQ76940_AppOcdScdRequestClear(&req);
+
+            BMS_LOG_HW_FAULT("[HW] alert\r\n");
+
+      
+						ret = BMS_HwFaultReadSysStat(&sys_stat);
+
+						if (ret != 0U)
+						{
+								BMS_LOG_ERROR("[HW] SYS read fail:%d\r\n", ret);
+								continue;
+						}
+						
+            if ((sys_stat & BQ76940_SYS_STAT_CURRENT_FAULT_MASK) != 0U)
+            {
+                BMS_LOG_HW_FAULT("[HW] current:%02X\r\n",
+                       (uint8_t)(sys_stat & BQ76940_SYS_STAT_CURRENT_FAULT_MASK));
+            }
+
+            if ((sys_stat & BQ76940_SYS_STAT_VOLTAGE_FAULT_MASK) != 0U)
+            {
+                BMS_LOG_HW_FAULT("[HW] voltage:%02X\r\n",
+                       (uint8_t)(sys_stat & BQ76940_SYS_STAT_VOLTAGE_FAULT_MASK));
+            }
+
+            if ((sys_stat & BQ76940_SYS_STAT_DEVICE_XREADY) != 0U)
+            {
+                BMS_LOG_HW_FAULT("[HW] XREADY\r\n");
+            }
+
+            if ((sys_stat & BQ76940_SYS_STAT_OVRD_ALERT) != 0U)
+            {
+                BMS_LOG_HW_FAULT("[HW] OVRD\r\n");
+            }
+
+            if ((sys_stat & BQ76940_SYS_STAT_CC_READY) != 0U)
+            {
+                BMS_LOG_HW_FAULT("[HW] CC_READY\r\n");
+            }
+
+            /*
+             * 当前 V1 只处理 OCD/SCD。
+             * 如果本次 ALERT 不是 OCD/SCD，先返回等待下次事件。
+             */
+            if ((sys_stat & BQ76940_SYS_STAT_CURRENT_FAULT_MASK) == 0U)
+            {
+                BMS_LOG_TEST_HW_FAULT("[HW] no OCD/SCD\r\n");
+                continue;
+            }
+
+            /*
+             * 将本次 SYS_STAT 快照提交到 app，
+             * 然后复用 OCD/SCD Decide 逻辑。
+             */
+            if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
+            {
+                app->sys_stat = sys_stat;
+
+                ret = BQ76940_AppOcdScdDecide(app, &req);
+
+                xSemaphoreGive(g_bms_ctx_mutex);
+            }
+            else
+            {
+                ret = 1U;
+            }
+
+            if (ret != 0U)
+            {
+                BMS_LOG_ERROR("[HW] decide fail:%d\r\n", ret);
+                continue;
+            }
+
+            BMS_LOG_TEST_HW_FAULT("[HW] act:%d O:%d S:%d F:%02X\r\n",
+                   req.action,
+                   req.ocd_now,
+                   req.scd_now,
+                   req.hw_fault_now);
+
+            /*
+             * ApplyHw 阶段：
+             * 尝试补写 BQ76940 DSG OFF。
+             *
+             * 注意：
+             *   对 OCD/SCD 来说，真实硬件中 BQ76940 已经可能自动关断。
+             *   这里的 ApplyHw 是 best-effort 补充动作。
+             *   即使 I2C 锁失败，也不能阻止 Commit 锁存故障。
+             */
+            if (req.action != BQ76940_OCDSCD_ACTION_NONE)
+            {
+                if (xSemaphoreTake(g_i2c_bus_mutex,
+                                   pdMS_TO_TICKS(BMS_I2C_MUTEX_TIMEOUT_MS)) == pdTRUE)
+                {
+                    apply_ret = BQ76940_AppOcdScdApplyHw(&req);
+
+                    xSemaphoreGive(g_i2c_bus_mutex);
+                }
+                else
+                {
+                    apply_ret = BMS_TASK_RET_I2C_LOCK_TIMEOUT;
+                }
+
+                if (apply_ret != 0U)
+                {
+                    BMS_LOG_ERROR("[HW] apply fail:%d\r\n",
+                           apply_ret);
+                }
+            }
+
+            /*
+             * Commit 阶段：
+             * 只要 SYS_STAT 确认 OCD/SCD，就必须锁存软件故障状态。
+             * 不能因为 ApplyHw 失败就不锁存。
+             */
+            if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
+            {
+                commit_ret = BQ76940_AppOcdScdCommit(app, &req);
+
+                if (commit_ret == 0U)
+                {
+                    notify_control = 1U;
+                }
+
+                xSemaphoreGive(g_bms_ctx_mutex);
+            }
+            else
+            {
+                commit_ret = 2U;
+            }
+
+            if (commit_ret != 0U)
+            {
+                BMS_LOG_ERROR("[HW] commit fail:%d\r\n",
+                       commit_ret);
+                continue;
+            }
+
+            if (notify_control != 0U)
+            {
+                xSemaphoreGive(g_control_sem);
+            }
+
+            BMS_LOG_HW_FAULT("[HW] latched,DSG block:%d\r\n",
+                   apply_ret);
+        }
+    }
+}
+
+#if (BMS_TEST_FAKE_ALERT_EXTI != 0U)
+static void BMS_AlertSimTestTask(void *argument)
+{
+    (void)argument;
+
+    vTaskDelay(pdMS_TO_TICKS(5000));
+
+    BMS_LOG_TEST_ALERT("[TEST] alert trigger\r\n");
+
+    BQ76940_AlertSimSoftwareTrigger();
+
+    vTaskDelete(NULL);
+}
+#endif
+
+static uint8_t BMS_HwFaultReadSysStat(uint8_t *sys_stat)
+{
+    uint8_t ret = 0U;
+
+    if (sys_stat == 0)
+    {
+        return 1U;
+    }
+
+#if (BMS_TEST_FAKE_HW_FAULT != 0U)
+
+    *sys_stat = BMS_TEST_FAKE_HW_FAULT_SYS_STAT;
+
+    BMS_LOG_TEST_HW_FAULT("[HW] fake SYS:%02X\r\n", *sys_stat);
+
+#else
+
+    if (xSemaphoreTake(g_i2c_bus_mutex,pdMS_TO_TICKS(BMS_I2C_MUTEX_TIMEOUT_MS)) == pdTRUE)
+    {
+        ret = BQ76940_ReadSysStat(sys_stat);
+
+        xSemaphoreGive(g_i2c_bus_mutex);
+    }
+    else
+    {
+        ret = BMS_TASK_RET_I2C_LOCK_TIMEOUT;
+    }
+
+    if (ret == 0U)
+    {
+        BMS_LOG_HW_FAULT("[HW] real SYS:%02X\r\n", *sys_stat);
+    }
+
+#endif
+
+    return ret;
+}

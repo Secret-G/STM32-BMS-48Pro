@@ -6,4 +6,5 @@
 
 BaseType_t BMS_TasksCreate(BQ76940_AppCtx_t *app);
 
+void BMS_HwFaultNotifyFromISR(void);
 #endif

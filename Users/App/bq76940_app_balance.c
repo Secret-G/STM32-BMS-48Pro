@@ -1,4 +1,5 @@
 #include "bq76940_app.h"
+#include "bms_log.h"
 #include "bq76940_app_balance.h"
 
 #include "stdio.h"
@@ -212,14 +213,14 @@ uint8_t BQ76940_AppBalanceCommit(BQ76940_AppCtx_t *ctx,
         /*
          * ¾«¼ò´òÓ¡£¬±ÜÃâ Keil 32KB ³¬ÏŞ¡£
          */
-        printf("[BAL] START VC%d\r\n", req->target_label);
+        BMS_LOG_BALANCE("[BAL] on:VC%d\r\n", req->target_label);
     }
     else if (req->action == BQ76940_BAL_ACTION_STOP)
     {
         ctx->bal_active       = 0U;
         ctx->bal_target_label = 0U;
 
-        printf("[BAL] STOP R=%d\r\n", req->reason);
+        BMS_LOG_BALANCE("[BAL] off:%d\r\n", req->reason);
     }
 
     return 0U;

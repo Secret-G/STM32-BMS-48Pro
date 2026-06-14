@@ -5,14 +5,50 @@
 
 
 /* =========================
- * SYS_STAT 故障位定义
+ * SYS_STAT 位定义
  * BQ76940 SYS_STAT:
- * bit0 OCD, bit1 SCD, bit2 OV, bit3 UV
+ * bit7 CC_READY
+ * bit6 RSVD
+ * bit5 DEVICE_XREADY
+ * bit4 OVRD_ALERT
+ * bit3 UV
+ * bit2 OV
+ * bit1 SCD
+ * bit0 OCD
  * ========================= */
-#define BQ76940_SYS_STAT_OCD     (1U << 0)
-#define BQ76940_SYS_STAT_SCD     (1U << 1)
-#define BQ76940_SYS_STAT_OV      (1U << 2)
-#define BQ76940_SYS_STAT_UV      (1U << 3)
+#define BQ76940_SYS_STAT_OCD             (1U << 0)
+#define BQ76940_SYS_STAT_SCD             (1U << 1)
+#define BQ76940_SYS_STAT_OV              (1U << 2)
+#define BQ76940_SYS_STAT_UV              (1U << 3)
+#define BQ76940_SYS_STAT_OVRD_ALERT      (1U << 4)
+#define BQ76940_SYS_STAT_DEVICE_XREADY   (1U << 5)
+#define BQ76940_SYS_STAT_RSVD            (1U << 6)
+
+#ifndef BQ76940_SYS_STAT_CC_READY
+#define BQ76940_SYS_STAT_CC_READY        (1U << 7)
+#endif
+
+#define BQ76940_SYS_STAT_CURRENT_FAULT_MASK \
+    (BQ76940_SYS_STAT_OCD | BQ76940_SYS_STAT_SCD)
+
+#define BQ76940_SYS_STAT_VOLTAGE_FAULT_MASK \
+    (BQ76940_SYS_STAT_OV | BQ76940_SYS_STAT_UV)
+
+#define BQ76940_SYS_STAT_AFE_FAULT_MASK \
+    (BQ76940_SYS_STAT_DEVICE_XREADY)
+
+#define BQ76940_SYS_STAT_ALERT_STATUS_MASK \
+    (BQ76940_SYS_STAT_OVRD_ALERT)
+
+#define BQ76940_SYS_STAT_EVENT_MASK \
+    (BQ76940_SYS_STAT_CC_READY)
+
+#define BQ76940_SYS_STAT_HW_LATCH_MASK \
+    (BQ76940_SYS_STAT_CURRENT_FAULT_MASK | \
+     BQ76940_SYS_STAT_VOLTAGE_FAULT_MASK | \
+     BQ76940_SYS_STAT_AFE_FAULT_MASK | \
+     BQ76940_SYS_STAT_ALERT_STATUS_MASK)
+
 
 /* =========================
  * SCD 配置码
@@ -59,14 +95,6 @@
 #define BQ76940_OCD_THRESH_89MV   0xD
 #define BQ76940_OCD_THRESH_94MV   0xE
 #define BQ76940_OCD_THRESH_100MV  0xF
-
-
-
-
-
-#define BQ76940_SYS_STAT_FAULT_MASK \
-    (BQ76940_SYS_STAT_UV | BQ76940_SYS_STAT_OV | \
-     BQ76940_SYS_STAT_OCD | BQ76940_SYS_STAT_SCD)
 
 
 typedef struct

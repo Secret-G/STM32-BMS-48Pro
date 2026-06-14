@@ -94,8 +94,8 @@ void BQ76940_PrintAlarmThresholds9(const BQ76940_AlarmThreshold9_t *th)
     printf("ov_enter_mV  = %d\r\n", th->ov_enter_mV);
     printf("ov_exit_mV   = %d\r\n", th->ov_exit_mV);
 
-    printf("diff_enter_mV   = %d\r\n", th->diff_enter_mV);
-    printf("diff_exit_mV    = %d\r\n", th->diff_exit_mV);
+ //   printf("diff_enter_mV   = %d\r\n", th->diff_enter_mV);
+  //  printf("diff_exit_mV    = %d\r\n", th->diff_exit_mV);
 }
 
 

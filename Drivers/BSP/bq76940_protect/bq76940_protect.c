@@ -1,4 +1,5 @@
 #include "bq76940_protect.h"
+#include "bms_log.h"
 
 #include "delay.h"
 #include "stdio.h"
@@ -59,9 +60,9 @@ uint8_t BQ76940_ProtectLoadConfig(const BQ76940_HwProtectCfg_t *cfg,
                                            calib->gain_uV_per_lsb,
                                            calib->offset_mV);
 
-    printf("\r\n[Protection Calc]\r\n");
-    printf("OV target = %dmV -> OV_TRIP = 0x%02X\r\n", cfg->ov_target_mV, ov_trip_cfg);
-    printf("UV target = %dmV -> UV_TRIP = 0x%02X\r\n", cfg->uv_target_mV, uv_trip_cfg);
+    BMS_LOG_PERIODIC("[CFG] protect\r\n");
+    BMS_LOG_PERIODIC("[CFG] OV:%d/%02X\r\n", cfg->ov_target_mV, ov_trip_cfg);
+    BMS_LOG_PERIODIC("[CFG] UV:%d/%02X\r\n", cfg->uv_target_mV, uv_trip_cfg);
 
     /* 2. 加载保护参数 */
     ret = BQ76940_LoadProtectionParams(cfg->protect3, ov_trip_cfg, uv_trip_cfg);
@@ -70,7 +71,7 @@ uint8_t BQ76940_ProtectLoadConfig(const BQ76940_HwProtectCfg_t *cfg,
         return 21;
     }
 
-    printf("BQ76940_LoadProtectionParams ok.\r\n");
+    BMS_LOG_PERIODIC("[CFG] protect ok\r\n");
 
     delay_ms(5);
 
@@ -81,7 +82,7 @@ uint8_t BQ76940_ProtectLoadConfig(const BQ76940_HwProtectCfg_t *cfg,
         return 22;
     }
 
-    printf("write success read BQ76940_ReadBasicRegs ok.\r\n");
+    BMS_LOG_PERIODIC("[CFG] readback ok\r\n");
 
     return 0;
 }
@@ -249,7 +250,7 @@ uint8_t BQ76940_ProtectGetActiveFaultMask(uint8_t sys_stat, uint8_t *fault_mask)
         return 1;
     }
 
-    *fault_mask = (uint8_t)(sys_stat & BQ76940_SYS_STAT_FAULT_MASK);
+    *fault_mask = (uint8_t)(sys_stat & BQ76940_SYS_STAT_HW_LATCH_MASK);
 
     return 0;
 }

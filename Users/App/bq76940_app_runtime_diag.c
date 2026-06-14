@@ -1,4 +1,5 @@
 #include "bq76940_app.h"
+#include "bms_log.h"
 #include "bq76940_app_runtime_diag.h"
 
 #include "stdio.h"
@@ -92,7 +93,7 @@ void BQ76940_AppRuntimeDiagRecordSampleOk(BQ76940_AppCtx_t *ctx,
             *recovered = 1U;
         }
 
-        printf("[RTF] RECOVER after %d ok samples\r\n",
+        BMS_LOG_RUNTIME("[RT] recover:%d\r\n",
                diag->sample_success_count);
 
         diag->sample_success_count = 0U;
@@ -136,7 +137,7 @@ void BQ76940_AppRuntimeDiagRecordSampleFail(BQ76940_AppCtx_t *ctx,
     diag->last_fault_stage = fault_stage;
     diag->last_ret = ret;
 
-    printf("[RTF] SAMPLE FAIL code=%d stage=%d ret=%d cnt=%d\r\n",
+    BMS_LOG_TEST_HW_FAULT("[RT] fail:%d/%d/%d n:%d\r\n",
            fault_code,
            fault_stage,
            ret,
@@ -165,7 +166,7 @@ void BQ76940_AppRuntimeDiagRecordSampleFail(BQ76940_AppCtx_t *ctx,
             *enter_fault = 1U;
         }
 
-        printf("[RTF] ENTER code=%d stage=%d ret=%d fail_cnt=%d\r\n",
+        BMS_LOG_RUNTIME("[RT] enter:%d/%d/%d n:%d\r\n",
                fault_code,
                fault_stage,
                ret,
@@ -237,7 +238,7 @@ void BQ76940_AppRuntimeDiagCommitSafeOffResult(BQ76940_AppCtx_t *ctx,
         diag->safe_off_requested = 0U;
         diag->safe_off_failed = 0U;
 
-        printf("[RTF] SAFE-OFF done\r\n");
+        BMS_LOG_RUNTIME("[RT] safe-off ok\r\n");
         return;
     }
 
@@ -265,7 +266,7 @@ void BQ76940_AppRuntimeDiagCommitSafeOffResult(BQ76940_AppCtx_t *ctx,
     diag->last_fault_stage = BQ76940_RT_STAGE_SAFE_OFF;
     diag->last_ret = safe_off_result;
 
-    printf("[RTF] SAFE-OFF fail result=0x%02X retry=%d\r\n",
+    BMS_LOG_ERROR("[RT] off fail:%02X n:%d\r\n",
            safe_off_result,
            diag->safe_off_retry_count);
 
@@ -293,5 +294,5 @@ void BQ76940_AppRuntimeDiagCommitSafeOffResult(BQ76940_AppCtx_t *ctx,
     diag->safe_off_failed = 1U;
     diag->safe_off_requested = 0U;
 
-    printf("[RTF] SAFE-OFF FAILED, hold fault\r\n");
+    BMS_LOG_ERROR("[RT] off hold\r\n");
 }

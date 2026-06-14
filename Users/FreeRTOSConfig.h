@@ -12,7 +12,7 @@ extern uint32_t SystemCoreClock;
 #define configTICK_RATE_HZ                      ( ( TickType_t ) 1000 )
 #define configMAX_PRIORITIES                    5
 #define configMINIMAL_STACK_SIZE                ( ( uint16_t ) 128 )
-#define configTOTAL_HEAP_SIZE                   ( ( size_t ) ( 14 * 1024 ) )
+#define configTOTAL_HEAP_SIZE                   ( ( size_t ) ( 16 * 1024 ) )
 #define configMAX_TASK_NAME_LEN                 16
 #define configUSE_16_BIT_TICKS                  0
 #define configIDLE_SHOULD_YIELD                 1
@@ -36,7 +36,7 @@ extern uint32_t SystemCoreClock;
 #define configMAX_SYSCALL_INTERRUPT_PRIORITY            ( configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY << ( 8 - configPRIO_BITS ) )
 
 #define INCLUDE_vTaskDelay                      1
-#define INCLUDE_vTaskDelete                     0
+#define INCLUDE_vTaskDelete                     1
 #define INCLUDE_vTaskSuspend                    0
 #define INCLUDE_xTaskGetSchedulerState          1
 

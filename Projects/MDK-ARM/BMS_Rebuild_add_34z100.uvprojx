@@ -339,7 +339,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32F103xB</Define>
               <Undefine></Undefine>
-              <IncludePath>..\..\Drivers\CMSIS\Device\ST\STM32F1xx\Include;..\..\Drivers\STM32F1xx_HAL_Driver\Inc;..\..\Drivers\CMSIS\Include;..\..\Drivers;..\..\Users;..\..\Drivers\SYSTEM\delay;..\..\Drivers\SYSTEM\sys;..\..\Drivers\SYSTEM\uart1;..\..\Drivers\BSP\led;..\..\Drivers\BSP\io_ctrl;..\..\Drivers\BSP\soft_i2c1;..\..\Drivers\BSP\bq76940_drv;..\..\Drivers\BSP\bq76940_print;..\..\Drivers\BSP\bq76940_protect;..\..\Drivers\BSP\bq76940_alarm;..\..\Users\App;..\..\Drivers\BSP\can;..\..\Drivers\BSP\bq76200_exec_port;..\..\Drivers\BSP\bq76200_exec;..\..\Middlewares\Third_Party\FreeRTOS\Source\include;..\..\Middlewares\Third_Party\FreeRTOS\Source\portable\RVDS\ARM_CM3;..\..\Middlewares\Third_Party\FreeRTOS\Source\portable\MemMang;..\..\Drivers\BSP\bq34z100_drv</IncludePath>
+              <IncludePath>..\..\Drivers\CMSIS\Device\ST\STM32F1xx\Include;..\..\Drivers\STM32F1xx_HAL_Driver\Inc;..\..\Drivers\CMSIS\Include;..\..\Drivers;..\..\Users;..\..\Drivers\SYSTEM\delay;..\..\Drivers\SYSTEM\sys;..\..\Drivers\SYSTEM\uart1;..\..\Drivers\BSP\led;..\..\Drivers\BSP\io_ctrl;..\..\Drivers\BSP\soft_i2c1;..\..\Drivers\BSP\bq76940_drv;..\..\Drivers\BSP\bq76940_print;..\..\Drivers\BSP\bq76940_protect;..\..\Drivers\BSP\bq76940_alarm;..\..\Users\App;..\..\Drivers\BSP\can;..\..\Drivers\BSP\bq76200_exec_port;..\..\Drivers\BSP\bq76200_exec;..\..\Middlewares\Third_Party\FreeRTOS\Source\include;..\..\Middlewares\Third_Party\FreeRTOS\Source\portable\RVDS\ARM_CM3;..\..\Middlewares\Third_Party\FreeRTOS\Source\portable\MemMang;..\..\Drivers\BSP\bq34z100_drv;..\..\Drivers\BSP\bq76940_alert_sim</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -522,6 +522,11 @@
               <FileName>bq34z100_drv.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\Drivers\BSP\bq34z100_drv\bq34z100_drv.c</FilePath>
+            </File>
+            <File>
+              <FileName>bq76940_alert_sim.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Drivers\BSP\bq76940_alert_sim\bq76940_alert_sim.c</FilePath>
             </File>
           </Files>
         </Group>

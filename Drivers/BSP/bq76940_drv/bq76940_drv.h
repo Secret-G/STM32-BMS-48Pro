@@ -227,6 +227,7 @@ uint8_t BQ76940_ClearSysStatBits(uint8_t mask);
 																								
 																								
 uint8_t BQ76940_ReadSysStat(uint8_t *sys_stat);
+
 void BQ76940_PrintSysStat(uint8_t sys_stat);
 																								
 				

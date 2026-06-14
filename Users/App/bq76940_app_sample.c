@@ -1,4 +1,5 @@
 #include "bq76940_app.h"
+#include "bms_log.h"
 #include "bq76940_app_sample.h"
 
 #include "stdio.h"
@@ -60,7 +61,7 @@ uint8_t BQ76940_AppSampleReadHw(const BQ76940_AdcCalib_t *calib,
     ret = BQ76940_CC_StartOneShot();
     if (ret != 0U)
     {
-        printf("[CC] StartOneShot fail, ret = %d\r\n", ret);
+        BMS_LOG_ERROR("[SMP] CC start:%d\r\n", ret);
         return 14U;
     }
 
@@ -73,7 +74,7 @@ uint8_t BQ76940_AppSampleReadHw(const BQ76940_AdcCalib_t *calib,
     ret = BQ76940_CC_WaitReady(600U);
     if (ret != 0U)
     {
-        printf("[CC] WaitReady fail, ret = %d\r\n", ret);
+        BMS_LOG_ERROR("[SMP] CC wait:%d\r\n", ret);
         return 15U;
     }
 
@@ -83,7 +84,7 @@ uint8_t BQ76940_AppSampleReadHw(const BQ76940_AdcCalib_t *calib,
     ret = BQ76940_CC_ReadRaw(&sample->cc_raw);
     if (ret != 0U)
     {
-        printf("[CC] ReadRaw fail, ret = %d\r\n", ret);
+        BMS_LOG_ERROR("[SMP] CC read:%d\r\n", ret);
         return 16U;
     }
 
@@ -93,7 +94,7 @@ uint8_t BQ76940_AppSampleReadHw(const BQ76940_AdcCalib_t *calib,
     ret = BQ76940_ReadTS1Raw(&sample->ts1_raw_adc);
     if (ret != 0U)
     {
-        printf("[TEMP] Read TS1 fail, ret = %d\r\n", ret);
+        BMS_LOG_ERROR("[SMP] TS1 read:%d\r\n", ret);
         return 18U;
     }
 
@@ -103,7 +104,7 @@ uint8_t BQ76940_AppSampleReadHw(const BQ76940_AdcCalib_t *calib,
     ret = BQ76940_ProtectReadFaultStatus(&sample->sys_stat);
     if (ret != 0U)
     {
-        printf("[HW FAULT] read SYS_STAT fail, ret = %d\r\n", ret);
+        BMS_LOG_ERROR("[SMP] SYS read:%d\r\n", ret);
         return 23U;
     }
 
@@ -145,7 +146,7 @@ uint8_t BQ76940_AppSampleProcess(BQ76940_AppSampleData_t *sample)
                                          &sample->pack_current_mA);
     if (ret != 0U)
     {
-        printf("[CC] ConvertToCurrent fail, ret = %d\r\n", ret);
+        BMS_LOG_ERROR("[SMP] CC conv:%d\r\n", ret);
         return 17U;
     }
 
@@ -162,7 +163,7 @@ uint8_t BQ76940_AppSampleProcess(BQ76940_AppSampleData_t *sample)
                                     &sample->ts1_temp_dC);
     if (ret != 0U)
     {
-        printf("[TEMP] Convert TS1 fail, ret = %d\r\n", ret);
+        BMS_LOG_ERROR("[SMP] TS1 conv:%d\r\n", ret);
         return 19U;
     }
 
@@ -173,7 +174,7 @@ uint8_t BQ76940_AppSampleProcess(BQ76940_AppSampleData_t *sample)
                                             &sample->fault_mask_active);
     if (ret != 0U)
     {
-        printf("[HW FAULT] get active mask fail, ret = %d\r\n", ret);
+        BMS_LOG_ERROR("[SMP] SYS mask:%d\r\n", ret);
         return 24U;
     }
 
