@@ -5,61 +5,19 @@
 #include "bms_tasks.h"
 
 #include "stdio.h"
+#include "bms_config.h"
 #include "bms_log.h"
 #include "led.h"
 #include "bq34z100_app.h"
 #include "bq76200_exec_port.h"
 #include "bq76940_alert_sim.h"
 
-#define BMS_SAMPLE_TASK_STACK_WORDS 512U
-#define BMS_PROTECT_TASK_STACK_WORDS 512U
-#define BMS_BALANCE_TASK_STACK_WORDS 384U
-#define BMS_CONTROL_TASK_STACK_WORDS 384U
-#define BMS_CAN_TASK_STACK_WORDS 256U
-#define BMS_GAUGE_TASK_STACK_WORDS 256U
-#define BMS_AUX_TASK_STACK_WORDS 256U
-#define BMS_RUNTIME_TASK_STACK_WORDS 512U
 
-#define BMS_HW_FAULT_TASK_PRIORITY     (tskIDLE_PRIORITY + 5U)
-#define BMS_RUNTIME_TASK_PRIORITY (tskIDLE_PRIORITY + 4U)
-#define BMS_SAMPLE_TASK_PRIORITY (tskIDLE_PRIORITY + 4U)
-#define BMS_PROTECT_TASK_PRIORITY (tskIDLE_PRIORITY + 3U)
-#define BMS_BALANCE_TASK_PRIORITY (tskIDLE_PRIORITY + 3U)
-#define BMS_CONTROL_TASK_PRIORITY (tskIDLE_PRIORITY + 3U)
-#define BMS_CAN_TASK_PRIORITY (tskIDLE_PRIORITY + 2U)
-#define BMS_GAUGE_TASK_PRIORITY (tskIDLE_PRIORITY + 1U)
-#define BMS_AUX_TASK_PRIORITY (tskIDLE_PRIORITY + 1U)
-
-#define BMS_SAMPLE_TASK_PERIOD_MS 500U
-#define BMS_CAN_TASK_PERIOD_MS 1000U
-#define BMS_GAUGE_TASK_PERIOD_MS 1000U
-#define BMS_AUX_TASK_PERIOD_MS 1000U
-
-#define BMS_ENABLE_GAUGE_TASK 0U
+#define BMS_TEST_FAKE_HW_FAULT_SYS_STAT   (BQ76940_SYS_STAT_OCD | BQ76940_SYS_STAT_SCD)
 
 #if (BMS_ENABLE_GAUGE_TASK != 0U)
 static BQ34Z100_AppCtx_t g_bq34z100_ctx;
 #endif
-
-/*
- * BQ34Z100 刷新周期计数
- * 当前 BMS_SampleTask 周期约 100ms，
- * 10 次约等于 1s。
- */
-#define BMS_CORE_BQ34Z100_PERIOD_CNT 10U
-
-/*
- * I2C 总线互斥锁超时时间。
- * 作用：
- *   防止某个任务长期占用 I2C 总线后，其他任务永久阻塞。
- */
-#define BMS_I2C_MUTEX_TIMEOUT_MS 100U
-
-/*
- * FreeRTOS 任务层内部错误码：
- * 表示当前任务在规定时间内没有拿到 I2C 总线锁。
- */
-#define BMS_TASK_RET_I2C_LOCK_TIMEOUT 0xF0U
 
 /*
  * AFE 硬件写禁止标志。
@@ -76,14 +34,6 @@ static volatile uint8_t g_afe_write_inhibit = 0U;
  *   保护 BQ76940_AppCtx_t 这个全局状态结构体。
  */
 static SemaphoreHandle_t g_bms_ctx_mutex = NULL;
-
-/*-----------------运行异常测试宏--------------*/
-#define BMS_TEST_FORCE_RUNTIME_FAULT 0U
-#define BMS_TEST_FORCE_FAIL_START_CYCLE 5U
-#define BMS_TEST_FORCE_FAIL_TIMES 3U
-#define BMS_TEST_SAFE_OFF_READBACK_ENABLE 0U
-
-#define BMS_TEST_FAKE_HW_FAULT_SYS_STAT   (BQ76940_SYS_STAT_OCD | BQ76940_SYS_STAT_SCD)
 
 /*-------------------------------------------*/
 /*
@@ -220,7 +170,7 @@ BaseType_t BMS_TasksCreate(BQ76940_AppCtx_t *app)
     }
     result = xTaskCreate(BMS_HwFaultTask,
                          "BMS_HwFault",
-                         384U,
+                         BMS_HW_FAULT_TASK_STACK_WORDS,
                          app,
                          BMS_HW_FAULT_TASK_PRIORITY,
                          NULL);
@@ -322,9 +272,9 @@ BaseType_t BMS_TasksCreate(BQ76940_AppCtx_t *app)
 #if (BMS_TEST_FAKE_ALERT_EXTI != 0U)
     result = xTaskCreate(BMS_AlertSimTestTask,
                          "AlertSimTest",
-                         256U,
+                         BMS_ALERT_SIM_TASK_STACK_WORDS,
                          NULL,
-                         tskIDLE_PRIORITY + 1U,
+                         BMS_ALERT_SIM_TASK_PRIORITY,
                          NULL);
     if (result != pdPASS)
     {
