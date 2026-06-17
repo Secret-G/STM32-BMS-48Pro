@@ -77,8 +77,12 @@ typedef struct BQ76940_AppCtx
 	uint8_t hw_ocd_active;			   /* 是否锁存过 OCD */
 	uint8_t hw_scd_active;			   /* 是否锁存过 SCD */
 	uint8_t hw_dsg_block_active;	   /* 是否因为硬件故障禁止放电 */
-	uint8_t hw_fault_sys_stat_latched; /* 硬件故障触发时的 SYS_STAT 锁存快照 */
 	uint8_t hw_fault_recover_once_enable;
+	
+	uint8_t hw_fault_sys_stat_latched; /* 硬件故障触发时的 SYS_STAT 锁存快照 */
+	uint8_t  hw_fault_last_apply_ret;
+	uint8_t  hw_fault_last_code;
+	uint16_t hw_fault_count;
 
 	BQ76940_CellBalRegs_t cellbal_wr;
 	BQ76940_CellBalRegs_t cellbal_rd;

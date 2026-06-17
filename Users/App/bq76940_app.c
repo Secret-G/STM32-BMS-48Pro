@@ -72,7 +72,11 @@ void BQ76940_AppInitDefaultConfig(BQ76940_AppCtx_t *ctx)
     ctx->hw_scd_active = 0;
     ctx->hw_dsg_block_active = 0;
     ctx->hw_fault_recover_once_enable = 0;
-    ctx->hw_fault_sys_stat_latched = 0;
+		
+		ctx->hw_fault_sys_stat_latched = 0U;
+		ctx->hw_fault_last_apply_ret   = 0U;
+		ctx->hw_fault_last_code        = BQ76940_HW_FAULT_CODE_NONE;
+		ctx->hw_fault_count            = 0U;
 
     // 初始化运行就诊
     BQ76940_AppRuntimeDiagInit(&ctx->runtime_diag);

@@ -54,6 +54,7 @@
  * Mutex / timeout
  * ========================= */
 #define BMS_I2C_MUTEX_TIMEOUT_MS           100U
+#define BMS_HW_FAULT_I2C_TIMEOUT_MS   	   300U
 #define BMS_TASK_RET_I2C_LOCK_TIMEOUT      0xF0U
 
 /* =========================
@@ -64,6 +65,12 @@
 #define BMS_TEST_FORCE_FAIL_TIMES          3U
 #define BMS_TEST_SAFE_OFF_READBACK_ENABLE  0U
 
+
+/* =========================
+ * HwFault ApplyHw retry
+ * ========================= */
+#define BMS_HW_FAULT_APPLY_MAX_TRIES       3U
+#define BMS_HW_FAULT_APPLY_RETRY_DELAY_MS  30U
 
 /* =========================
  * ALERT / HwFault test

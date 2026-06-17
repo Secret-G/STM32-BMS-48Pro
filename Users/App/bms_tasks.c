@@ -12,8 +12,7 @@
 #include "bq76200_exec_port.h"
 #include "bq76940_alert_sim.h"
 
-
-#define BMS_TEST_FAKE_HW_FAULT_SYS_STAT   (BQ76940_SYS_STAT_OCD | BQ76940_SYS_STAT_SCD)
+#define BMS_TEST_FAKE_HW_FAULT_SYS_STAT (BQ76940_SYS_STAT_OCD | BQ76940_SYS_STAT_SCD)
 
 #if (BMS_ENABLE_GAUGE_TASK != 0U)
 static BQ34Z100_AppCtx_t g_bq34z100_ctx;
@@ -63,6 +62,7 @@ static void BMS_AlertSimTestTask(void *argument);
 static void BMS_AfeWriteInhibitSet(void);
 static uint8_t BMS_AfeWriteIsInhibited(void);
 static uint8_t BMS_HwFaultReadSysStat(uint8_t *sys_stat);
+static uint8_t BMS_HwFaultApplyHwWithRetry(const BQ76940_OcdScdRequest_t *req);
 
 #if (BMS_TEST_SAFE_OFF_READBACK_ENABLE != 0U)
 static void BMS_RuntimeSafeOffReadback(BQ76940_AppCtx_t *app);
@@ -79,7 +79,7 @@ void vApplicationStackOverflowHook(TaskHandle_t task, char *task_name)
     (void)task;
 
     BMS_LOG_ERROR("[RTOS] stack:%s\r\n",
-           (task_name != NULL) ? task_name : "unknown");
+                  (task_name != NULL) ? task_name : "unknown");
 
     taskDISABLE_INTERRUPTS();
     while (1)
@@ -268,7 +268,6 @@ BaseType_t BMS_TasksCreate(BQ76940_AppCtx_t *app)
         return result;
     }
 
-		
 #if (BMS_TEST_FAKE_ALERT_EXTI != 0U)
     result = xTaskCreate(BMS_AlertSimTestTask,
                          "AlertSimTest",
@@ -295,7 +294,7 @@ static void BMS_SampleTask(void *argument)
     uint8_t fault_stage;
     uint8_t enter_fault;
     uint8_t recovered;
-	  uint8_t notify_protect = 0U;
+    uint8_t notify_protect = 0U;
 
 #if (BMS_TEST_FORCE_RUNTIME_FAULT != 0U)
     uint8_t test_cycle_count = 0U;
@@ -312,6 +311,7 @@ static void BMS_SampleTask(void *argument)
         fault_stage = BQ76940_RT_STAGE_NONE;
         enter_fault = 0U;
         recovered = 0U;
+        notify_protect = 0U;
 
 #if (BMS_TEST_FORCE_RUNTIME_FAULT != 0U)
         if (test_cycle_count < 255U)
@@ -400,8 +400,6 @@ static void BMS_SampleTask(void *argument)
          * 4. 提交采样结果 + RuntimeDiag 成功记录
          */
 
-
-
         if (ret == 0U)
         {
             if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
@@ -475,9 +473,9 @@ static void BMS_SampleTask(void *argument)
             }
 
             BMS_LOG_PERIODIC("[RT] sample fail:%d/%d/%d\r\n",
-                   ret,
-                   fault_code,
-                   fault_stage);
+                             ret,
+                             fault_code,
+                             fault_stage);
         }
 
         vTaskDelay(pdMS_TO_TICKS(BMS_SAMPLE_TASK_PERIOD_MS));
@@ -631,8 +629,8 @@ static void BMS_RuntimeTask(void *argument)
                 }
 
                 BMS_LOG_RUNTIME("[RT] AFE off:%02X retry:%d\r\n",
-                       safe_off_result,
-                       retry_allowed);
+                                safe_off_result,
+                                retry_allowed);
 
                 /*
                  * Safe-Off 失败且允许快速重试，则延迟一小段时间再试。
@@ -796,9 +794,9 @@ static void BMS_ProtectTask(void *argument)
             if (ret == 0U)
             {
                 if ((ot_req.action != BQ76940_OT_ACTION_NONE) ||
-                    (ut_req.action != BQ76940_UT_ACTION_NONE) )
+                    (ut_req.action != BQ76940_UT_ACTION_NONE))
                 {
-                    if (xSemaphoreTake(g_i2c_bus_mutex,pdMS_TO_TICKS(BMS_I2C_MUTEX_TIMEOUT_MS)) == pdTRUE)
+                    if (xSemaphoreTake(g_i2c_bus_mutex, pdMS_TO_TICKS(BMS_I2C_MUTEX_TIMEOUT_MS)) == pdTRUE)
                     {
 
                         if (BMS_AfeWriteIsInhibited() != 0U)
@@ -1131,8 +1129,8 @@ static void BMS_GaugeTask(void *argument)
         else
         {
             BMS_LOG_ERROR("[GAUGE] fail:%d/%d\r\n",
-                   ret,
-                   g_bq34z100_ctx.last_error);
+                          ret,
+                          g_bq34z100_ctx.last_error);
         }
 
         vTaskDelay(pdMS_TO_TICKS(BMS_GAUGE_TASK_PERIOD_MS));
@@ -1215,19 +1213,19 @@ static void BMS_RuntimeSafeOffReadback(BQ76940_AppCtx_t *app)
             : 0U;
 
     BMS_LOG_TEST_HW_FAULT("[TEST] RB I2C:%u/%u %02X/%02X/%02X/%02X\r\n",
-           cellbal_ret,
-           sys_ctrl2_ret,
-           cellbal.cellbal1,
-           cellbal.cellbal2,
-           cellbal.cellbal3,
-           sys_ctrl2);
+                          cellbal_ret,
+                          sys_ctrl2_ret,
+                          cellbal.cellbal1,
+                          cellbal.cellbal2,
+                          cellbal.cellbal3,
+                          sys_ctrl2);
     BMS_LOG_TEST_HW_FAULT("[TEST] RB GPIO:%u/%u/%u/%u F:%u I:%u\r\n",
-           chg_en,
-           dsg_en,
-           cp_en,
-           pchg_en,
-           fault_active,
-           inhibited);
+                          chg_en,
+                          dsg_en,
+                          cp_en,
+                          pchg_en,
+                          fault_active,
+                          inhibited);
     BMS_LOG_TEST_HW_FAULT("[TEST] RB:%s\r\n", (readback_pass != 0U) ? "PASS" : "FAIL");
 }
 #endif
@@ -1247,7 +1245,7 @@ void BMS_HwFaultNotifyFromISR(void)
 
 static void BMS_HwFaultTask(void *argument)
 {
-    BQ76940_AppCtx_t *app = (BQ76940_AppCtx_t*)argument;
+    BQ76940_AppCtx_t *app = (BQ76940_AppCtx_t *)argument;
 
     for (;;)
     {
@@ -1265,25 +1263,24 @@ static void BMS_HwFaultTask(void *argument)
 
             BMS_LOG_HW_FAULT("[HW] alert\r\n");
 
-      
-						ret = BMS_HwFaultReadSysStat(&sys_stat);
+            ret = BMS_HwFaultReadSysStat(&sys_stat);
 
-						if (ret != 0U)
-						{
-								BMS_LOG_ERROR("[HW] SYS read fail:%d\r\n", ret);
-								continue;
-						}
-						
+            if (ret != 0U)
+            {
+                BMS_LOG_ERROR("[HW] SYS read fail:%d\r\n", ret);
+                continue;
+            }
+
             if ((sys_stat & BQ76940_SYS_STAT_CURRENT_FAULT_MASK) != 0U)
             {
                 BMS_LOG_HW_FAULT("[HW] current:%02X\r\n",
-                       (uint8_t)(sys_stat & BQ76940_SYS_STAT_CURRENT_FAULT_MASK));
+                                 (uint8_t)(sys_stat & BQ76940_SYS_STAT_CURRENT_FAULT_MASK));
             }
 
             if ((sys_stat & BQ76940_SYS_STAT_VOLTAGE_FAULT_MASK) != 0U)
             {
                 BMS_LOG_HW_FAULT("[HW] voltage:%02X\r\n",
-                       (uint8_t)(sys_stat & BQ76940_SYS_STAT_VOLTAGE_FAULT_MASK));
+                                 (uint8_t)(sys_stat & BQ76940_SYS_STAT_VOLTAGE_FAULT_MASK));
             }
 
             if ((sys_stat & BQ76940_SYS_STAT_DEVICE_XREADY) != 0U)
@@ -1335,10 +1332,10 @@ static void BMS_HwFaultTask(void *argument)
             }
 
             BMS_LOG_TEST_HW_FAULT("[HW] act:%d O:%d S:%d F:%02X\r\n",
-                   req.action,
-                   req.ocd_now,
-                   req.scd_now,
-                   req.hw_fault_now);
+                                  req.action,
+                                  req.ocd_now,
+                                  req.scd_now,
+                                  req.hw_fault_now);
 
             /*
              * ApplyHw 阶段：
@@ -1349,25 +1346,17 @@ static void BMS_HwFaultTask(void *argument)
              *   这里的 ApplyHw 是 best-effort 补充动作。
              *   即使 I2C 锁失败，也不能阻止 Commit 锁存故障。
              */
-            if (req.action != BQ76940_OCDSCD_ACTION_NONE)
+            apply_ret = BMS_HwFaultApplyHwWithRetry(&req);
+            /*
+             * 注意：
+             * apply_ret 必须在 Commit 前写入 req。
+             * 这样 Commit 才能记录到 hw_fault_last_apply_ret。
+             */
+            req.apply_ret = apply_ret;
+
+            if (apply_ret != 0U)
             {
-                if (xSemaphoreTake(g_i2c_bus_mutex,
-                                   pdMS_TO_TICKS(BMS_I2C_MUTEX_TIMEOUT_MS)) == pdTRUE)
-                {
-                    apply_ret = BQ76940_AppOcdScdApplyHw(&req);
-
-                    xSemaphoreGive(g_i2c_bus_mutex);
-                }
-                else
-                {
-                    apply_ret = BMS_TASK_RET_I2C_LOCK_TIMEOUT;
-                }
-
-                if (apply_ret != 0U)
-                {
-                    BMS_LOG_ERROR("[HW] apply fail:%d\r\n",
-                           apply_ret);
-                }
+                BMS_LOG_HW_FAULT("[HW] apply:%2x\r\n", req.apply_ret);
             }
 
             /*
@@ -1394,17 +1383,20 @@ static void BMS_HwFaultTask(void *argument)
             if (commit_ret != 0U)
             {
                 BMS_LOG_ERROR("[HW] commit fail:%d\r\n",
-                       commit_ret);
+                              commit_ret);
                 continue;
             }
 
             if (notify_control != 0U)
             {
+                BMS_LOG_HW_FAULT("[HW] latched code:%d sys:%02X cnt:%d apply:%02X\r\n",
+                                 app->hw_fault_last_code,
+                                 app->hw_fault_sys_stat_latched,
+                                 app->hw_fault_count,
+                                 app->hw_fault_last_apply_ret);
+
                 xSemaphoreGive(g_control_sem);
             }
-
-            BMS_LOG_HW_FAULT("[HW] latched,DSG block:%d\r\n",
-                   apply_ret);
         }
     }
 }
@@ -1420,7 +1412,10 @@ static void BMS_AlertSimTestTask(void *argument)
 
     BQ76940_AlertSimSoftwareTrigger();
 
-    vTaskDelete(NULL);
+    for (;;)
+    {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
 }
 #endif
 
@@ -1441,7 +1436,7 @@ static uint8_t BMS_HwFaultReadSysStat(uint8_t *sys_stat)
 
 #else
 
-    if (xSemaphoreTake(g_i2c_bus_mutex,pdMS_TO_TICKS(BMS_I2C_MUTEX_TIMEOUT_MS)) == pdTRUE)
+    if (xSemaphoreTake(g_i2c_bus_mutex, pdMS_TO_TICKS(BMS_I2C_MUTEX_TIMEOUT_MS)) == pdTRUE)
     {
         ret = BQ76940_ReadSysStat(sys_stat);
 
@@ -1459,5 +1454,57 @@ static uint8_t BMS_HwFaultReadSysStat(uint8_t *sys_stat)
 
 #endif
 
+    return ret;
+}
+static uint8_t BMS_HwFaultApplyHwWithRetry(const BQ76940_OcdScdRequest_t *req)
+{
+    uint8_t ret;
+    uint8_t try_count;
+
+    if (req == 0)
+    {
+        return 1U;
+    }
+
+    if (req->action == BQ76940_OCDSCD_ACTION_NONE)
+    {
+        return 0U;
+    }
+
+    ret = BMS_TASK_RET_I2C_LOCK_TIMEOUT;
+
+    for (try_count = 0; try_count < BMS_HW_FAULT_APPLY_MAX_TRIES; try_count++)
+    {
+        if (xSemaphoreTake(g_i2c_bus_mutex, pdMS_TO_TICKS(BMS_HW_FAULT_I2C_TIMEOUT_MS)) == pdTRUE)
+        {
+            ret = BQ76940_AppOcdScdApplyHw(req);
+
+            xSemaphoreGive(g_i2c_bus_mutex);
+        }
+        else
+        {
+            ret = BMS_TASK_RET_I2C_LOCK_TIMEOUT;
+        }
+
+        if (ret == 0U)
+        {
+            if (try_count != 0U)
+            {
+                BMS_LOG_HW_FAULT("[HW] apply retry ok:%d\r\n",
+                                 (uint8_t)(try_count + 1U));
+            }
+
+            break;
+        }
+
+        BMS_LOG_HW_FAULT("[HW] apply try:%d ret:%02X\r\n",
+                         (uint8_t)(try_count + 1U),
+                         ret);
+
+        if ((uint8_t)(try_count + 1U) < BMS_HW_FAULT_APPLY_MAX_TRIES)
+        {
+            vTaskDelay(pdMS_TO_TICKS(BMS_HW_FAULT_APPLY_RETRY_DELAY_MS));
+        }
+    }
     return ret;
 }

@@ -13,6 +13,8 @@ void BQ76940_AppOcdScdRequestClear( BQ76940_OcdScdRequest_t *req)
     req->action            = BQ76940_OCDSCD_ACTION_NONE;
     req->sys_stat_snapshot = 0U;
     req->hw_fault_now      = 0U;
+		req->fault_code 			 = BQ76940_HW_FAULT_CODE_NONE;
+		req->apply_ret 				 = 0U;
     req->ocd_now           = 0U;
     req->scd_now           = 0U;
     req->recover_request   = 0U;
@@ -50,6 +52,25 @@ uint8_t BQ76940_AppOcdScdDecide(const BQ76940_AppCtx_t *ctx,
     {
         req->scd_now = 1U;
     }
+		
+		//错误码判断
+		if ((req->ocd_now != 0U) && (req->scd_now != 0U))
+		{
+				req->fault_code = BQ76940_HW_FAULT_CODE_OCD_SCD;
+		}
+		else if (req->ocd_now != 0U)
+		{
+				req->fault_code = BQ76940_HW_FAULT_CODE_OCD;
+		}
+		else if (req->scd_now != 0U)
+		{
+				req->fault_code = BQ76940_HW_FAULT_CODE_SCD;
+		}
+		else
+		{
+				req->fault_code = BQ76940_HW_FAULT_CODE_NONE;
+		}
+		
 
     /*
      * 情况 1：
@@ -156,13 +177,22 @@ uint8_t BQ76940_AppOcdScdApplyHw(const BQ76940_OcdScdRequest_t *req)
     return 6U;
 }
 
-uint8_t BQ76940_AppOcdScdCommit(BQ76940_AppCtx_t *ctx,
-                                const BQ76940_OcdScdRequest_t *req)
+uint8_t BQ76940_AppOcdScdCommit(BQ76940_AppCtx_t *ctx,const BQ76940_OcdScdRequest_t *req)
 {
     if ((ctx == 0) || (req == 0))
     {
         return 1U;
     }
+		
+		ctx->hw_fault_sys_stat_latched |= (uint8_t)(req->sys_stat_snapshot & BQ76940_SYS_STAT_HW_LATCH_MASK);
+
+		ctx->hw_fault_last_apply_ret = req->apply_ret;
+		ctx->hw_fault_last_code      = req->fault_code;
+
+		if (ctx->hw_fault_count < 65535U)
+		{
+				ctx->hw_fault_count++;
+		}
 
         /*
      * 锁存本次硬件故障触发时的 SYS_STAT 快照。

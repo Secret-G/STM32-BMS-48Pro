@@ -3,12 +3,24 @@
 
 #include <stdint.h>
 
+
+
+
 /*
  * OCD/SCD 保护动作类型
  */
 #define BQ76940_OCDSCD_ACTION_NONE        0U
 #define BQ76940_OCDSCD_ACTION_DSG_OFF     1U
 #define BQ76940_OCDSCD_ACTION_DSG_ON      2U
+
+
+/*
+ * 故障码
+ */
+#define BQ76940_HW_FAULT_CODE_NONE       0U
+#define BQ76940_HW_FAULT_CODE_OCD        1U
+#define BQ76940_HW_FAULT_CODE_SCD        2U
+#define BQ76940_HW_FAULT_CODE_OCD_SCD    3U
 
 /*
  * OCD/SCD 保护请求
@@ -25,6 +37,8 @@ typedef struct
 
     uint8_t sys_stat_snapshot;
     uint8_t hw_fault_now;
+    uint8_t fault_code;
+    uint8_t apply_ret;
 
     uint8_t ocd_now;
     uint8_t scd_now;
