@@ -684,11 +684,7 @@ static void BMS_CANTask(void *argument)
             xSemaphoreGive(g_bms_ctx_mutex);
 
             BQ76940_AppSendCanTelemetry(&snapshot);
-
-            if (snapshot.runtime_diag.fault_active != 0)
-            {
-                BQ76940_AppSendRuntimeFaultCan(&snapshot);
-            }
+            BQ76940_AppSendFaultDiagCan(&snapshot);
         }
 
         vTaskDelay(pdMS_TO_TICKS(BMS_CAN_TASK_PERIOD_MS));
