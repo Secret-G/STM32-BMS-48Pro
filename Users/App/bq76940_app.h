@@ -87,13 +87,12 @@ typedef struct BQ76940_AppCtx
 	BQ76940_CellBalRegs_t cellbal_wr;
 	BQ76940_CellBalRegs_t cellbal_rd;
 
-	uint8_t bal_test_once_enable;  /* 手动均衡测试开关：1=执行一次 */
-	uint8_t bal_test_target_label; /* 目标电芯编号，例如 1/2/5/6/7/10/11/12/15 */
 
 	BQ76940_BalanceConfig_t bal_cfg;
 
 	uint8_t bal_active;		  /* 当前是否处于自动均衡状态 */
 	uint8_t bal_target_label; /* 当前正在均衡的单体编号 */
+	uint8_t bal_target_count;
 
 	BQ76940_CellBalRegs_t bal_auto_wr;
 	BQ76940_CellBalRegs_t bal_auto_rd;

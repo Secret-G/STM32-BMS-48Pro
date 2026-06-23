@@ -34,6 +34,9 @@ typedef struct
 #define BQ76940_BAL_REASON_NOT_ALLOWED   1U
 #define BQ76940_BAL_REASON_DIFF_EXIT     2U
 
+
+#define BQ76940_BAL_MAX_TARGET_COUNT   3U
+
 /*
  * 自动均衡请求结构体
  *
@@ -48,7 +51,8 @@ typedef struct
 typedef struct
 {
     uint8_t action;        /* NONE / START / STOP */
-    uint8_t target_label;  /* START 时的目标电芯编号 */
+    uint8_t target_label;  /* START 时的最高目标电芯编号 */
+    uint8_t target_count;  /* START 时本轮均衡目标数量 */
     uint8_t reason;        /* STOP 原因 */
 
     BQ76940_CellBalRegs_t wr;  /* 准备写入的 CELLBAL */
@@ -68,7 +72,5 @@ uint8_t BQ76940_AppBalanceApplyHw(BQ76940_BalanceRequest_t *req);
 
 uint8_t BQ76940_AppBalanceCommit(struct BQ76940_AppCtx *ctx,
                                   const BQ76940_BalanceRequest_t *req);
-
-uint8_t BQ76940_AppBalanceUpdate(struct BQ76940_AppCtx *ctx);
 
 #endif

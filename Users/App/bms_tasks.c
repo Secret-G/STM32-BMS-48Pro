@@ -955,8 +955,7 @@ static void BMS_BalanceTask(void *argument)
             {
                 if (bal_req.action != BQ76940_BAL_ACTION_NONE)
                 {
-                    if (xSemaphoreTake(g_i2c_bus_mutex,
-                                       pdMS_TO_TICKS(BMS_I2C_MUTEX_TIMEOUT_MS)) == pdTRUE)
+                    if (xSemaphoreTake(g_i2c_bus_mutex, pdMS_TO_TICKS(BMS_I2C_MUTEX_TIMEOUT_MS)) == pdTRUE)
                     {
                         if (BMS_AfeWriteIsInhibited() != 0U)
                         {

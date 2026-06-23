@@ -11,7 +11,7 @@
 #define BMS_LOG_RUNTIME_ENABLE         1U
 
 #define BMS_LOG_PROTECT_ENABLE         0U
-#define BMS_LOG_BALANCE_ENABLE         0U
+#define BMS_LOG_BALANCE_ENABLE         1U
 #define BMS_LOG_CAN_ENABLE             0U
 #define BMS_LOG_PERIODIC_ENABLE        1U
 

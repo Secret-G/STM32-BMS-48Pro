@@ -78,8 +78,8 @@
  * 1: use fake test path
  * 0: use real hardware path
  * ========================= */
-#define BMS_TEST_FAKE_ALERT_EXTI           1U
-#define BMS_TEST_FAKE_HW_FAULT             1U
+#define BMS_TEST_FAKE_ALERT_EXTI           0U
+#define BMS_TEST_FAKE_HW_FAULT             0U
 
 
 #endif

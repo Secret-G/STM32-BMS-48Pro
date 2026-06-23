@@ -34,7 +34,7 @@ void BQ76940_AppInitDefaultConfig(BQ76940_AppCtx_t *ctx)
     ctx->alarm_th.ov_enter_mV = 4180;
     ctx->alarm_th.ov_exit_mV = 4130;
     ctx->alarm_th.diff_enter_mV = 150;
-    ctx->alarm_th.diff_exit_mV = 120;
+    ctx->alarm_th.diff_exit_mV = 110;
 
     ctx->alarm_th.ot_enter_dC = 600; /* 60.0°C 进入过温告警 */
     ctx->alarm_th.ot_exit_dC = 550;  /* 55.0°C 退出过温告警 */
@@ -87,17 +87,16 @@ void BQ76940_AppInitDefaultConfig(BQ76940_AppCtx_t *ctx)
     /* BQ76200 执行层初始化 */
     BQ76200_ExecInit(&ctx->bq76200_exec);
 
-    ctx->bal_test_once_enable = 1;
-    ctx->bal_test_target_label = 12;
 
     /* 自动均衡第一版参数 */
     ctx->bal_cfg.diff_enter_mV = 80;       /* 压差 >= 80mV 开始均衡 */
     ctx->bal_cfg.diff_exit_mV = 30;        /* 压差 <= 30mV 退出均衡 */
-    ctx->bal_cfg.min_cell_mV = 3900;       /* 最高单体至少高于 3.9V 才考虑均衡 */
+    ctx->bal_cfg.min_cell_mV = 3800;       /* 最高单体至少高于 3.9V 才考虑均衡 */
     ctx->bal_cfg.max_abs_current_mA = 200; /* 电流绝对值小于 200mA 才允许均衡 */
 
     ctx->bal_active = 0;
     ctx->bal_target_label = 0;
+    ctx->bal_target_count = 0U;
 
     BQ76940_ClearCellBalRegs(&ctx->bal_auto_wr);
     BQ76940_ClearCellBalRegs(&ctx->bal_auto_rd);
@@ -360,62 +359,62 @@ uint8_t BQ76940_AppBringUpAndSelfTest(BQ76940_AppCtx_t *ctx)
     return 100U;
 }
 
-uint8_t BQ76940_AppRunCycle(BQ76940_AppCtx_t *ctx)
-{
-    uint8_t ret;
+//uint8_t BQ76940_AppRunCycle(BQ76940_AppCtx_t *ctx)
+//{
+//    uint8_t ret;
 
-    if (ctx == 0)
-    {
-        return 1U;
-    }
+//    if (ctx == 0)
+//    {
+//        return 1U;
+//    }
 
-    /*
-     * 1. 采样阶段：
-     * 电压 / 电流 / 温度 / 硬件状态读取
-     */
-    ret = BQ76940_AppSampleUpdate(ctx);
-    if (ret != 0U)
-    {
-        return ret;
-    }
+//    /*
+//     * 1. 采样阶段：
+//     * 电压 / 电流 / 温度 / 硬件状态读取
+//     */
+//    ret = BQ76940_AppSampleUpdate(ctx);
+//    if (ret != 0U)
+//    {
+//        return ret;
+//    }
 
-    /*
-     * 2. 保护阶段：
-     * UV / OV / DIFF / OT / UT / OCD / SCD
-     */
-    ret = BQ76940_AppProtectUpdate(ctx);
-    if (ret != 0U)
-    {
-        return ret;
-    }
+//    /*
+//     * 2. 保护阶段：
+//     * UV / OV / DIFF / OT / UT / OCD / SCD
+//     */
+//    ret = BQ76940_AppProtectUpdate(ctx);
+//    if (ret != 0U)
+//    {
+//        return ret;
+//    }
 
-    /*
-     * 3. 均衡阶段：
-     * 自动均衡判断与 CELLBAL 控制
-     */
-    ret = BQ76940_AppBalanceUpdate(ctx);
-    if (ret != 0U)
-    {
-        return ret;
-    }
+//    /*
+//     * 3. 均衡阶段：
+//     * 自动均衡判断与 CELLBAL 控制
+//     */
+//    ret = BQ76940_AppBalanceUpdate(ctx);
+//    if (ret != 0U)
+//    {
+//        return ret;
+//    }
 
-    /*
-     * 4. 执行控制阶段：
-     * 根据保护状态刷新 BQ76200 执行层
-     */
-    ret = BQ76940_AppControlUpdate(ctx);
-    if (ret != 0U)
-    {
-        return ret;
-    }
+//    /*
+//     * 4. 执行控制阶段：
+//     * 根据保护状态刷新 BQ76200 执行层
+//     */
+//    ret = BQ76940_AppControlUpdate(ctx);
+//    if (ret != 0U)
+//    {
+//        return ret;
+//    }
 
-    /*
-     * 5. 调试打印阶段
-     */
-    BQ76940_AppPrintRuntime(ctx);
+//    /*
+//     * 5. 调试打印阶段
+//     */
+//    BQ76940_AppPrintRuntime(ctx);
 
-    return 0U;
-}
+//    return 0U;
+//}
 
 // void BQ76940_AppPrintRuntime(const BQ76940_AppCtx_t *ctx)
 //{
@@ -507,19 +506,27 @@ void BQ76940_AppPrintRuntime(const BQ76940_AppCtx_t *ctx)
         prot_flags |= 0x10U;
     if (ctx->bal_active != 0U)
         prot_flags |= 0x20U;
+		
 
-BMS_LOG_PERIODIC("[BMS] P:%lu MAX:%u:%u MIN:%u:%u D:%u I:%ld T:%d A:%02X F:%02X B:%u/%u S:%02X\r\n",
-                 (unsigned long)ctx->pack_total_mV,
-                 ctx->cell_stats.max_cell_label,
-                 ctx->cell_stats.max_mV,
-                 ctx->cell_stats.min_cell_label,
-                 ctx->cell_stats.min_mV,
-                 ctx->cell_stats.diff_mV,
-                 (long)ctx->pack_current_mA,
-                 ctx->ts1_temp_dC,
-                 alm_flags,
-                 prot_flags,
-                 ctx->bal_active,
-                 ctx->bal_target_label,
-                 ctx->sys_stat);
+		BQ76940_PrintAllMappedCellVoltages9(ctx->cell_raw,
+                                        ctx->cell_mV,
+                                       ctx->pack_total_mV);
+		BMS_LOG_PERIODIC("[BMS] Pack:%lu Max:VC%u=%umV Min:VC%u=%umV Diff:%umV Current:%ldmA Temp:%d Alarm:%02X Protect:%02X Balance:%u Target:VC%u Count:%u Mask:%02X/%02X/%02X Sys:%02X\r\n",
+										 (unsigned long)ctx->pack_total_mV,
+										 ctx->cell_stats.max_cell_label,
+										 ctx->cell_stats.max_mV,
+										 ctx->cell_stats.min_cell_label,
+										 ctx->cell_stats.min_mV,
+										 ctx->cell_stats.diff_mV,
+										 (long)ctx->pack_current_mA,
+										 ctx->ts1_temp_dC,
+										 alm_flags,
+										 prot_flags,
+										 ctx->bal_active,
+										 ctx->bal_target_label,
+										 ctx->bal_target_count,
+										 ctx->bal_auto_wr.cellbal1,
+										 ctx->bal_auto_wr.cellbal2,
+										 ctx->bal_auto_wr.cellbal3,
+										 ctx->sys_stat);
 }
