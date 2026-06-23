@@ -1,0 +1,401 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="AutoBalanceFlowV1" name="AutoBalance Flow">
+    <mxGraphModel dx="1600" dy="2200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="2300" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="自动均衡流程 - BMS_BalanceTask / BQ76940_AppBalance*" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=22;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="330" y="20" width="520" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="legend1" value="绿色：获取/释放 ctx mutex；粉色：获取/释放 I2C mutex；黄色：信号量通知；紫色：判断分支" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13" vertex="1" parent="1">
+          <mxGeometry x="280" y="70" width="620" height="44" as="geometry" />
+        </mxCell>
+
+        <mxCell id="start" value="等待 g_balance_sem&lt;br&gt;xSemaphoreTake(portMAX_DELAY)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="455" y="140" width="270" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="ctx1_take" value="获取 ctx 锁&lt;br&gt;g_bms_ctx_mutex" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="470" y="240" width="240" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="runtime_check" value="读取 runtime_fault&lt;br&gt;BQ76940_AppRuntimeDiagIsFaultActive(app)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="420" y="330" width="340" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="ctx1_give" value="释放 ctx 锁" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="500" y="430" width="180" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="runtime_decision" value="runtime_fault != 0 ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="495" y="510" width="190" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="runtime_notify" value="通知 ControlTask&lt;br&gt;xSemaphoreGive(g_control_sem)&lt;br&gt;跳过均衡" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="130" y="530" width="270" height="76" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ctx2_take" value="获取 ctx 锁&lt;br&gt;Decide 阶段" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="470" y="665" width="240" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="decide_call" value="生成 now_ms&lt;br&gt;BQ76940_AppBalanceDecide(app, &amp;bal_req, now_ms)&lt;br&gt;只读/修改 app 状态，不访问 I2C" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="380" y="755" width="420" height="88" as="geometry" />
+        </mxCell>
+        <mxCell id="ctx2_give" value="释放 ctx 锁" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="500" y="875" width="180" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="action_decision" value="ret == 0 且&lt;br&gt;bal_req.action != NONE ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="480" y="955" width="220" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="i2c_take" value="获取 I2C 锁&lt;br&gt;g_i2c_bus_mutex&lt;br&gt;timeout = BMS_I2C_MUTEX_TIMEOUT_MS" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="430" y="1120" width="320" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="i2c_ok" value="I2C 锁获取成功 ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="500" y="1240" width="180" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="i2c_timeout" value="ret = BMS_TASK_RET_I2C_LOCK_TIMEOUT" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="790" y="1260" width="290" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="inhibit1" value="AFE 写禁止 ?&lt;br&gt;BMS_AfeWriteIsInhibited()" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="485" y="1385" width="210" height="115" as="geometry" />
+        </mxCell>
+        <mxCell id="i2c_give_skip" value="释放 I2C 锁" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="150" y="1415" width="190" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="notify_skip1" value="通知 ControlTask&lt;br&gt;continue" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="130" y="1510" width="230" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="apply_hw" value="BQ76940_AppBalanceApplyHw(&amp;bal_req)&lt;br&gt;写 CELLBAL1/2/3&lt;br&gt;读回 CELLBAL1/2/3&lt;br&gt;读回值必须等于写入值" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="390" y="1540" width="400" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="i2c_give" value="释放 I2C 锁" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="500" y="1680" width="180" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ctx3_take" value="获取 ctx 锁&lt;br&gt;Commit 阶段" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="470" y="1770" width="240" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="inhibit2" value="AFE 写禁止 ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="505" y="1865" width="170" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="ctx3_give_skip" value="释放 ctx 锁" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="150" y="1885" width="190" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="notify_skip2" value="通知 ControlTask&lt;br&gt;continue" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="130" y="1980" width="230" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="commit" value="BQ76940_AppBalanceCommit(app, &amp;bal_req)&lt;br&gt;START: bal_active=1, 保存 target/count/mask&lt;br&gt;STOP: bal_active=0, 清 target/count, refresh/parity 归零" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="370" y="2005" width="440" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="notify_ok" value="通知 ControlTask&lt;br&gt;xSemaphoreGive(g_control_sem)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="455" y="2140" width="270" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="ctx3_give" value="释放 ctx 锁" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="500" y="2240" width="180" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="fail" value="ret != 0&lt;br&gt;打印 [BAL] fail" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="840" y="1810" width="220" height="66" as="geometry" />
+        </mxCell>
+
+        <mxCell id="decide_group" value="Decide 内部逻辑" style="swimlane;whiteSpace=wrap;html=1;startSize=32;fillColor=#f5f5f5;strokeColor=#666666;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="930" y="150" width="560" height="980" as="geometry" />
+        </mxCell>
+        <mxCell id="d0" value="清空 req&lt;br&gt;action=NONE, target=0, wr/rd=0" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13" vertex="1" parent="decide_group">
+          <mxGeometry x="150" y="55" width="260" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="d1" value="是否允许均衡 ?&lt;br&gt;无 UV/OV/OT/UT&lt;br&gt;无 cutoff/block/OCD/SCD/runtime fault&lt;br&gt;|current| &lt;= max_abs_current&lt;br&gt;max_mV &gt;= min_cell_mV" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12" vertex="1" parent="decide_group">
+          <mxGeometry x="155" y="155" width="250" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="d_stop_not_allowed" value="若 bal_active=1:&lt;br&gt;req.action=STOP&lt;br&gt;reason=NOT_ALLOWED&lt;br&gt;wr=0" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13" vertex="1" parent="decide_group">
+          <mxGeometry x="20" y="345" width="220" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="d_active" value="ctx-&gt;bal_active == 0 ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13" vertex="1" parent="decide_group">
+          <mxGeometry x="310" y="345" width="190" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="d_enter" value="diff_mV &gt;= diff_enter_mV ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13" vertex="1" parent="decide_group">
+          <mxGeometry x="320" y="490" width="170" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="d_start_build" value="启动时：全局非相邻贪心&lt;br&gt;候选 &gt;= min_mV + diff_enter&lt;br&gt;最多 3 个目标，映射 VC1/2/5/6/7/10/11/12/15" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12" vertex="1" parent="decide_group">
+          <mxGeometry x="280" y="625" width="250" height="88" as="geometry" />
+        </mxCell>
+        <mxCell id="d_start" value="target_count &gt; 0:&lt;br&gt;req.action=START&lt;br&gt;bal_last_refresh_ms=now_ms" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13" vertex="1" parent="decide_group">
+          <mxGeometry x="295" y="745" width="220" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="d_exit" value="已在均衡：&lt;br&gt;diff_mV &lt;= diff_exit_mV ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13" vertex="1" parent="decide_group">
+          <mxGeometry x="45" y="490" width="180" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="d_stop_exit" value="req.action=STOP&lt;br&gt;reason=DIFF_EXIT&lt;br&gt;wr=0" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13" vertex="1" parent="decide_group">
+          <mxGeometry x="25" y="640" width="210" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="d_refresh" value="刷新周期到期 ?&lt;br&gt;now_ms - bal_last_refresh_ms &gt;= refresh_period_ms" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12" vertex="1" parent="decide_group">
+          <mxGeometry x="30" y="745" width="210" height="115" as="geometry" />
+        </mxCell>
+        <mxCell id="d_refresh_build" value="到期：更新 bal_last_refresh_ms&lt;br&gt;选择阈值 enter/exit&lt;br&gt;parity_enable 时翻转 bal_parity_phase&lt;br&gt;奇偶窗口 + 非相邻贪心，必要时回退全局" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12" vertex="1" parent="decide_group">
+          <mxGeometry x="280" y="855" width="260" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="d_compare" value="新 wr 与 bal_auto_rd 不同 ?&lt;br&gt;不同才 START 重写 CELLBAL&lt;br&gt;相同则 action 保持 NONE" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13" vertex="1" parent="decide_group">
+          <mxGeometry x="20" y="895" width="230" height="72" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="start" target="ctx1_take"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="ctx1_take" target="runtime_check"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="runtime_check" target="ctx1_give"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="ctx1_give" target="runtime_decision"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e5" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" edge="1" parent="1" source="runtime_decision" target="runtime_notify"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e6" value="否" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="runtime_decision" target="ctx2_take"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="ctx2_take" target="decide_call"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="decide_call" target="ctx2_give"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="ctx2_give" target="action_decision"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e10" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="1" source="action_decision" target="i2c_take"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e11" value="否" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="action_decision" target="ctx3_take"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="590" y="1740" /><mxPoint x="590" y="1740" /></Array></mxGeometry></mxCell>
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="1" source="i2c_take" target="i2c_ok"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e13" value="否" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="1" source="i2c_ok" target="i2c_timeout"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e14" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="1" source="i2c_ok" target="inhibit1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e15" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="1" source="inhibit1" target="i2c_give_skip"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" edge="1" parent="1" source="i2c_give_skip" target="notify_skip1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e17" value="否" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="1" source="inhibit1" target="apply_hw"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="1" source="apply_hw" target="i2c_give"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="i2c_give" target="ctx3_take"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e20" value="ret == 0" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="ctx3_take" target="inhibit2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e21" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="inhibit2" target="ctx3_give_skip"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" edge="1" parent="1" source="ctx3_give_skip" target="notify_skip2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e23" value="否" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="inhibit2" target="commit"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" edge="1" parent="1" source="commit" target="notify_ok"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e25" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="notify_ok" target="ctx3_give"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e26" value="ret != 0" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="1" source="i2c_timeout" target="fail"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e27" value="ret != 0" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="1" source="i2c_give" target="fail"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="940" y="1704" /><mxPoint x="940" y="1810" /></Array></mxGeometry></mxCell>
+
+        <mxCell id="de1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="decide_group" source="d0" target="d1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="de2" value="否" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="decide_group" source="d1" target="d_stop_not_allowed"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="de3" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="decide_group" source="d1" target="d_active"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="de4" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="decide_group" source="d_active" target="d_enter"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="de5" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="decide_group" source="d_enter" target="d_start_build"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="de6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="decide_group" source="d_start_build" target="d_start"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="de7" value="否" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="decide_group" source="d_active" target="d_exit"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="de8" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="decide_group" source="d_exit" target="d_stop_exit"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="de9" value="否" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="decide_group" source="d_exit" target="d_refresh"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="de10" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="decide_group" source="d_refresh" target="d_refresh_build"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="de11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="decide_group" source="d_refresh_build" target="d_compare"><mxGeometry relative="1" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="AutoBalanceDecideDetailV1" name="Decide Detail">
+    <mxGraphModel dx="1600" dy="2200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="2300" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="dt_title" value="自动均衡 Decide 详细流程 - BQ76940_AppBalanceDecide / BuildMultiCellBalMask" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=22;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="345" y="20" width="780" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_note" value="本页只描述 Decide 阶段：外层持有 g_bms_ctx_mutex；本函数不访问 I2C，不写 BQ76940。" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="385" y="78" width="700" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dt_start" value="入口：BQ76940_AppBalanceDecide(ctx, req, now_ms)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="565" y="155" width="340" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_param" value="ctx 或 req 为空 ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="635" y="250" width="200" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_ret1" value="返回 1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="955" y="275" width="130" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_clear" value="清空 req&lt;br&gt;action=NONE, reason=NONE&lt;br&gt;target_label/count=0, wr/rd=0" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="565" y="390" width="340" height="78" as="geometry" />
+        </mxCell>
+
+        <mxCell id="allow_group" value="允许均衡条件 BQ76940_AppIsBalanceAllowed" style="swimlane;whiteSpace=wrap;html=1;startSize=32;fillColor=#f5f5f5;strokeColor=#666666;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="60" y="505" width="420" height="500" as="geometry" />
+        </mxCell>
+        <mxCell id="al0" value="计算 abs_current_mA" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13" vertex="1" parent="allow_group">
+          <mxGeometry x="105" y="55" width="210" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="al1" value="任一软件告警 active ?&lt;br&gt;UV / OV / OT / UT" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12" vertex="1" parent="allow_group">
+          <mxGeometry x="110" y="130" width="200" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="al2" value="任一保护/锁存 active ?&lt;br&gt;OT cutoff / UT charge block&lt;br&gt;HW DSG block / OCD / SCD" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12" vertex="1" parent="allow_group">
+          <mxGeometry x="95" y="250" width="230" height="108" as="geometry" />
+        </mxCell>
+        <mxCell id="al3" value="runtime_diag.fault_active ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12" vertex="1" parent="allow_group">
+          <mxGeometry x="115" y="385" width="190" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="al4" value="电流太大 ?&lt;br&gt;abs_current_mA &gt; max_abs_current_mA" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12" vertex="1" parent="allow_group">
+          <mxGeometry x="95" y="500" width="230" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="al5" value="最高单体太低 ?&lt;br&gt;max_mV &lt; min_cell_mV" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12" vertex="1" parent="allow_group">
+          <mxGeometry x="95" y="620" width="230" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="al_no" value="任一为是：allow_balance = 0" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13" vertex="1" parent="allow_group">
+          <mxGeometry x="45" y="735" width="170" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="al_yes" value="全部为否：allow_balance = 1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13" vertex="1" parent="allow_group">
+          <mxGeometry x="230" y="735" width="170" height="58" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dt_allow" value="allow_balance ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="635" y="525" width="200" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_not_active" value="ctx-&gt;bal_active != 0 ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="270" y="1090" width="210" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_stop_not_allowed" value="生成 STOP 请求&lt;br&gt;reason = NOT_ALLOWED&lt;br&gt;wr = 0/0/0" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="255" y="1230" width="240" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_return0_a" value="返回 0" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="325" y="1350" width="100" height="44" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dt_bal_active0" value="ctx-&gt;bal_active == 0 ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="635" y="675" width="200" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_enter" value="diff_mV &gt;= diff_enter_mV ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="630" y="825" width="210" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_start_build" value="调用 BuildMultiCellBalMask&lt;br&gt;select_diff = diff_enter&lt;br&gt;use_parity = 0, phase = 0&lt;br&gt;启动时不用奇偶窗口" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="550" y="980" width="370" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_build_ret_start" value="ret != 0 ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="645" y="1120" width="180" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_ret2_a" value="返回 2" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="955" y="1140" width="130" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_target_start" value="target_count != 0 ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="640" y="1250" width="190" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_start_req" value="生成 START 请求&lt;br&gt;req.action = START&lt;br&gt;ctx-&gt;bal_last_refresh_ms = now_ms" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="560" y="1385" width="350" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_return0_b" value="返回 0" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="685" y="1505" width="100" height="44" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dt_exit" value="已在均衡：&lt;br&gt;diff_mV &lt;= diff_exit_mV ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="1020" y="675" width="220" height="112" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_stop_exit" value="生成 STOP 请求&lt;br&gt;reason = DIFF_EXIT&lt;br&gt;wr = 0/0/0" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="1010" y="835" width="240" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_refresh_due" value="刷新周期到期 ?&lt;br&gt;period=0 或 now-last &gt;= refresh_period_ms" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13" vertex="1" parent="1">
+          <mxGeometry x="1010" y="970" width="240" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_hold_none" value="未到期：保持当前 mask&lt;br&gt;req.action 仍为 NONE&lt;br&gt;不触发 I2C" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="1320" y="995" width="260" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_refresh_prepare" value="到期：bal_last_refresh_ms = now_ms&lt;br&gt;选择 select_diff_mV&lt;br&gt;diff &gt;= enter 用 enter&lt;br&gt;否则用 exit" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="970" y="1135" width="320" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_parity" value="parity_enable ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="1040" y="1275" width="180" height="88" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_flip" value="翻转奇偶窗口&lt;br&gt;bal_parity_phase ^= 1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="1320" y="1290" width="240" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_refresh_build" value="调用 BuildMultiCellBalMask&lt;br&gt;use_parity = parity_enable&lt;br&gt;phase = bal_parity_phase" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="970" y="1410" width="320" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_build_ret_refresh" value="ret != 0 ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="1040" y="1535" width="180" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_ret2_b" value="返回 2" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="1325" y="1555" width="130" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_fallback_check" value="target_count == 0 且 parity_enable ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13" vertex="1" parent="1">
+          <mxGeometry x="1005" y="1665" width="250" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_fallback" value="回退到全局非相邻贪心&lt;br&gt;use_parity = 0, phase = 0&lt;br&gt;避免窗口太严导致不更新" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="1310" y="1678" width="280" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_target_refresh" value="target_count == 0 ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="1035" y="1810" width="190" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_compare" value="新 wr 与 ctx-&gt;bal_auto_rd 相同 ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="1010" y="1945" width="240" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_refresh_start" value="不同：req.action = START&lt;br&gt;后续 ApplyHw 才会重写 CELLBAL" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="1000" y="2090" width="260" height="68" as="geometry" />
+        </mxCell>
+        <mxCell id="dt_return0_c" value="返回 0" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="1080" y="2190" width="100" height="44" as="geometry" />
+        </mxCell>
+
+        <mxCell id="build_group" value="BuildMultiCellBalMask 细节" style="swimlane;whiteSpace=wrap;html=1;startSize=32;fillColor=#f5f5f5;strokeColor=#666666;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="60" y="1470" width="560" height="760" as="geometry" />
+        </mxCell>
+        <mxCell id="bm0" value="初始化 used[9]=0&lt;br&gt;req-&gt;wr=0&lt;br&gt;candidate_threshold = min_mV + select_diff_mV" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13" vertex="1" parent="build_group">
+          <mxGeometry x="155" y="55" width="250" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="bm1" value="while target_count &lt; 3" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13" vertex="1" parent="build_group">
+          <mxGeometry x="180" y="165" width="200" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="bm2" value="扫描 9 路逻辑电芯 i&lt;br&gt;跳过 used[i]" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13" vertex="1" parent="build_group">
+          <mxGeometry x="160" y="290" width="240" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="bm3" value="若 use_parity=1：&lt;br&gt;只保留 i 奇偶 == phase 的窗口" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13" vertex="1" parent="build_group">
+          <mxGeometry x="145" y="380" width="270" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="bm4" value="候选电压筛选&lt;br&gt;cell_mV[i] &gt;= min_mV + select_diff&lt;br&gt;且 cell_mV[i] &gt;= bal_cfg.min_cell_mV" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13" vertex="1" parent="build_group">
+          <mxGeometry x="125" y="475" width="310" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="bm5" value="与已选目标不相邻 ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13" vertex="1" parent="build_group">
+          <mxGeometry x="185" y="585" width="190" height="88" as="geometry" />
+        </mxCell>
+        <mxCell id="bm6" value="从所有有效候选中选最高电芯 best_idx" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13" vertex="1" parent="build_group">
+          <mxGeometry x="125" y="705" width="310" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="bm7" value="找到 best_idx ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13" vertex="1" parent="build_group">
+          <mxGeometry x="195" y="790" width="170" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="bm8" value="记录 selected_idx / used&lt;br&gt;target_count++&lt;br&gt;BuildSingleCellBalMask(VC label)&lt;br&gt;OR 到 req-&gt;wr.cellbal1/2/3" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13" vertex="1" parent="build_group">
+          <mxGeometry x="95" y="910" width="370" height="94" as="geometry" />
+        </mxCell>
+        <mxCell id="bm9" value="循环结束：&lt;br&gt;req-&gt;target_count = selected_count&lt;br&gt;target_label = 第一个目标的 VC label&lt;br&gt;返回 0" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13" vertex="1" parent="build_group">
+          <mxGeometry x="95" y="1040" width="370" height="86" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dte1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="dt_start" target="dt_param"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte2" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="1" source="dt_param" target="dt_ret1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte3" value="否" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="dt_param" target="dt_clear"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="dt_clear" target="dt_allow"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte5" value="否" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="1" source="dt_allow" target="dt_not_active"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="375" y="575" /></Array></mxGeometry></mxCell>
+        <mxCell id="dte6" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="dt_allow" target="dt_bal_active0"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte7" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="1" source="dt_not_active" target="dt_stop_not_allowed"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="dt_stop_not_allowed" target="dt_return0_a"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte9" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="dt_bal_active0" target="dt_enter"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte10" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="dt_enter" target="dt_start_build"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="dt_start_build" target="dt_build_ret_start"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte12" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="1" source="dt_build_ret_start" target="dt_ret2_a"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte13" value="否" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="dt_build_ret_start" target="dt_target_start"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte14" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="dt_target_start" target="dt_start_req"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="dt_start_req" target="dt_return0_b"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte16" value="否" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="dt_bal_active0" target="dt_exit"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte17" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="1" source="dt_exit" target="dt_stop_exit"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte18" value="否" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="dt_exit" target="dt_refresh_due"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte19" value="否" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="dt_refresh_due" target="dt_hold_none"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte20" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="dt_refresh_due" target="dt_refresh_prepare"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="dt_refresh_prepare" target="dt_parity"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte22" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" edge="1" parent="1" source="dt_parity" target="dt_flip"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte23" value="继续" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="dt_parity" target="dt_refresh_build"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="dt_flip" target="dt_refresh_build"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1440" y="1451" /></Array></mxGeometry></mxCell>
+        <mxCell id="dte25" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="dt_refresh_build" target="dt_build_ret_refresh"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte26" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="1" source="dt_build_ret_refresh" target="dt_ret2_b"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte27" value="否" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="dt_build_ret_refresh" target="dt_fallback_check"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte28" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" edge="1" parent="1" source="dt_fallback_check" target="dt_fallback"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte29" value="继续" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="dt_fallback_check" target="dt_target_refresh"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte30" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="dt_fallback" target="dt_target_refresh"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1450" y="1856" /></Array></mxGeometry></mxCell>
+        <mxCell id="dte31" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="dt_target_refresh" target="dt_return0_c"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="900" y="1856" /><mxPoint x="900" y="2212" /></Array></mxGeometry></mxCell>
+        <mxCell id="dte32" value="否" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="dt_target_refresh" target="dt_compare"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte33" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="dt_compare" target="dt_return0_c"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte34" value="否" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="dt_compare" target="dt_refresh_start"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dte35" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="dt_refresh_start" target="dt_return0_c"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="bme1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="build_group" source="bm0" target="bm1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="bme2" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="build_group" source="bm1" target="bm2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="bme3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="build_group" source="bm2" target="bm3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="bme4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="build_group" source="bm3" target="bm4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="bme5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="build_group" source="bm4" target="bm5"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="bme6" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="build_group" source="bm5" target="bm6"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="bme7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="build_group" source="bm6" target="bm7"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="bme8" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="build_group" source="bm7" target="bm8"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="bme9" value="继续 while" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="build_group" source="bm8" target="bm1"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="510" y="957" /><mxPoint x="510" y="210" /></Array></mxGeometry></mxCell>
+        <mxCell id="bme10" value="否" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="build_group" source="bm7" target="bm9"><mxGeometry relative="1" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

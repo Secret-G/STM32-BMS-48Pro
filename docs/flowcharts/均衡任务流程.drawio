@@ -1,0 +1,178 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="AutoBalanceFlowV1" name="AutoBalance Flow">
+    <mxGraphModel dx="1460" dy="1137" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="2300" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="start" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14" value="BalanceTask等待均衡触发" vertex="1">
+          <mxGeometry height="64" width="270" x="455" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="ctx1_take" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14" value="获取 ctx 锁&lt;br&gt;g_bms_ctx_mutex" vertex="1">
+          <mxGeometry height="58" width="240" x="470" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="runtime_check" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=14" value="&lt;span data-placeholder-token=&quot;true&quot; class=&quot;text-token-text-primary cursor-text rounded-sm&quot;&gt;读取 RuntimeFault 状态&lt;/span&gt;" vertex="1">
+          <mxGeometry height="66" width="340" x="420" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="ctx1_give" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14" value="释放 ctx 锁" vertex="1">
+          <mxGeometry height="48" width="180" x="500" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="runtime_decision" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14" value="RuntimeFault 是否激活?" vertex="1">
+          <mxGeometry height="110" width="190" x="495" y="510" as="geometry" />
+        </mxCell>
+        <mxCell id="runtime_notify" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14" value="通知 ControlTask&lt;br&gt;xSemaphoreGive(g_control_sem)&lt;br&gt;跳过均衡" vertex="1">
+          <mxGeometry height="76" width="270" x="130" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="ctx2_take" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14" value="获取 ctx 锁&lt;br&gt;Decide 阶段" vertex="1">
+          <mxGeometry height="58" width="240" x="470" y="665" as="geometry" />
+        </mxCell>
+        <mxCell id="decide_call" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=14" value="&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;Decide 阶段（ctx 锁保护）&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;获取 now_ms&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;生成本轮均衡请求 bal_req&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;不访问 I2C&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="88" width="420" x="380" y="755" as="geometry" />
+        </mxCell>
+        <mxCell id="ctx2_give" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14" value="释放 ctx 锁" vertex="1">
+          <mxGeometry height="48" width="180" x="500" y="875" as="geometry" />
+        </mxCell>
+        <mxCell id="action_decision" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14" value="ret == 0 且&lt;br&gt;bal_req.action != NONE ?" vertex="1">
+          <mxGeometry height="120" width="220" x="480" y="955" as="geometry" />
+        </mxCell>
+        <mxCell id="i2c_take" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14" value="获取 I2C 锁" vertex="1">
+          <mxGeometry height="76" width="320" x="430" y="1120" as="geometry" />
+        </mxCell>
+        <mxCell id="i2c_ok" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14" value="I2C 锁获取成功 ?" vertex="1">
+          <mxGeometry height="105" width="180" x="500" y="1240" as="geometry" />
+        </mxCell>
+        <mxCell id="i2c_timeout" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14" value="ret = BMS_TASK_RET_I2C_LOCK_TIMEOUT" vertex="1">
+          <mxGeometry height="58" width="290" x="790" y="1260" as="geometry" />
+        </mxCell>
+        <mxCell id="inhibit1" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14" value="&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;AFE 写入是否被禁止？&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;RuntimeFault 二次门控&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="115" width="210" x="485" y="1385" as="geometry" />
+        </mxCell>
+        <mxCell id="edKrxvSxRPzRT45uBjat-5" edge="1" parent="1" source="i2c_give_skip" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="notify_ok">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="i2c_give_skip" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14" value="释放 I2C 锁" vertex="1">
+          <mxGeometry height="50" width="190" x="30" y="1550" as="geometry" />
+        </mxCell>
+        <mxCell id="apply_hw" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=14" value="&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;ApplyHw 阶段&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;写入 CELLBAL1/2/3&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;读回校验&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="400" x="390" y="1540" as="geometry" />
+        </mxCell>
+        <mxCell id="i2c_give" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14" value="释放 I2C 锁" vertex="1">
+          <mxGeometry height="48" width="180" x="500" y="1680" as="geometry" />
+        </mxCell>
+        <mxCell id="ctx3_take" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14" value="获取 ctx 锁&lt;br&gt;Commit 阶段" vertex="1">
+          <mxGeometry height="58" width="240" x="470" y="1770" as="geometry" />
+        </mxCell>
+        <mxCell id="inhibit2" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14" value="&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;AFE 写是否被禁止？&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;Commit 前二次门控&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="100" width="170" x="505" y="1865" as="geometry" />
+        </mxCell>
+        <mxCell id="edKrxvSxRPzRT45uBjat-2" edge="1" parent="1" source="ctx3_give_skip" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="notify_ok">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ctx3_give_skip" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14" value="释放 ctx 锁" vertex="1">
+          <mxGeometry height="50" width="190" x="190" y="1890" as="geometry" />
+        </mxCell>
+        <mxCell id="commit" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=14" value="&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;Commit 阶段&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;提交 bal_req 到 app 状态&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;更新 bal_active / mask / target_count&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="96" width="390" x="395" y="2005" as="geometry" />
+        </mxCell>
+        <mxCell id="notify_ok" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14" value="通知 ControlTask&lt;br&gt;xSemaphoreGive(g_control_sem)" vertex="1">
+          <mxGeometry height="62" width="270" x="455" y="2140" as="geometry" />
+        </mxCell>
+        <mxCell id="ctx3_give" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14" value="释放 ctx 锁" vertex="1">
+          <mxGeometry height="48" width="180" x="500" y="2240" as="geometry" />
+        </mxCell>
+        <mxCell id="fail" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14" value="ret != 0&lt;br&gt;打印 [BAL] fail" vertex="1">
+          <mxGeometry height="66" width="220" x="840" y="1810" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" target="ctx1_take">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="ctx1_take" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" target="runtime_check">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="runtime_check" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" target="ctx1_give">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="ctx1_give" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" target="runtime_decision">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="runtime_decision" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" target="runtime_notify" value="是">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="1" source="runtime_decision" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" target="ctx2_take" value="否">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="1" source="ctx2_take" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" target="decide_call">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" edge="1" parent="1" source="decide_call" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" target="ctx2_give">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" edge="1" parent="1" source="ctx2_give" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" target="action_decision">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" edge="1" parent="1" source="action_decision" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" target="i2c_take" value="是">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" edge="1" parent="1" source="action_decision" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" target="ctx3_take" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="590" y="1740" />
+              <mxPoint x="590" y="1740" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e12" edge="1" parent="1" source="i2c_take" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" target="i2c_ok">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" edge="1" parent="1" source="i2c_ok" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" target="i2c_timeout" value="否">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" edge="1" parent="1" source="i2c_ok" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" target="inhibit1" value="是">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" edge="1" parent="1" source="inhibit1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" target="i2c_give_skip" value="是">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e17" edge="1" parent="1" source="inhibit1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" target="apply_hw" value="否">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e18" edge="1" parent="1" source="apply_hw" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" target="i2c_give">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e19" edge="1" parent="1" source="i2c_give" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" target="ctx3_take">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e20" edge="1" parent="1" source="ctx3_take" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" target="inhibit2" value="ret == 0">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e21" edge="1" parent="1" source="inhibit2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" target="ctx3_give_skip" value="是">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e23" edge="1" parent="1" source="inhibit2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" target="commit" value="否">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e24" edge="1" parent="1" source="commit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" target="notify_ok">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e25" edge="1" parent="1" source="notify_ok" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" target="ctx3_give">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e26" edge="1" parent="1" source="i2c_timeout" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" target="fail" value="ret != 0">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="950" y="1430" />
+              <mxPoint x="950" y="1430" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e27" edge="1" parent="1" source="i2c_give" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" target="fail" value="ret != 0">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="940" y="1704" />
+              <mxPoint x="940" y="1810" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
