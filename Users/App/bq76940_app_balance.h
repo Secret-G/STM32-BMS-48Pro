@@ -9,6 +9,9 @@ typedef struct
     uint16_t diff_exit_mV;        /* 压差退出阈值 */
     uint16_t min_cell_mV;         /* 允许均衡的最低最高单体电压门限 */
     int32_t  max_abs_current_mA;  /* 允许均衡的最大电流绝对值 */
+	
+	  uint32_t refresh_period_ms;  /* 运行中刷新均衡 mask 的时间间隔 */
+    uint8_t parity_enable;       /* 是否启用奇偶窗口分时刷新 */
 } BQ76940_BalanceConfig_t;
 
 /*
@@ -65,8 +68,8 @@ struct BQ76940_AppCtx;
 
 void BQ76940_AppBalanceRequestClear(BQ76940_BalanceRequest_t *req);
 
-uint8_t BQ76940_AppBalanceDecide(const struct BQ76940_AppCtx *ctx,
-                                  BQ76940_BalanceRequest_t *req);
+uint8_t BQ76940_AppBalanceDecide(struct BQ76940_AppCtx *ctx,
+                                  BQ76940_BalanceRequest_t *req,uint32_t now_ms);
 
 uint8_t BQ76940_AppBalanceApplyHw(BQ76940_BalanceRequest_t *req);
 

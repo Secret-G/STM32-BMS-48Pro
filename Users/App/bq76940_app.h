@@ -93,6 +93,9 @@ typedef struct BQ76940_AppCtx
 	uint8_t bal_active;		  /* 当前是否处于自动均衡状态 */
 	uint8_t bal_target_label; /* 当前正在均衡的单体编号 */
 	uint8_t bal_target_count;
+	
+	uint32_t bal_last_refresh_ms;  /* 上一次均衡 mask 刷新的系统时间戳，单位 ms */
+	uint8_t bal_parity_phase;			 /* 均衡奇偶分时窗口标记：0=偶数逻辑串窗口，1=奇数逻辑串窗口 */
 
 	BQ76940_CellBalRegs_t bal_auto_wr;
 	BQ76940_CellBalRegs_t bal_auto_rd;

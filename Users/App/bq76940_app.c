@@ -72,11 +72,11 @@ void BQ76940_AppInitDefaultConfig(BQ76940_AppCtx_t *ctx)
     ctx->hw_scd_active = 0;
     ctx->hw_dsg_block_active = 0;
     ctx->hw_fault_recover_once_enable = 0;
-		
-		ctx->hw_fault_sys_stat_latched = 0U;
-		ctx->hw_fault_last_apply_ret   = 0U;
-		ctx->hw_fault_last_code        = BQ76940_HW_FAULT_CODE_NONE;
-		ctx->hw_fault_count            = 0U;
+
+    ctx->hw_fault_sys_stat_latched = 0U;
+    ctx->hw_fault_last_apply_ret = 0U;
+    ctx->hw_fault_last_code = BQ76940_HW_FAULT_CODE_NONE;
+    ctx->hw_fault_count = 0U;
 
     // 初始化运行就诊
     BQ76940_AppRuntimeDiagInit(&ctx->runtime_diag);
@@ -87,16 +87,22 @@ void BQ76940_AppInitDefaultConfig(BQ76940_AppCtx_t *ctx)
     /* BQ76200 执行层初始化 */
     BQ76200_ExecInit(&ctx->bq76200_exec);
 
-
     /* 自动均衡第一版参数 */
     ctx->bal_cfg.diff_enter_mV = 80;       /* 压差 >= 80mV 开始均衡 */
     ctx->bal_cfg.diff_exit_mV = 30;        /* 压差 <= 30mV 退出均衡 */
     ctx->bal_cfg.min_cell_mV = 3800;       /* 最高单体至少高于 3.9V 才考虑均衡 */
     ctx->bal_cfg.max_abs_current_mA = 200; /* 电流绝对值小于 200mA 才允许均衡 */
-
+    
+		ctx->bal_cfg.refresh_period_ms = 4000;	/*每四秒刷新一次*/
+		ctx->bal_cfg.parity_enable = 1;					/*启用奇偶窗口分时*/
+    
     ctx->bal_active = 0;
     ctx->bal_target_label = 0;
     ctx->bal_target_count = 0U;
+		
+		ctx->bal_last_refresh_ms = 0u;
+		ctx->bal_parity_phase = 0;
+    
 
     BQ76940_ClearCellBalRegs(&ctx->bal_auto_wr);
     BQ76940_ClearCellBalRegs(&ctx->bal_auto_rd);
@@ -230,7 +236,8 @@ static uint8_t BQ76940_AppBringUpOnce(BQ76940_AppCtx_t *ctx)
 
     BMS_LOG_PERIODIC("[INIT] AFE ok\r\n");
     BMS_LOG_PERIODIC("[INIT] regs ok\r\n");
-    if (BMS_LOG_PERIODIC_ENABLE != 0U) BQ76940_PrintBasicRegs(&ctx->regs);
+    if (BMS_LOG_PERIODIC_ENABLE != 0U)
+        BQ76940_PrintBasicRegs(&ctx->regs);
 
     //    printf("\r\n[ADC Calib]\r\n");
     //    printf("GAIN_uV_per_LSB = %d\r\n", ctx->calib.gain_uV_per_lsb);
@@ -248,7 +255,8 @@ static uint8_t BQ76940_AppBringUpOnce(BQ76940_AppCtx_t *ctx)
         return 12U;
     }
 
-    if (BMS_LOG_PERIODIC_ENABLE != 0U) BQ76940_PrintBasicRegs(&ctx->regs);
+    if (BMS_LOG_PERIODIC_ENABLE != 0U)
+        BQ76940_PrintBasicRegs(&ctx->regs);
 
     /* 4. 读取当前硬件状态 */
     ret = BQ76940_ProtectReadStatus(&ctx->sys_stat, &ctx->sys_ctrl2);
@@ -274,7 +282,8 @@ static uint8_t BQ76940_AppBringUpOnce(BQ76940_AppCtx_t *ctx)
     //    printf("PROTECT1 = 0x%02X\r\n", ctx->regs.protect1);
     //    printf("PROTECT2 = 0x%02X\r\n", ctx->regs.protect2);
 
-    if (BMS_LOG_PERIODIC_ENABLE != 0U) BQ76940_ProtectPrintStatus(ctx->sys_stat, ctx->sys_ctrl2);
+    if (BMS_LOG_PERIODIC_ENABLE != 0U)
+        BQ76940_ProtectPrintStatus(ctx->sys_stat, ctx->sys_ctrl2);
 
     /*
      * 6. 采样链路自检
@@ -309,7 +318,8 @@ uint8_t BQ76940_AppBringUpAndSelfTest(BQ76940_AppCtx_t *ctx)
     }
 
     /* 1. 打印当前软件实验阈值 */
-    if (BMS_LOG_PERIODIC_ENABLE != 0U) BQ76940_PrintAlarmThresholds9(&ctx->alarm_th);
+    if (BMS_LOG_PERIODIC_ENABLE != 0U)
+        BQ76940_PrintAlarmThresholds9(&ctx->alarm_th);
 
     BMS_LOG_PERIODIC("[INIT] self-test\r\n");
     BMS_LOG_PERIODIC("");
@@ -328,8 +338,8 @@ uint8_t BQ76940_AppBringUpAndSelfTest(BQ76940_AppCtx_t *ctx)
         ctx->diag_state.bringup_attempt_count = attempt;
 
         BMS_LOG_PERIODIC("[INIT] try:%d/%d\r\n",
-               attempt,
-               BQ76940_APP_BRINGUP_RETRY_LIMIT);
+                         attempt,
+                         BQ76940_APP_BRINGUP_RETRY_LIMIT);
 
         ret = BQ76940_AppBringUpOnce(ctx);
         if (ret == 0U)
@@ -341,10 +351,10 @@ uint8_t BQ76940_AppBringUpAndSelfTest(BQ76940_AppCtx_t *ctx)
         }
 
         BMS_LOG_ERROR("[INIT] fail:%d/%d/%d/%d\r\n",
-               attempt,
-               ret,
-               ctx->diag_state.bringup_last_stage,
-               ctx->diag_state.bringup_last_error);
+                      attempt,
+                      ret,
+                      ctx->diag_state.bringup_last_stage,
+                      ctx->diag_state.bringup_last_error);
 
         delay_ms(100);
     }
@@ -352,16 +362,16 @@ uint8_t BQ76940_AppBringUpAndSelfTest(BQ76940_AppCtx_t *ctx)
     ctx->diag_state.bringup_fault_active = 1U;
 
     BMS_LOG_ERROR("[INIT] final:%d/%d/%d\r\n",
-           ctx->diag_state.bringup_attempt_count,
-           ctx->diag_state.bringup_last_stage,
-           ctx->diag_state.bringup_last_error);
+                  ctx->diag_state.bringup_attempt_count,
+                  ctx->diag_state.bringup_last_stage,
+                  ctx->diag_state.bringup_last_error);
 
     return 100U;
 }
 
-//uint8_t BQ76940_AppRunCycle(BQ76940_AppCtx_t *ctx)
+// uint8_t BQ76940_AppRunCycle(BQ76940_AppCtx_t *ctx)
 //{
-//    uint8_t ret;
+//     uint8_t ret;
 
 //    if (ctx == 0)
 //    {
@@ -506,27 +516,26 @@ void BQ76940_AppPrintRuntime(const BQ76940_AppCtx_t *ctx)
         prot_flags |= 0x10U;
     if (ctx->bal_active != 0U)
         prot_flags |= 0x20U;
-		
 
-		BQ76940_PrintAllMappedCellVoltages9(ctx->cell_raw,
+    BQ76940_PrintAllMappedCellVoltages9(ctx->cell_raw,
                                         ctx->cell_mV,
-                                       ctx->pack_total_mV);
-		BMS_LOG_PERIODIC("[BMS] Pack:%lu Max:VC%u=%umV Min:VC%u=%umV Diff:%umV Current:%ldmA Temp:%d Alarm:%02X Protect:%02X Balance:%u Target:VC%u Count:%u Mask:%02X/%02X/%02X Sys:%02X\r\n",
-										 (unsigned long)ctx->pack_total_mV,
-										 ctx->cell_stats.max_cell_label,
-										 ctx->cell_stats.max_mV,
-										 ctx->cell_stats.min_cell_label,
-										 ctx->cell_stats.min_mV,
-										 ctx->cell_stats.diff_mV,
-										 (long)ctx->pack_current_mA,
-										 ctx->ts1_temp_dC,
-										 alm_flags,
-										 prot_flags,
-										 ctx->bal_active,
-										 ctx->bal_target_label,
-										 ctx->bal_target_count,
-										 ctx->bal_auto_wr.cellbal1,
-										 ctx->bal_auto_wr.cellbal2,
-										 ctx->bal_auto_wr.cellbal3,
-										 ctx->sys_stat);
+                                        ctx->pack_total_mV);
+    BMS_LOG_PERIODIC("[BMS] Pack:%lu Max:VC%u=%umV Min:VC%u=%umV Diff:%umV Current:%ldmA Temp:%d Alarm:%02X Protect:%02X Balance:%u Target:VC%u Count:%u Mask:%02X/%02X/%02X Sys:%02X\r\n",
+                     (unsigned long)ctx->pack_total_mV,
+                     ctx->cell_stats.max_cell_label,
+                     ctx->cell_stats.max_mV,
+                     ctx->cell_stats.min_cell_label,
+                     ctx->cell_stats.min_mV,
+                     ctx->cell_stats.diff_mV,
+                     (long)ctx->pack_current_mA,
+                     ctx->ts1_temp_dC,
+                     alm_flags,
+                     prot_flags,
+                     ctx->bal_active,
+                     ctx->bal_target_label,
+                     ctx->bal_target_count,
+                     ctx->bal_auto_wr.cellbal1,
+                     ctx->bal_auto_wr.cellbal2,
+                     ctx->bal_auto_wr.cellbal3,
+                     ctx->sys_stat);
 }

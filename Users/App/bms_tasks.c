@@ -891,6 +891,7 @@ static void BMS_BalanceTask(void *argument)
         {
             uint8_t ret = 0U;
             uint8_t runtime_fault = 0U;
+						uint32_t now_ms;
 
             BQ76940_BalanceRequest_t bal_req;
 
@@ -933,11 +934,15 @@ static void BMS_BalanceTask(void *argument)
              * 只读取 app 状态，生成本轮均衡请求。
              * 不访问 I2C。
              */
+						
+						
+
             if (ret == 0U)
             {
                 if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
                 {
-                    ret = BQ76940_AppBalanceDecide(app, &bal_req);
+										now_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
+                    ret = BQ76940_AppBalanceDecide(app, &bal_req,now_ms);
                     xSemaphoreGive(g_bms_ctx_mutex);
                 }
                 else
