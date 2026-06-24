@@ -25,6 +25,7 @@
 #include "task.h"
 
 #include "bq76940_alert_sim.h"
+#include "can_drv.h"
 
 extern void xPortSysTickHandler(void);
    
@@ -172,3 +173,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
         BQ76940_AlertSimOnExti();
     }
 }
+
+void USB_LP_CAN1_RX0_IRQHandler(void)
+{
+    CAN_DrvRxIrqHandler();
+}
+

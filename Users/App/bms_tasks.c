@@ -2,6 +2,9 @@
 #include "task.h"
 #include "semphr.h"
 
+#include "queue.h"
+#include "can_drv.h"
+
 #include "bms_tasks.h"
 
 #include "stdio.h"
@@ -27,6 +30,9 @@ static BQ34Z100_AppCtx_t g_bq34z100_ctx;
  * - 只有 RuntimeTask 可以执行 Safe-Off
  */
 static volatile uint8_t g_afe_write_inhibit = 0U;
+
+
+static QueueHandle_t g_can_rx_queue = NULL;
 
 /*
  * BMS 上下文互斥锁：
@@ -156,6 +162,16 @@ BaseType_t BMS_TasksCreate(BQ76940_AppCtx_t *app)
         BMS_LOG_ERROR("[RTOS] sem fail\r\n");
         return pdFAIL;
     }
+		
+		g_can_rx_queue = xQueueCreate(CAN_DRV_RX_QUEUE_LEN, sizeof(CAN_DrvRxFrame_t));
+
+		if (g_can_rx_queue == NULL)
+		{
+				BMS_LOG_ERROR("[RTOS] CAN rx queue fail\r\n");
+				return pdFAIL;
+		}
+
+		CAN_DrvSetRxQueue(g_can_rx_queue);
 
     result = xTaskCreate(BMS_SampleTask,
                          "BMS_Sample",
@@ -663,31 +679,46 @@ static void BMS_RuntimeTask(void *argument)
 static void BMS_CANTask(void *argument)
 {
     BQ76940_AppCtx_t *app = (BQ76940_AppCtx_t *)argument;
-    BQ76940_AppCtx_t snapshot;
+    CAN_DrvRxFrame_t rx_frame;
+    TickType_t last_tx_tick;
+    TickType_t now_tick;
+
+    last_tx_tick = xTaskGetTickCount();
 
     for (;;)
     {
         /*
-         * CANTask 不访问 I2C。
-         *
-         * 正确做法：
-         *   1. 短时间拿 ctx mutex
-         *   2. 复制 app 快照
-         *   3. 释放 ctx mutex
-         *   4. 锁外发送 CAN
-         *
-         * 这样可以避免 CAN 发送过程长时间占用全局状态锁。
+         * 1. 先处理 CAN RX 队列
+         * 这里先只取出来，不做业务控制。
          */
-        if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
+				if ((g_can_rx_queue != NULL) &&
+						(xQueueReceive(g_can_rx_queue, &rx_frame, pdMS_TO_TICKS(20U)) == pdTRUE))
+				{
+						if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
+						{
+								BQ76940_AppHandleCanCommand(app, &rx_frame);
+								xSemaphoreGive(g_bms_ctx_mutex);
+						}
+				}
+
+        /*
+         * 2. 周期发送状态帧
+         */
+        now_tick = xTaskGetTickCount();
+
+        if ((TickType_t)(now_tick - last_tx_tick) >= pdMS_TO_TICKS(BMS_CAN_TASK_PERIOD_MS))
         {
-            snapshot = *app;
-            xSemaphoreGive(g_bms_ctx_mutex);
+            if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
+            {
+                BQ76940_AppSendCanTelemetry(app);
+                BQ76940_AppSendFaultDiagCan(app);
+                BQ76940_AppSendBalanceStatusCan(app);
 
-            BQ76940_AppSendCanTelemetry(&snapshot);
-            BQ76940_AppSendFaultDiagCan(&snapshot);
+                xSemaphoreGive(g_bms_ctx_mutex);
+            }
+
+            last_tx_tick = now_tick;
         }
-
-        vTaskDelay(pdMS_TO_TICKS(BMS_CAN_TASK_PERIOD_MS));
     }
 }
 

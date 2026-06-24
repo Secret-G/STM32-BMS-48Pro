@@ -6,6 +6,9 @@ static CAN_HandleTypeDef hcan;
 
 static uint8_t can_ready = 0U;
 
+static QueueHandle_t g_can_rx_queue = NULL;
+static volatile uint16_t g_can_rx_drop_count = 0U;
+
 
 
 uint8_t CAN_DrvInit(void)
@@ -84,6 +87,12 @@ uint8_t CAN_DrvInit(void)
         BMS_LOG_ERROR("[CAN] start fail\r\n");
         return 3;
     }
+		
+		if(HAL_CAN_ActivateNotification(&hcan,CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
+		{
+				BMS_LOG_ERROR("[CAN] rx int fail\r\n");
+				return 4;
+		}
 
     can_ready = 1U;
 
@@ -94,6 +103,11 @@ uint8_t CAN_DrvInit(void)
 
 void HAL_CAN_MspInit(CAN_HandleTypeDef *hcan)
 {
+	
+	
+	
+	
+
     GPIO_InitTypeDef GPIO_InitStruct = {0};
 
     if (hcan->Instance == CAN1)
@@ -128,8 +142,28 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef *hcan)
         GPIO_InitStruct.Mode = GPIO_MODE_AF_INPUT;
         GPIO_InitStruct.Pull = GPIO_PULLUP;
         HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+				
+				
+				/*
+				 * 5. 打开 CAN RX0中断
+				 */
+				HAL_NVIC_SetPriority(USB_LP_CAN1_RX0_IRQn,5,0);
+				HAL_NVIC_EnableIRQ(USB_LP_CAN1_RX0_IRQn);
     }
 }
+
+
+
+void CAN_DrvSetRxQueue(QueueHandle_t queue)
+{
+    g_can_rx_queue = queue;
+}
+
+uint16_t CAN_DrvGetRxDropCount(void)
+{
+    return g_can_rx_drop_count;
+}
+
 
 uint8_t CAN_DrvIsReady(void)
 {
@@ -200,4 +234,76 @@ uint8_t CAN_DrvSendStd(uint16_t std_id, const uint8_t *data, uint8_t dlc)
     }
 
     return 0;
+}
+
+void CAN_DrvRxIrqHandler(void)
+{
+    HAL_CAN_IRQHandler(&hcan);
+}
+
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan_arg)
+{
+    CAN_RxHeaderTypeDef rx_header;
+    CAN_DrvRxFrame_t frame;
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+    if ((hcan_arg == NULL) || (hcan_arg->Instance != CAN1))
+    {
+        return;
+    }
+
+    /*
+     * 一次回调里尽量把 FIFO0 中已有帧读完，
+     * 避免连续收到多帧时只处理一帧。
+     */
+    while (HAL_CAN_GetRxFifoFillLevel(hcan_arg, CAN_RX_FIFO0) > 0U)
+    {
+        frame.std_id = 0U;
+        frame.dlc = 0U;
+        frame.data[0] = 0U;
+        frame.data[1] = 0U;
+        frame.data[2] = 0U;
+        frame.data[3] = 0U;
+        frame.data[4] = 0U;
+        frame.data[5] = 0U;
+        frame.data[6] = 0U;
+        frame.data[7] = 0U;
+
+        if (HAL_CAN_GetRxMessage(hcan_arg, CAN_RX_FIFO0, &rx_header, frame.data) != HAL_OK)
+        {
+            break;
+        }
+
+        /*
+         * V1 只接收标准数据帧。
+         * 扩展帧 / 远程帧直接丢弃。
+         */
+        if ((rx_header.IDE != CAN_ID_STD) || (rx_header.RTR != CAN_RTR_DATA))
+        {
+            continue;
+        }
+
+        if (rx_header.DLC > 8U)
+        {
+            continue;
+        }
+
+        frame.std_id = (uint16_t)rx_header.StdId;
+        frame.dlc = (uint8_t)rx_header.DLC;
+
+        if (g_can_rx_queue != NULL)
+        {
+            if (xQueueSendFromISR(g_can_rx_queue,
+                                  &frame,
+                                  &xHigherPriorityTaskWoken) != pdTRUE)
+            {
+                if (g_can_rx_drop_count < 0xFFFFU)
+                {
+                    g_can_rx_drop_count++;
+                }
+            }
+        }
+    }
+
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }

@@ -1,7 +1,7 @@
 #include "bq76940_app.h"
 #include "bq76940_app_can.h"
 
-#include "can_drv.h"
+//#include "can_drv.h"
 
 static void BQ76940_AppPackU16LE(uint8_t *buf, uint8_t offset, uint16_t value)
 {
@@ -126,6 +126,7 @@ void BQ76940_AppSendCanTelemetry(const BQ76940_AppCtx_t *ctx)
     data[6] = ctx->bal_target_label;
     data[7] = (uint8_t)ctx->pack_current_dir;
     (void)CAN_DrvSendStd(CAN_ID_BMS_CELL_9_STATUS, data, 8);
+		
 }
 
 void BQ76940_AppSendBringUpFaultCan(const BQ76940_AppCtx_t *ctx,
@@ -258,4 +259,193 @@ void BQ76940_AppSendFaultDiagCan(const BQ76940_AppCtx_t *ctx)
     data[7] = 0U;
 
     (void)CAN_DrvSendStd(CAN_ID_BMS_FAULT_STATUS, data, 8U);
+}
+
+void BQ76940_AppSendBalanceStatusCan(const BQ76940_AppCtx_t *ctx)
+{
+    uint8_t data[8];
+
+    if ((ctx == 0) || (CAN_DrvIsReady() == 0U))
+    {
+        return;
+    }
+
+    /*
+     * 0x306: BMS Balance Status
+     *
+     * Byte0: bal_active
+     * Byte1: bal_target_count
+     * Byte2: CELLBAL1 mask
+     * Byte3: CELLBAL2 mask
+     * Byte4: CELLBAL3 mask
+     * Byte5: bal_parity_phase
+     * Byte6: bal_target_label
+     * Byte7: reserved
+     */
+    data[0] = ctx->bal_active;
+    data[1] = ctx->bal_target_count;
+    data[2] = ctx->bal_auto_rd.cellbal1;
+    data[3] = ctx->bal_auto_rd.cellbal2;
+    data[4] = ctx->bal_auto_rd.cellbal3;
+    data[5] = ctx->bal_parity_phase;
+    data[6] = ctx->bal_target_label;
+    data[7] = 0U;
+
+    (void)CAN_DrvSendStd(CAN_ID_BMS_BALANCE_STATUS, data, 8U);
+}
+
+static uint8_t BQ76940_AppBuildAckStatusFlags(const BQ76940_AppCtx_t *ctx)
+{
+    uint8_t flags = 0U;
+
+    if (ctx == 0)
+    {
+        return 0U;
+    }
+
+    if (ctx->runtime_diag.fault_active != 0U)
+    {
+        flags |= 0x01U;
+    }
+
+    if (ctx->hw_dsg_block_active != 0U)
+    {
+        flags |= 0x02U;
+    }
+
+    if (ctx->bal_active != 0U)
+    {
+        flags |= 0x04U;
+    }
+
+    if (ctx->ot_cutoff_active != 0U)
+    {
+        flags |= 0x08U;
+    }
+
+    if (ctx->ut_chg_block_active != 0U)
+    {
+        flags |= 0x10U;
+    }
+
+    return flags;
+}
+
+static uint8_t BQ76940_AppBuildAckFaultType(const BQ76940_AppCtx_t *ctx)
+{
+    if (ctx == 0)
+    {
+        return BMS_CAN_FAULT_TYPE_NONE;
+    }
+
+    if (ctx->diag_state.bringup_fault_active != 0U)
+    {
+        return BMS_CAN_FAULT_TYPE_BRINGUP;
+    }
+
+    if (ctx->runtime_diag.fault_active != 0U)
+    {
+        return BMS_CAN_FAULT_TYPE_RUNTIME;
+    }
+
+    if (ctx->hw_fault_count != 0U)
+    {
+        return BMS_CAN_FAULT_TYPE_HW_FAULT;
+    }
+
+    return BMS_CAN_FAULT_TYPE_NONE;
+}
+
+static void BQ76940_AppSendCmdAck(const BQ76940_AppCtx_t *ctx,
+                                  uint8_t cmd,
+                                  uint8_t seq,
+                                  uint8_t result,
+                                  uint8_t detail)
+{
+    uint8_t data[8];
+
+    if (CAN_DrvIsReady() == 0U)
+    {
+        return;
+    }
+
+    data[0] = cmd;
+    data[1] = seq;
+    data[2] = result;
+    data[3] = detail;
+    data[4] = BQ76940_AppBuildAckStatusFlags(ctx);
+    data[5] = BQ76940_AppBuildAckFaultType(ctx);
+    data[6] = 0U;
+    data[7] = 0U;
+
+    (void)CAN_DrvSendStd(CAN_ID_BMS_CMD_ACK, data, 8U);
+}
+
+uint8_t BQ76940_AppHandleCanCommand(const BQ76940_AppCtx_t *ctx,
+                                    const CAN_DrvRxFrame_t *rx)
+{
+    uint8_t cmd;
+    uint8_t seq;
+    uint8_t result = BMS_CAN_ACK_OK;
+    uint8_t detail = 0U;
+
+    if ((ctx == 0) || (rx == 0))
+    {
+        return 1U;
+    }
+
+    /*
+     * 只处理 PC -> BMS 命令帧 0x401。
+     * 其他 CAN ID 直接忽略。
+     */
+    if (rx->std_id != CAN_ID_BMS_CMD_REQ)
+    {
+        return 0U;
+    }
+
+    /*
+     * DLC 错误也要回 ACK，避免上位机发了以后没有响应。
+     */
+    if (rx->dlc != 8U)
+    {
+        cmd = (rx->dlc > 0U) ? rx->data[0] : 0U;
+        seq = (rx->dlc > 1U) ? rx->data[1] : 0U;
+
+        BQ76940_AppSendCmdAck(ctx,
+                              cmd,
+                              seq,
+                              BMS_CAN_ACK_INVALID_DLC,
+                              rx->dlc);
+
+        return 2U;
+    }
+
+    cmd = rx->data[0];
+    seq = rx->data[1];
+
+    switch (cmd)
+    {
+        case BMS_CAN_CMD_REQ_ALL_STATUS:
+            BQ76940_AppSendCanTelemetry(ctx);
+            BQ76940_AppSendFaultDiagCan(ctx);
+            BQ76940_AppSendBalanceStatusCan(ctx);
+            break;
+
+        case BMS_CAN_CMD_REQ_FAULT_DIAG:
+            BQ76940_AppSendFaultDiagCan(ctx);
+            break;
+
+        case BMS_CAN_CMD_REQ_BALANCE_STATUS:
+            BQ76940_AppSendBalanceStatusCan(ctx);
+            break;
+
+        default:
+            result = BMS_CAN_ACK_UNKNOWN_CMD;
+            detail = cmd;
+            break;
+    }
+
+    BQ76940_AppSendCmdAck(ctx, cmd, seq, result, detail);
+
+    return 0U;
 }
