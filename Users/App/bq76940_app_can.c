@@ -176,6 +176,32 @@ void BQ76940_AppSendBringUpFaultCan(const BQ76940_AppCtx_t *ctx,
     (void)CAN_DrvSendStd(CAN_ID_BMS_FAULT_STATUS, data, 8U);
 }
 
+
+void BQ76940_AppSendRtosInitFaultCan(const struct BQ76940_AppCtx *ctx,
+                                     uint8_t err_code,
+                                     uint8_t safe_off_result)
+{
+    uint8_t data[8];
+
+    if (CAN_DrvIsReady() == 0U)
+    {
+        return;
+    }
+
+    data[0] = BMS_CAN_FAULT_TYPE_RTOS_INIT;
+    data[1] = err_code;
+    data[2] = 0U;
+    data[3] = safe_off_result;
+    data[4] = 0U;
+    data[5] = 0U;
+    data[6] = 0U;
+    data[7] = 0U;
+
+    (void)ctx;
+
+    (void)CAN_DrvSendStd(CAN_ID_BMS_FAULT_STATUS, data, 8U);
+}
+
 void BQ76940_AppSendFaultDiagCan(const BQ76940_AppCtx_t *ctx)
 {
     uint8_t data[8];

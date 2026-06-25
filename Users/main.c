@@ -46,7 +46,6 @@ static void BMS_EnterFaultStopMode(void)
      * 进入低功耗前先关闭 LED，避免故障保持态下持续耗电。
      */
     led1_off();
-
     /*
      * 给最后一次串口打印 / CAN 发送留一点时间。
      * 这里不能太长，只是为了让外设完成最后动作。
@@ -76,8 +75,6 @@ static void BMS_EnterFaultStopMode(void)
      *
      * 当前没有主动配置唤醒源，
      * 设计目标是故障后等待人工复位 / 重新上电。
-
-
      */
 
     BMS_LOG_RUNTIME("[MAIN] stop\r\n");
@@ -93,6 +90,25 @@ static void BMS_EnterFaultStopMode(void)
     }
 }
 
+static uint8_t BMS_StartupSafeOff(BQ76940_AppCtx_t *app)
+{
+     uint8_t safe_off_result;
+
+    if (app != 0)
+    {
+        (void)BQ76940_AppForceExternalOff(app);
+    }
+    
+    safe_off_result = BQ76940_AppForceAfeOffHw();
+
+    if (app != 0)
+    {
+        BQ76940_AppForceAfeOffCommit(app, safe_off_result);
+    }
+    return safe_off_result;
+}
+
+
 static void BMS_BringUpFaultHandler(BQ76940_AppCtx_t *app, uint8_t err)
 {
     uint8_t safe_off_result;
@@ -100,40 +116,7 @@ static void BMS_BringUpFaultHandler(BQ76940_AppCtx_t *app, uint8_t err)
 
     BMS_LOG_ERROR("[MAIN] bringup:%d\r\n", err);
 
-    /*
-     * 1. 安全优先：
-     *    初始化失败后，不能假设 CHG / DSG / CP / PCHG 仍然处于安全状态。
-     *
-     *    先强制关闭 BQ76200 外部执行层。
-     *    这一步不依赖 I2C。
-     */
-    if (app != 0)
-    {
-        (void)BQ76940_AppForceExternalOff(app);
-    }
-
-    /*
-     * 2. 再尽力关闭 BQ76940 AFE：
-     *    - 清 CELLBAL
-     *    - 关闭 BQ76940 CHG / DSG
-     *
-     *    注意：
-     *    Bring-up 阶段通常还没有启动 FreeRTOS 调度器，
-     *    所以这里一般不需要拿 g_i2c_bus_mutex。
-     */
-    safe_off_result = BQ76940_AppForceAfeOffHw();
-
-    /*
-     * 3. 提交软件状态。
-     *
-     *    如果 CELLBAL 关闭成功，才清软件均衡状态；
-     *
-     *    Bring-up 阶段还没启动多任务，一般不需要 ctx mutex。
-     */
-    if (app != 0)
-    {
-        BQ76940_AppForceAfeOffCommit(app, safe_off_result);
-    }
+   safe_off_result = BMS_StartupSafeOff(app);
 
     /*
      * 4. 进入 STOP 前发送几次 CAN 故障帧。
@@ -146,11 +129,6 @@ static void BMS_BringUpFaultHandler(BQ76940_AppCtx_t *app, uint8_t err)
         delay_ms(100);
     }
 
-    /*
-     * 3. LED 快闪几次，作为本地故障提示。
-     *    注意：进入 STOP 后 LED 不会继续闪烁，
-     *    所以报警动作要放在进入 STOP 之前。
-     */
     for (i = 0U; i < 5U; i++)
     {
         led1_on();
@@ -166,10 +144,38 @@ static void BMS_BringUpFaultHandler(BQ76940_AppCtx_t *app, uint8_t err)
     BMS_EnterFaultStopMode();
 }
 
+static void BMS_RtosCreateFaultHandler(BQ76940_AppCtx_t *app, BaseType_t err)
+{
+    uint8_t i;
+    uint8_t safe_off_result;
+
+    BMS_LOG_ERROR("[MAIN] rtos init:%d\r\n", (int)err);
+
+    safe_off_result = BMS_StartupSafeOff(app);
+
+
+    for (i = 0U; i < 3U; i++)
+    {
+        BQ76940_AppSendRtosInitFaultCan(app, err, safe_off_result);
+        delay_ms(100);
+    }
+
+    for (i = 0U; i < 5U; i++)
+    {
+        led1_on();
+        delay_ms(100);
+        led1_off();
+        delay_ms(100);
+    }
+
+    BMS_EnterFaultStopMode();
+}
+
 int main(void)
 {
     uint8_t ret = 0;
     static BQ76940_AppCtx_t app;
+    BaseType_t result;
 
     HAL_Init();
     stm32_clock_init(RCC_PLL_MUL9);
@@ -209,13 +215,12 @@ int main(void)
         BMS_LOG_RUNTIME("[MAIN] low power\r\n");
     }
 
+    result = BMS_TasksCreate(&app);
     /* 3. 创建最小任务框架 */
-    if (BMS_TasksCreate(&app) != pdPASS)
+    if (result != pdPASS)
     {
         BMS_LOG_ERROR("[MAIN] tasks fail\r\n");
-        while (1)
-        {
-        }
+        BMS_RtosCreateFaultHandler(&app,result);
     }
 
     /* 4. 启动 FreeRTOS 调度器，正常情况下不会返回 */

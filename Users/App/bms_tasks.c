@@ -31,7 +31,6 @@ static BQ34Z100_AppCtx_t g_bq34z100_ctx;
  */
 static volatile uint8_t g_afe_write_inhibit = 0U;
 
-
 static QueueHandle_t g_can_rx_queue = NULL;
 
 /*
@@ -162,16 +161,16 @@ BaseType_t BMS_TasksCreate(BQ76940_AppCtx_t *app)
         BMS_LOG_ERROR("[RTOS] sem fail\r\n");
         return pdFAIL;
     }
-		
-		g_can_rx_queue = xQueueCreate(CAN_DRV_RX_QUEUE_LEN, sizeof(CAN_DrvRxFrame_t));
 
-		if (g_can_rx_queue == NULL)
-		{
-				BMS_LOG_ERROR("[RTOS] CAN rx queue fail\r\n");
-				return pdFAIL;
-		}
+    g_can_rx_queue = xQueueCreate(CAN_DRV_RX_QUEUE_LEN, sizeof(CAN_DrvRxFrame_t));
 
-		CAN_DrvSetRxQueue(g_can_rx_queue);
+    if (g_can_rx_queue == NULL)
+    {
+        BMS_LOG_ERROR("[RTOS] CAN rx queue fail\r\n");
+        return pdFAIL;
+    }
+
+    CAN_DrvSetRxQueue(g_can_rx_queue);
 
     result = xTaskCreate(BMS_SampleTask,
                          "BMS_Sample",
@@ -683,6 +682,9 @@ static void BMS_CANTask(void *argument)
     TickType_t last_tx_tick;
     TickType_t now_tick;
 
+    static BQ76940_AppCtx_t rx_snapshot;
+    static BQ76940_AppCtx_t tx_snapshot;
+
     last_tx_tick = xTaskGetTickCount();
 
     for (;;)
@@ -691,15 +693,19 @@ static void BMS_CANTask(void *argument)
          * 1. 先处理 CAN RX 队列
          * 这里先只取出来，不做业务控制。
          */
-				if ((g_can_rx_queue != NULL) &&
-						(xQueueReceive(g_can_rx_queue, &rx_frame, pdMS_TO_TICKS(20U)) == pdTRUE))
-				{
-						if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
-						{
-								BQ76940_AppHandleCanCommand(app, &rx_frame);
-								xSemaphoreGive(g_bms_ctx_mutex);
-						}
-				}
+        if ((g_can_rx_queue != NULL) &&
+            (xQueueReceive(g_can_rx_queue, &rx_frame, pdMS_TO_TICKS(20U)) == pdTRUE))
+        {
+            if (rx_frame.std_id == CAN_ID_BMS_CMD_REQ)
+            {
+                if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
+                {
+                    rx_snapshot = *app;
+                    xSemaphoreGive(g_bms_ctx_mutex);
+                    BQ76940_AppHandleCanCommand(&rx_snapshot, &rx_frame);
+                }
+            }
+        }
 
         /*
          * 2. 周期发送状态帧
@@ -708,15 +714,15 @@ static void BMS_CANTask(void *argument)
 
         if ((TickType_t)(now_tick - last_tx_tick) >= pdMS_TO_TICKS(BMS_CAN_TASK_PERIOD_MS))
         {
+
             if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
             {
-                BQ76940_AppSendCanTelemetry(app);
-                BQ76940_AppSendFaultDiagCan(app);
-                BQ76940_AppSendBalanceStatusCan(app);
-
+                tx_snapshot = *app;
                 xSemaphoreGive(g_bms_ctx_mutex);
+                BQ76940_AppSendCanTelemetry(&tx_snapshot);
+                BQ76940_AppSendFaultDiagCan(&tx_snapshot);
+                BQ76940_AppSendBalanceStatusCan(&tx_snapshot);
             }
-
             last_tx_tick = now_tick;
         }
     }
@@ -922,7 +928,7 @@ static void BMS_BalanceTask(void *argument)
         {
             uint8_t ret = 0U;
             uint8_t runtime_fault = 0U;
-						uint32_t now_ms;
+            uint32_t now_ms;
 
             BQ76940_BalanceRequest_t bal_req;
 
@@ -965,15 +971,12 @@ static void BMS_BalanceTask(void *argument)
              * 只读取 app 状态，生成本轮均衡请求。
              * 不访问 I2C。
              */
-						
-						
-
             if (ret == 0U)
             {
                 if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
                 {
-										now_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
-                    ret = BQ76940_AppBalanceDecide(app, &bal_req,now_ms);
+                    now_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
+                    ret = BQ76940_AppBalanceDecide(app, &bal_req, now_ms);
                     xSemaphoreGive(g_bms_ctx_mutex);
                 }
                 else

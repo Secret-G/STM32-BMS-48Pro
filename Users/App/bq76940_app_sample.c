@@ -231,18 +231,6 @@ uint8_t BQ76940_AppSampleUpdate(BQ76940_AppCtx_t *ctx)
     {
         return 1U;
     }
-
-    /*
-     * 兼容旧接口：
-     *   1. 读取硬件数据
-     *   2. 处理采样数据
-     *   3. 提交到 app
-     *
-     * 注意：
-     *   该函数本身不负责加锁。
-     *   在 FreeRTOS 任务中，推荐直接调用
-     *   ReadHw / Process / Commit 三段式接口。
-     */
     ret = BQ76940_AppSampleReadHw(&ctx->calib, &sample);
     if (ret != 0U)
     {

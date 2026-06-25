@@ -239,10 +239,6 @@ static uint8_t BQ76940_AppBringUpOnce(BQ76940_AppCtx_t *ctx)
     if (BMS_LOG_PERIODIC_ENABLE != 0U)
         BQ76940_PrintBasicRegs(&ctx->regs);
 
-    //    printf("\r\n[ADC Calib]\r\n");
-    //    printf("GAIN_uV_per_LSB = %d\r\n", ctx->calib.gain_uV_per_lsb);
-    //    printf("OFFSET_mV       = %d\r\n", ctx->calib.offset_mV);
-
     /* 3. 加载硬件 OV / UV 保护参数 */
     ret = BQ76940_ProtectLoadConfig(&ctx->hw_cfg,
                                     &ctx->calib,
@@ -277,10 +273,6 @@ static uint8_t BQ76940_AppBringUpOnce(BQ76940_AppCtx_t *ctx)
                                    ret);
         return 14U;
     }
-
-    //    printf("\r\n[OCD/SCD CONFIG]\r\n");
-    //    printf("PROTECT1 = 0x%02X\r\n", ctx->regs.protect1);
-    //    printf("PROTECT2 = 0x%02X\r\n", ctx->regs.protect2);
 
     if (BMS_LOG_PERIODIC_ENABLE != 0U)
         BQ76940_ProtectPrintStatus(ctx->sys_stat, ctx->sys_ctrl2);
@@ -368,112 +360,6 @@ uint8_t BQ76940_AppBringUpAndSelfTest(BQ76940_AppCtx_t *ctx)
 
     return 100U;
 }
-
-// uint8_t BQ76940_AppRunCycle(BQ76940_AppCtx_t *ctx)
-//{
-//     uint8_t ret;
-
-//    if (ctx == 0)
-//    {
-//        return 1U;
-//    }
-
-//    /*
-//     * 1. 采样阶段：
-//     * 电压 / 电流 / 温度 / 硬件状态读取
-//     */
-//    ret = BQ76940_AppSampleUpdate(ctx);
-//    if (ret != 0U)
-//    {
-//        return ret;
-//    }
-
-//    /*
-//     * 2. 保护阶段：
-//     * UV / OV / DIFF / OT / UT / OCD / SCD
-//     */
-//    ret = BQ76940_AppProtectUpdate(ctx);
-//    if (ret != 0U)
-//    {
-//        return ret;
-//    }
-
-//    /*
-//     * 3. 均衡阶段：
-//     * 自动均衡判断与 CELLBAL 控制
-//     */
-//    ret = BQ76940_AppBalanceUpdate(ctx);
-//    if (ret != 0U)
-//    {
-//        return ret;
-//    }
-
-//    /*
-//     * 4. 执行控制阶段：
-//     * 根据保护状态刷新 BQ76200 执行层
-//     */
-//    ret = BQ76940_AppControlUpdate(ctx);
-//    if (ret != 0U)
-//    {
-//        return ret;
-//    }
-
-//    /*
-//     * 5. 调试打印阶段
-//     */
-//    BQ76940_AppPrintRuntime(ctx);
-
-//    return 0U;
-//}
-
-// void BQ76940_AppPrintRuntime(const BQ76940_AppCtx_t *ctx)
-//{
-//     if (ctx == 0)
-//     {
-//         return;
-//     }
-
-//    printf("----------------------------------------\r\n");
-
-//    BQ76940_PrintAllMappedCellVoltages9(ctx->cell_raw,
-//                                        ctx->cell_mV,
-//                                        ctx->pack_total_mV);
-
-//    BQ76940_PrintCellStats9(&ctx->cell_stats, ctx->pack_total_mV);
-
-//    BQ76940_PrintAlarmFlags9(&ctx->alarm_state);
-
-//    BQ76940_PrintPackCurrent(&ctx->cc_raw,
-//                             ctx->pack_current_mA,
-//                             ctx->pack_current_dir);
-
-//    BQ76940_PrintCycleSummary9(ctx->pack_total_mV,
-//                               &ctx->cell_stats,
-//                               &ctx->alarm_state,
-//                               ctx->pack_current_mA,
-//                               ctx->pack_current_dir,
-//                               ctx->ts1_temp_dC,
-//                               ctx->ot_cutoff_active,
-//                               ctx->ut_chg_block_active,
-//                               ctx->hw_dsg_block_active,
-//                               ctx->hw_ocd_active,
-//                               ctx->hw_scd_active);
-
-//    BQ76940_PrintTS1Temp(ctx->ts1_raw_adc, ctx->ts1_temp_dC);
-
-//    BQ76940_PrintTempAlarmTs1(&ctx->alarm_state);
-//    BQ76940_PrintLowTempAlarmTs1(&ctx->alarm_state);
-
-//    BQ76940_ProtectPrintFaultStatus(ctx->sys_stat);
-
-//    BQ76940_PrintBalanceAutoState(ctx->bal_active,
-//                                  ctx->bal_target_label,
-//                                  &ctx->bal_auto_rd);
-
-//    BQ76200_ExecPrintState(&ctx->bq76200_exec);
-
-//    printf("----------------------------------------\r\n");
-//}
 
 #define BMS_PRINT_CELL_DETAIL_ENABLE 0U
 
