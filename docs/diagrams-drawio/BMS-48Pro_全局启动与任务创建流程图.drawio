@@ -1,0 +1,127 @@
+<mxfile host="app.diagrams.net" agent="Codex" pages="2">
+  <diagram id="bms48pro-global-startup" name="全局启动与任务创建">
+    <mxGraphModel dx="3420" dy="1364" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="2300" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontSize=28;fontStyle=1;fontColor=#1f2933;align=center;verticalAlign=middle;" value="BMS-48Pro 全局启动与任务创建流程图" vertex="1">
+          <mxGeometry height="50" width="800" x="300" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="start" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=1.5;fontSize=15;fontStyle=1;" value="开始：系统上电 / MCU Reset" vertex="1">
+          <mxGeometry height="60" width="380" x="510" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="mcu_init" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;strokeWidth=1.5;fontSize=14;" value="初始化 MCU 基础环境&lt;br&gt;HAL / SystemClock / SysTick / NVIC" vertex="1">
+          <mxGeometry height="76" width="460" x="470" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="bsp_init" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;strokeWidth=1.5;fontSize=14;" value="初始化 BSP 外设&lt;br&gt;UART / LED / Soft I2C / IO_CTRL / CAN / BQ76200_Port" vertex="1">
+          <mxGeometry height="80" width="460" x="470" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="bq76200_safe" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=1.6;fontSize=14;fontStyle=1;" value="BQ76200 执行层进入默认安全关闭态&lt;br&gt;CHG_EN / DSG_EN / CP_EN / PCHG_EN = OFF" vertex="1">
+          <mxGeometry height="82" width="460" x="470" y="445" as="geometry" />
+        </mxCell>
+        <mxCell id="app_default" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=1.5;fontSize=14;" value="初始化 BMS 应用层默认配置&lt;br&gt;清空 BQ76940_AppCtx&lt;br&gt;加载软件告警阈值 / 硬件 OV-UV / OCD-SCD 配置&lt;br&gt;初始化 RuntimeDiag / BQ76200 状态机 / 自动均衡参数" vertex="1">
+          <mxGeometry height="116" width="540" x="430" y="570" as="geometry" />
+        </mxCell>
+        <mxCell id="bringup_call" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=1.6;fontSize=15;fontStyle=1;" value="执行 BQ76940 Bring-up 与自检流程&lt;br&gt;详见：BQ76940 Bring-up 与自检流程图" vertex="1">
+          <mxGeometry height="82" width="460" x="470" y="735" as="geometry" />
+        </mxCell>
+        <mxCell id="TCNB4koVccEh170UKzrn-1" edge="1" parent="1" source="bringup_ok" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="rtos_res">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="TCNB4koVccEh170UKzrn-2" connectable="0" parent="TCNB4koVccEh170UKzrn-1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="是" vertex="1">
+          <mxGeometry relative="1" x="-0.1591" y="-1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="bringup_ok" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=1.6;fontSize=14;fontStyle=1;" value="Bring-up 与自检&lt;br&gt;是否成功？" vertex="1">
+          <mxGeometry height="140" width="250" x="575" y="865" as="geometry" />
+        </mxCell>
+        <mxCell id="TCNB4koVccEh170UKzrn-5" edge="1" parent="1" source="startup_fail_safe" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-180" y="2090" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="startup_fail_safe" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=1.5;fontSize=14;" value="启动失败安全处理&lt;br&gt;标记 Bring-up Fault Active&lt;br&gt;强制关闭 BQ76200 执行层&lt;br&gt;关闭 BQ76940 CELLBAL，尝试关闭 CHG / DSG&lt;br&gt;CAN 0x305 上报 BringUp Fault，LED 故障提示" vertex="1">
+          <mxGeometry height="135" width="380" x="-490" y="1757.5" as="geometry" />
+        </mxCell>
+        <mxCell id="rtos_res" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=1.5;fontSize=14;" value="创建 FreeRTOS 同步资源&lt;br&gt;BMS ctx mutex / I2C bus mutex&lt;br&gt;任务接力信号量：Protect / Balance / Control / Runtime / HwFault&lt;br&gt;CAN RX Queue，并注册到 CAN 驱动层" vertex="1">
+          <mxGeometry height="112" width="540" x="430" y="1120" as="geometry" />
+        </mxCell>
+        <mxCell id="rtos_res_ok" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=1.6;fontSize=14;fontStyle=1;" value="RTOS 资源句柄&lt;br&gt;是否全部有效？" vertex="1">
+          <mxGeometry height="140" width="250" x="575" y="1280" as="geometry" />
+        </mxCell>
+        <mxCell id="create_tasks" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;strokeWidth=1.5;fontSize=14;" value="&lt;div&gt;&lt;span style=&quot;font-size: 15px;&quot;&gt;&lt;b&gt;创建 FreeRTOS 任务&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 15px;&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 15px;&quot;&gt;&lt;b&gt;HwFaultTask：硬件故障处理&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 15px;&quot;&gt;&lt;b&gt;SampleTask：周期采样电压 / 电流 / 温度 / SYS_STAT&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 15px;&quot;&gt;&lt;b&gt;ProtectTask：UV / OV / DIFF / OT / UT 保护判断&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 15px;&quot;&gt;&lt;b&gt;ControlTask：刷新 BQ76200 执行层状态&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 15px;&quot;&gt;&lt;b&gt;RuntimeTask：RuntimeFault 与 Safe-Off 处理&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 15px;&quot;&gt;&lt;b&gt;CANTask：0x301~0x306 上报，0x401 命令，0x307 ACK&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 15px;&quot;&gt;&lt;b&gt;BalanceTask：自动均衡决策与 CELLBAL 写入&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 15px;&quot;&gt;&lt;b&gt;AuxTask：LED / 日志 / 辅助状态输出&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="220" width="620" x="390" y="1480" as="geometry" />
+        </mxCell>
+        <mxCell id="tasks_ok" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=1.6;fontSize=14;fontStyle=1;" value="任务句柄&lt;br&gt;是否全部有效？" vertex="1">
+          <mxGeometry height="140" width="250" x="575" y="1755" as="geometry" />
+        </mxCell>
+        <mxCell id="init_fail" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=1.5;fontSize=14;" value="&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;RTOS / 任务创建失败处理&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;记录 RTOS 资源或任务创建失败&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;执行启动安全关断&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;CAN 0x305 上报 Init Fault&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;LED 故障提示&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="130" width="360" x="-50" y="1760" as="geometry" />
+        </mxCell>
+        <mxCell id="init_hold" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=1.5;fontSize=14;fontStyle=1;" value="&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;系统进入故障保持态&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;结束：系统启动失败&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="78" width="260" x="-310" y="2090" as="geometry" />
+        </mxCell>
+        <mxCell id="sched" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=1.5;fontSize=15;fontStyle=1;" value="启动 FreeRTOS 调度器" vertex="1">
+          <mxGeometry height="64" width="380" x="510" y="1960" as="geometry" />
+        </mxCell>
+        <mxCell id="run" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=1.5;fontSize=15;fontStyle=1;" value="系统进入多任务运行模式&lt;br&gt;结束：正常运行" vertex="1">
+          <mxGeometry height="78" width="380" x="510" y="2080" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="mcu_init">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="mcu_init" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="bsp_init">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="bsp_init" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="bq76200_safe">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="bq76200_safe" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="app_default">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="app_default" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="bringup_call">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="1" source="bringup_call" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="bringup_ok">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="1" source="bringup_ok" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="startup_fail_safe" value="否">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" edge="1" parent="1" source="rtos_res" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="rtos_res_ok">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" edge="1" parent="1" source="rtos_res_ok" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="create_tasks" value="是">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" edge="1" parent="1" source="rtos_res_ok" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="init_fail" value="否">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" edge="1" parent="1" source="create_tasks" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="tasks_ok">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" edge="1" parent="1" source="tasks_ok" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="init_fail" value="否">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e16" edge="1" parent="1" source="init_fail" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="init_hold">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e17" edge="1" parent="1" source="tasks_ok" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sched" value="是">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e18" edge="1" parent="1" source="sched" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="run">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="fjhtYOBpuzMj4gwrDrT8" name="第 2 页">
+    <mxGraphModel dx="1010" dy="682" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="1920" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

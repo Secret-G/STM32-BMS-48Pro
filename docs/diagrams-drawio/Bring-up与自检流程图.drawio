@@ -1,0 +1,171 @@
+<mxfile host="app.diagrams.net" agent="Codex" pages="2">
+  <diagram id="bms48pro-bq76940-bringup" name="BQ76940 Bring-up与自检">
+    <mxGraphModel dx="2060" dy="1450" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="2600" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontSize=28;fontStyle=1;fontColor=#1f2933;align=center;verticalAlign=middle;" value="BMS-48Pro BQ76940 Bring-up 与自检流程图" vertex="1">
+          <mxGeometry height="50" width="920" x="1120" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="start" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=1.5;fontSize=15;fontStyle=1;" value="入口：主启动流程调用 BQ76940 Bring-up" vertex="1">
+          <mxGeometry height="60" width="420" x="1370" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="diag_clear" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=1.5;fontSize=14;" value="清除 Bring-up 诊断状态&lt;br&gt;attempt = 1" vertex="1">
+          <mxGeometry height="72" width="420" x="1370" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="try_begin" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=1.5;fontSize=15;fontStyle=1;" value="开始一次 Bring-up 尝试" vertex="1">
+          <mxGeometry height="64" width="420" x="1370" y="335" as="geometry" />
+        </mxCell>
+        <mxCell id="wake" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;strokeWidth=1.5;fontSize=14;" value="唤醒 BQ76940 AFE&lt;br&gt;BQ_WAKE_Pulse" vertex="1">
+          <mxGeometry height="72" width="420" x="1370" y="445" as="geometry" />
+        </mxCell>
+        <mxCell id="delay" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;strokeWidth=1.5;fontSize=14;" value="延时等待 AFE 稳定" vertex="1">
+          <mxGeometry height="58" width="420" x="1370" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="basic_init" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;strokeWidth=1.5;fontSize=14;" value="&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;执行最小 Bring-up 初始化&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;清 SYS_STAT&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;关闭 CELLBAL1 / CELLBAL2 / CELLBAL3&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;配置 SYS_CTRL1 / SYS_CTRL2&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;配置 PROTECT1 / PROTECT2 / PROTECT3&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;配置 CC_CFG&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="145" width="500" x="1330" y="665" as="geometry" />
+        </mxCell>
+        <mxCell id="read_base" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;strokeWidth=1.5;fontSize=14;" value="&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;读取基础寄存器与校准参数&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;SYS_STAT / SYS_CTRL / PROTECT&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;OV_TRIP / UV_TRIP / CC_CFG&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;ADCGAIN / ADCOFFSET&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="105" width="500" x="1330" y="860" as="geometry" />
+        </mxCell>
+        <mxCell id="Yv_el-39G6cYGy3omjH7-16" edge="1" parent="1" source="basic_ok" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="fail_hw">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="basic_ok" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=1.6;fontSize=14;fontStyle=1;" value="最小 Bring-up&lt;br&gt;是否成功？" vertex="1">
+          <mxGeometry height="140" width="270" x="1445" y="1010" as="geometry" />
+        </mxCell>
+        <mxCell id="ovuv_cfg" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;strokeWidth=1.5;fontSize=14;" value="加载并写入硬件 OV / UV 保护参数&lt;br&gt;根据目标 mV 反算 OV_TRIP / UV_TRIP&lt;br&gt;写入 PROTECT3 / OV_TRIP / UV_TRIP" vertex="1">
+          <mxGeometry height="96" width="500" x="1330" y="1205" as="geometry" />
+        </mxCell>
+        <mxCell id="ovuv_readback" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;strokeWidth=1.5;fontSize=14;" value="读回基础寄存器&lt;br&gt;确认硬件 OV / UV 配置结果" vertex="1">
+          <mxGeometry height="72" width="420" x="1370" y="1345" as="geometry" />
+        </mxCell>
+        <mxCell id="Yv_el-39G6cYGy3omjH7-15" edge="1" parent="1" source="ovuv_ok" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="fail_hw">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ovuv_ok" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=1.6;fontSize=14;fontStyle=1;" value="硬件 OV / UV&lt;br&gt;配置是否成功？" vertex="1">
+          <mxGeometry height="140" width="270" x="1445" y="1460" as="geometry" />
+        </mxCell>
+        <mxCell id="Yv_el-39G6cYGy3omjH7-5" edge="1" parent="1" source="fail_hw" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="retry_inc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fail_hw" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=1.5;fontSize=14;" value="&lt;div&gt;记录 Bring-up 失败信息&lt;/div&gt;&lt;div&gt;last_stage = 当前失败阶段&lt;/div&gt;&lt;div&gt;last_error = 底层错误码&lt;/div&gt;" vertex="1">
+          <mxGeometry height="140" width="320" x="530" y="1770" as="geometry" />
+        </mxCell>
+        <mxCell id="status_read" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;strokeWidth=1.5;fontSize=14;" value="读取当前 BQ76940 硬件状态&lt;br&gt;SYS_STAT / SYS_CTRL2" vertex="1">
+          <mxGeometry height="72" width="420" x="1370" y="1655" as="geometry" />
+        </mxCell>
+        <mxCell id="Yv_el-39G6cYGy3omjH7-14" edge="1" parent="1" source="status_ok" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="fail_hw">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="status_ok" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=1.6;fontSize=14;fontStyle=1;" value="状态读取&lt;br&gt;是否成功？" vertex="1">
+          <mxGeometry height="140" width="270" x="1445" y="1770" as="geometry" />
+        </mxCell>
+        <mxCell id="ocdscd_cfg" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;strokeWidth=1.5;fontSize=14;" value="加载 OCD / SCD 硬件保护参数&lt;br&gt;配置 PROTECT1 / PROTECT2 等相关寄存器" vertex="1">
+          <mxGeometry height="72" width="420" x="1370" y="1965" as="geometry" />
+        </mxCell>
+        <mxCell id="Yv_el-39G6cYGy3omjH7-13" edge="1" parent="1" source="ocdscd_ok" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="fail_hw">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ocdscd_ok" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=1.6;fontSize=14;fontStyle=1;" value="OCD / SCD&lt;br&gt;配置是否成功？" vertex="1">
+          <mxGeometry height="140" width="270" x="1445" y="2080" as="geometry" />
+        </mxCell>
+        <mxCell id="sample_check" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;strokeWidth=1.5;fontSize=14;" value="执行采样链路自检&lt;br&gt;读取 9 节映射电压&lt;br&gt;读取 CC 电流&lt;br&gt;读取 TS1 温度&lt;br&gt;读取 SYS_STAT" vertex="1">
+          <mxGeometry height="124" width="360" x="1400" y="2298" as="geometry" />
+        </mxCell>
+        <mxCell id="Yv_el-39G6cYGy3omjH7-10" edge="1" parent="1" source="sample_ok" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="fail_hw">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sample_ok" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=1.6;fontSize=14;fontStyle=1;" value="采样链路自检&lt;br&gt;是否成功？" vertex="1">
+          <mxGeometry height="140" width="270" x="1445" y="2490" as="geometry" />
+        </mxCell>
+        <mxCell id="success" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=1.5;fontSize=15;fontStyle=1;" value="&lt;div&gt;Bring-up 与自检成功&lt;/div&gt;&lt;div&gt;返回主启动流程&lt;/div&gt;" vertex="1">
+          <mxGeometry height="78" width="320" x="1420" y="2840" as="geometry" />
+        </mxCell>
+        <mxCell id="retry_inc" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=1.5;fontSize=15;fontStyle=1;" value="&lt;div&gt;重试计数 +1&lt;/div&gt;&lt;div&gt;attempt = attempt + 1&lt;/div&gt;" vertex="1">
+          <mxGeometry height="58" width="190" x="595" y="2010" as="geometry" />
+        </mxCell>
+        <mxCell id="retry_check" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=1.6;fontSize=14;fontStyle=1;" value="&lt;span style=&quot;font-size: 14px;&quot;&gt;重试次数是否超过 3 次？&lt;/span&gt;" vertex="1">
+          <mxGeometry height="120" width="230" x="575" y="2178" as="geometry" />
+        </mxCell>
+        <mxCell id="Yv_el-39G6cYGy3omjH7-17" edge="1" parent="1" source="retry_delay" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="try_begin">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="retry_delay" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;strokeWidth=1.5;fontSize=14;" value="&lt;div&gt;延时 100ms&lt;/div&gt;&lt;div&gt;重新尝试 Bring-up&lt;/div&gt;" vertex="1">
+          <mxGeometry height="72" width="360" x="30" y="1804" as="geometry" />
+        </mxCell>
+        <mxCell id="fault_active" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=1.5;fontSize=14;fontStyle=1;" value="&lt;div&gt;标记 Bring-up Fault Active&lt;/div&gt;&lt;div&gt;执行启动失败安全处理&lt;/div&gt;&lt;div&gt;系统进入故障保持态&lt;/div&gt;" vertex="1">
+          <mxGeometry height="82" width="500" x="440" y="2390" as="geometry" />
+        </mxCell>
+        <mxCell id="a1" edge="1" parent="1" source="start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="diag_clear">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a2" edge="1" parent="1" source="diag_clear" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="try_begin">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a3" edge="1" parent="1" source="try_begin" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="wake">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a4" edge="1" parent="1" source="wake" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="delay">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a5" edge="1" parent="1" source="delay" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="basic_init">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a6" edge="1" parent="1" source="basic_init" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="read_base">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a7" edge="1" parent="1" source="read_base" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="basic_ok">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a9" edge="1" parent="1" source="basic_ok" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="ovuv_cfg" value="是">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a10" edge="1" parent="1" source="ovuv_cfg" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="ovuv_readback">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a11" edge="1" parent="1" source="ovuv_readback" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="ovuv_ok">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a13" edge="1" parent="1" source="ovuv_ok" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="status_read" value="是">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a14" edge="1" parent="1" source="status_read" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="status_ok">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a16" edge="1" parent="1" source="status_ok" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="ocdscd_cfg" value="是">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a17" edge="1" parent="1" source="ocdscd_cfg" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="ocdscd_ok">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a19" edge="1" parent="1" source="ocdscd_ok" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sample_check" value="是">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a20" edge="1" parent="1" source="sample_check" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sample_ok">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a21" edge="1" parent="1" source="sample_ok" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="success" value="是">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r6" edge="1" parent="1" source="retry_inc" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="retry_check">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r7" edge="1" parent="1" source="retry_check" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="retry_delay" value="否">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r8" edge="1" parent="1" source="retry_check" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="fault_active" value="是">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="IW8xc7dK5EgZrF0jB58t" name="第 2 页">
+    <mxGraphModel dx="1010" dy="682" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="1920" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
