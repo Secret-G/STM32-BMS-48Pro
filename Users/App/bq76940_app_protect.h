@@ -84,25 +84,20 @@ uint8_t BQ76940_AppProtectUpdateBase(struct BQ76940_AppCtx *ctx);
 //过温保护的相关函数
 void BQ76940_AppOtProtectRequestClear(BQ76940_OtProtectRequest_t *req);
 
-uint8_t BQ76940_AppOtProtectDecide(const struct BQ76940_AppCtx *ctx,
-                                    BQ76940_OtProtectRequest_t *req);
+uint8_t BQ76940_AppOtProtectDecide(const struct BQ76940_AppCtx *ctx,BQ76940_OtProtectRequest_t *req);
 
 uint8_t BQ76940_AppOtProtectApplyHw(const BQ76940_OtProtectRequest_t *req);
 
-uint8_t BQ76940_AppOtProtectCommit(struct BQ76940_AppCtx *ctx,
-                                    const BQ76940_OtProtectRequest_t *req);
+uint8_t BQ76940_AppOtProtectCommit(struct BQ76940_AppCtx *ctx,const BQ76940_OtProtectRequest_t *req);
 
 //低温保护的相关函数
 void BQ76940_AppUtProtectRequestClear(BQ76940_UtProtectRequest_t *req);
 
-uint8_t BQ76940_AppUtProtectDecide(const struct BQ76940_AppCtx *ctx,
-                                    BQ76940_UtProtectRequest_t *req);
+uint8_t BQ76940_AppUtProtectDecide(const struct BQ76940_AppCtx *ctx,BQ76940_UtProtectRequest_t *req);
 
 uint8_t BQ76940_AppUtProtectApplyHw(const BQ76940_UtProtectRequest_t *req);
 
-uint8_t BQ76940_AppUtProtectCommit(struct BQ76940_AppCtx *ctx,
-                                    const BQ76940_UtProtectRequest_t *req);
-
+uint8_t BQ76940_AppUtProtectCommit(struct BQ76940_AppCtx *ctx,const BQ76940_UtProtectRequest_t *req);
 
 uint8_t BQ76940_AppProtectUpdate(struct BQ76940_AppCtx *ctx);
 /*

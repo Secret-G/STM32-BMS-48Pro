@@ -2,22 +2,21 @@
 #include "bms_log.h"
 #include "bq76940_app_hw_fault.h"
 
-
-void BQ76940_AppOcdScdRequestClear( BQ76940_OcdScdRequest_t *req)
+void BQ76940_AppOcdScdRequestClear(BQ76940_OcdScdRequest_t *req)
 {
     if (req == 0)
     {
         return;
     }
 
-    req->action            = BQ76940_OCDSCD_ACTION_NONE;
+    req->action = BQ76940_OCDSCD_ACTION_NONE;
     req->sys_stat_snapshot = 0U;
-    req->hw_fault_now      = 0U;
-		req->fault_code 			 = BQ76940_HW_FAULT_CODE_NONE;
-		req->apply_ret 				 = 0U;
-    req->ocd_now           = 0U;
-    req->scd_now           = 0U;
-    req->recover_request   = 0U;
+    req->hw_fault_now = 0U;
+    req->fault_code = BQ76940_HW_FAULT_CODE_NONE;
+    req->apply_ret = 0U;
+    req->ocd_now = 0U;
+    req->scd_now = 0U;
+    req->recover_request = 0U;
 }
 
 uint8_t BQ76940_AppOcdScdDecide(const BQ76940_AppCtx_t *ctx,
@@ -52,25 +51,24 @@ uint8_t BQ76940_AppOcdScdDecide(const BQ76940_AppCtx_t *ctx,
     {
         req->scd_now = 1U;
     }
-		
-		//错误码判断
-		if ((req->ocd_now != 0U) && (req->scd_now != 0U))
-		{
-				req->fault_code = BQ76940_HW_FAULT_CODE_OCD_SCD;
-		}
-		else if (req->ocd_now != 0U)
-		{
-				req->fault_code = BQ76940_HW_FAULT_CODE_OCD;
-		}
-		else if (req->scd_now != 0U)
-		{
-				req->fault_code = BQ76940_HW_FAULT_CODE_SCD;
-		}
-		else
-		{
-				req->fault_code = BQ76940_HW_FAULT_CODE_NONE;
-		}
-		
+
+    // 错误码判断
+    if ((req->ocd_now != 0U) && (req->scd_now != 0U))
+    {
+        req->fault_code = BQ76940_HW_FAULT_CODE_OCD_SCD;
+    }
+    else if (req->ocd_now != 0U)
+    {
+        req->fault_code = BQ76940_HW_FAULT_CODE_OCD;
+    }
+    else if (req->scd_now != 0U)
+    {
+        req->fault_code = BQ76940_HW_FAULT_CODE_SCD;
+    }
+    else
+    {
+        req->fault_code = BQ76940_HW_FAULT_CODE_NONE;
+    }
 
     /*
      * 情况 1：
@@ -177,24 +175,24 @@ uint8_t BQ76940_AppOcdScdApplyHw(const BQ76940_OcdScdRequest_t *req)
     return 6U;
 }
 
-uint8_t BQ76940_AppOcdScdCommit(BQ76940_AppCtx_t *ctx,const BQ76940_OcdScdRequest_t *req)
+uint8_t BQ76940_AppOcdScdCommit(BQ76940_AppCtx_t *ctx, const BQ76940_OcdScdRequest_t *req)
 {
     if ((ctx == 0) || (req == 0))
     {
         return 1U;
     }
-		
-		ctx->hw_fault_sys_stat_latched |= (uint8_t)(req->sys_stat_snapshot & BQ76940_SYS_STAT_HW_LATCH_MASK);
 
-		ctx->hw_fault_last_apply_ret = req->apply_ret;
-		ctx->hw_fault_last_code      = req->fault_code;
+    ctx->hw_fault_sys_stat_latched |= (uint8_t)(req->sys_stat_snapshot & BQ76940_SYS_STAT_HW_LATCH_MASK);
 
-		if (ctx->hw_fault_count < 65535U)
-		{
-				ctx->hw_fault_count++;
-		}
+    ctx->hw_fault_last_apply_ret = req->apply_ret;
+    ctx->hw_fault_last_code = req->fault_code;
 
-        /*
+    if (ctx->hw_fault_count < 65535U)
+    {
+        ctx->hw_fault_count++;
+    }
+
+    /*
      * 锁存本次硬件故障触发时的 SYS_STAT 快照。
      * 注意：
      *   ctx->sys_stat 后续可能被 SampleTask 读取真实 SYS_STAT 覆盖成 0，
@@ -219,10 +217,10 @@ uint8_t BQ76940_AppOcdScdCommit(BQ76940_AppCtx_t *ctx,const BQ76940_OcdScdReques
 
 #if (BQ76940_PROTECT_DBG_ENABLE != 0U)
     BMS_LOG_TEST_HW_FAULT("[HW] SYS:%02X O:%u S:%u B:%u\r\n",
-           req->sys_stat_snapshot,
-           ctx->hw_ocd_active,
-           ctx->hw_scd_active,
-           ctx->hw_dsg_block_active);
+                          req->sys_stat_snapshot,
+                          ctx->hw_ocd_active,
+                          ctx->hw_scd_active,
+                          ctx->hw_dsg_block_active);
 #endif
 
     /*
@@ -234,22 +232,22 @@ uint8_t BQ76940_AppOcdScdCommit(BQ76940_AppCtx_t *ctx,const BQ76940_OcdScdReques
 
 #if (BQ76940_PROTECT_EVENT_PRINT_ENABLE != 0U)
 
-    if ((req->scd_now != 0U) && (req->ocd_now != 0U))
-    {
-        BMS_LOG_TEST_HW_FAULT("[HW] OCD/SCD block\r\n");
-    }
-    else if (req->scd_now != 0U)
-    {
-        BMS_LOG_TEST_HW_FAULT("[HW] SCD block\r\n");
-    }
-    else if (req->ocd_now != 0U)
-    {
-        BMS_LOG_TEST_HW_FAULT("[HW] OCD block\r\n");
-    }
-    else
-    {
-        BMS_LOG_TEST_HW_FAULT("[HW] no latch\r\n");
-    }
+        if ((req->scd_now != 0U) && (req->ocd_now != 0U))
+        {
+            BMS_LOG_TEST_HW_FAULT("[HW] OCD/SCD block\r\n");
+        }
+        else if (req->scd_now != 0U)
+        {
+            BMS_LOG_TEST_HW_FAULT("[HW] SCD block\r\n");
+        }
+        else if (req->ocd_now != 0U)
+        {
+            BMS_LOG_TEST_HW_FAULT("[HW] OCD block\r\n");
+        }
+        else
+        {
+            BMS_LOG_TEST_HW_FAULT("[HW] no latch\r\n");
+        }
 
 #endif
     }
@@ -258,9 +256,9 @@ uint8_t BQ76940_AppOcdScdCommit(BQ76940_AppCtx_t *ctx,const BQ76940_OcdScdReques
      */
     else if (req->action == BQ76940_OCDSCD_ACTION_DSG_ON)
     {
-        ctx->hw_dsg_block_active          = 0U;
-        ctx->hw_ocd_active                = 0U;
-        ctx->hw_scd_active                = 0U;
+        ctx->hw_dsg_block_active = 0U;
+        ctx->hw_ocd_active = 0U;
+        ctx->hw_scd_active = 0U;
         ctx->hw_fault_recover_once_enable = 0U;
 
 #if (BQ76940_PROTECT_EVENT_PRINT_ENABLE != 0U)
@@ -270,8 +268,6 @@ uint8_t BQ76940_AppOcdScdCommit(BQ76940_AppCtx_t *ctx,const BQ76940_OcdScdReques
 
     return 0U;
 }
-
-
 
 uint8_t BQ76940_AppHandleOcdScdProtect(BQ76940_AppCtx_t *ctx)
 {
@@ -313,4 +309,3 @@ uint8_t BQ76940_AppHandleOcdScdProtect(BQ76940_AppCtx_t *ctx)
 
     return 0U;
 }
-

@@ -111,6 +111,7 @@ uint8_t BQ76940_ProtectLoadOcdScd(const BQ76940_OcdScdConfig_t *cfg,
 uint8_t BQ76940_ProtectReadFaultStatus(uint8_t *sys_stat);
 
 void BQ76940_ProtectPrintFaultStatus(uint8_t sys_stat);
+
 /* 硬件保护参数配置
  * 这里是“硬件保护层”的真实目标值，不是软件实验阈值
  */

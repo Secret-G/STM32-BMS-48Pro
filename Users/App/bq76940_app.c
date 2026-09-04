@@ -29,12 +29,15 @@ void BQ76940_AppInitDefaultConfig(BQ76940_AppCtx_t *ctx)
     memset(ctx, 0, sizeof(BQ76940_AppCtx_t));
 
     /* 软件告警实验阈值 */
-    ctx->alarm_th.uv_enter_mV = 3200;
-    ctx->alarm_th.uv_exit_mV = 3300;
-    ctx->alarm_th.ov_enter_mV = 4180;
-    ctx->alarm_th.ov_exit_mV = 4130;
-    ctx->alarm_th.diff_enter_mV = 150;
-    ctx->alarm_th.diff_exit_mV = 110;
+
+    ctx->alarm_th.uv_enter_mV = 3200;   /*欠压进入阈值*/
+    ctx->alarm_th.uv_exit_mV = 3300;    /*欠压退出阈值*/
+
+    ctx->alarm_th.ov_enter_mV = 4180;   /*过压进入阈值*/
+    ctx->alarm_th.ov_exit_mV = 4130;    /*过压退出阈值*/
+
+    ctx->alarm_th.diff_enter_mV = 150;  /*压差进入阈值*/
+    ctx->alarm_th.diff_exit_mV = 110;   /*压差退出阈值*/
 
     ctx->alarm_th.ot_enter_dC = 600; /* 60.0°C 进入过温告警 */
     ctx->alarm_th.ot_exit_dC = 550;  /* 55.0°C 退出过温告警 */
@@ -93,15 +96,15 @@ void BQ76940_AppInitDefaultConfig(BQ76940_AppCtx_t *ctx)
     ctx->bal_cfg.min_cell_mV = 3800;       /* 最高单体至少高于 3.9V 才考虑均衡 */
     ctx->bal_cfg.max_abs_current_mA = 200; /* 电流绝对值小于 200mA 才允许均衡 */
     
-		ctx->bal_cfg.refresh_period_ms = 4000;	/*每四秒刷新一次*/
-		ctx->bal_cfg.parity_enable = 1;					/*启用奇偶窗口分时*/
+	ctx->bal_cfg.refresh_period_ms = 4000;	/*每四秒刷新一次*/
+	ctx->bal_cfg.parity_enable = 1;					/*启用奇偶窗口分时*/
     
     ctx->bal_active = 0;
     ctx->bal_target_label = 0;
     ctx->bal_target_count = 0U;
 		
-		ctx->bal_last_refresh_ms = 0u;
-		ctx->bal_parity_phase = 0;
+	ctx->bal_last_refresh_ms = 0u;
+	ctx->bal_parity_phase = 0;
     
 
     BQ76940_ClearCellBalRegs(&ctx->bal_auto_wr);

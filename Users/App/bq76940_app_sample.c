@@ -153,14 +153,12 @@ uint8_t BQ76940_AppSampleProcess(BQ76940_AppSampleData_t *sample)
     /*
      * 4. 判断电流方向：充电 / 放电 / 近零。
      */
-    sample->pack_current_dir =
-        BQ76940_AppJudgeCurrentDir(sample->pack_current_mA);
+    sample->pack_current_dir = BQ76940_AppJudgeCurrentDir(sample->pack_current_mA);
 
     /*
      * 5. TS1 原始 ADC 换算为温度。
      */
-    ret = BQ76940_ConvertTS1Temp_dC(sample->ts1_raw_adc,
-                                    &sample->ts1_temp_dC);
+    ret = BQ76940_ConvertTS1Temp_dC(sample->ts1_raw_adc,&sample->ts1_temp_dC);
     if (ret != 0U)
     {
         BMS_LOG_ERROR("[SMP] TS1 conv:%d\r\n", ret);
@@ -197,13 +195,10 @@ uint8_t BQ76940_AppSampleCommit(BQ76940_AppCtx_t *ctx,
      *   该函数会修改 BQ76940_AppCtx_t，
      *   因此在 FreeRTOS 任务中调用时，应持有 g_bms_ctx_mutex。
      */
-    memcpy(ctx->cell_raw,
-           sample->cell_raw,
-           sizeof(ctx->cell_raw));
+    memcpy(ctx->cell_raw,sample->cell_raw,sizeof(ctx->cell_raw));
 
-    memcpy(ctx->cell_mV,
-           sample->cell_mV,
-           sizeof(ctx->cell_mV));
+    memcpy(ctx->cell_mV,sample->cell_mV,sizeof(ctx->cell_mV));
+
 
     ctx->pack_total_mV = sample->pack_total_mV;
     ctx->cell_stats    = sample->cell_stats;

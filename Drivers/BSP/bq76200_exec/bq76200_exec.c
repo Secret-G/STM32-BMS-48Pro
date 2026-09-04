@@ -63,8 +63,7 @@ void BQ76200_ExecForceOff(BQ76200_ExecCtx_t *ctx)
 /* ==============================
  * Ö´ÐÐ²ã×´Ì¬¸üÐÂ
  * ============================== */
-uint8_t BQ76200_ExecUpdate(BQ76200_ExecCtx_t *ctx,
-                           const BQ76200_ExecInput_t *input)
+uint8_t BQ76200_ExecUpdate(BQ76200_ExecCtx_t *ctx,const BQ76200_ExecInput_t *input)
 {
     BQ76200_ExecState_t next_state;
 
@@ -103,8 +102,7 @@ uint8_t BQ76200_ExecUpdate(BQ76200_ExecCtx_t *ctx,
     {
         next_state = BQ76200_EXEC_STATE_CHG_DSG_BLOCK;
     }
-    else if ((input->ut_chg_block_active != 0U) &&
-             (input->hw_dsg_block_active != 0U))
+    else if ((input->ut_chg_block_active != 0U) && (input->hw_dsg_block_active != 0U))
     {
         next_state = BQ76200_EXEC_STATE_CHG_DSG_BLOCK;
     }

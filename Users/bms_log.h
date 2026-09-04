@@ -6,7 +6,7 @@
 
 /* Global and module log switches. */
 #define BMS_LOG_ENABLE                 1U
-#define BMS_LOG_ERROR_ENABLE           0U
+#define BMS_LOG_ERROR_ENABLE           1U
 #define BMS_LOG_HW_FAULT_ENABLE        0U
 #define BMS_LOG_RUNTIME_ENABLE         0U
 

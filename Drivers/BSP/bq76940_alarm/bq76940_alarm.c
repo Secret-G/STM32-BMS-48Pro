@@ -11,35 +11,35 @@ uint8_t BQ76940_UpdateAlarmState9(const uint16_t voltage_mV[BQ76940_CELL_COUNT_9
     /* 当前板子的真实9节映射标签，不是连续1~9 */
     static const uint8_t cell_label[BQ76940_CELL_COUNT_9] = {1, 2, 5, 6, 7, 10, 11, 12, 15};
 
-    /* =========================
+    /* 
      * 1. 参数检查
-     * ========================= */
+     */
     if ((voltage_mV == 0) || (stats == 0) || (th == 0) || (state == 0))
     {
         return 1;
     }
 
-    /* =========================================================
-     * 2. 更新 UV 状态（带回差，方案B）
+    /* 
+     * 2. 更新 UV 状态
      *
      * 进入条件：
      *   只要任意一节 < uv_enter_mV，则 UV_FLAG 进入 1
      *
      * 退出条件：
      *   只有当所有电芯都 >= uv_exit_mV，才允许 UV_FLAG 退出到 0
-     *
-     * 对外显示约定（方案B）：
-     *   uv_count          = 当前仍低于 uv_exit_mV、阻碍UV恢复退出的节数
-     *   uv_min_cell_label = 当前这些阻碍退出电芯里，最低的是哪一节
-     * ========================================================= */
+     */
     {
-        uint8_t uv_enter_count_now = 0;
-        uint8_t uv_block_count_now = 0;
 
-        uint16_t uv_block_min_mV_now = 0xFFFF;
-        uint8_t uv_block_min_label_now = 0;
+        uint8_t uv_enter_count_now = 0;         /*低于uv进入阈值的数量*/
 
-        uint8_t all_cell_above_uv_exit = 1;
+
+        uint8_t uv_block_count_now = 0;         /*阻碍恢复的数量*/
+
+        uint16_t uv_block_min_mV_now = 0xFFFF;  /*最低的电压值*/
+
+        uint8_t uv_block_min_label_now = 0;     /*最低电压的标签*/
+
+        uint8_t all_cell_above_uv_exit = 1;     /*假设电芯都正常*/
 
         for (i = 0; i < BQ76940_CELL_COUNT_9; i++)
         {
@@ -60,7 +60,10 @@ uint8_t BQ76940_UpdateAlarmState9(const uint16_t voltage_mV[BQ76940_CELL_COUNT_9
 
                 if (voltage_mV[i] < uv_block_min_mV_now)
                 {
+                    /*保存最低的电压值*/
                     uv_block_min_mV_now = voltage_mV[i];
+
+                    /*保存标签*/
                     uv_block_min_label_now = cell_label[i];
                 }
             }
@@ -95,6 +98,7 @@ uint8_t BQ76940_UpdateAlarmState9(const uint16_t voltage_mV[BQ76940_CELL_COUNT_9
         /* 2.4 按方案B更新对外显示字段 */
         if (state->uv_flag == 1)
         {
+            /*提交欠压数量和，最低的标签*/
             state->uv_count = uv_block_count_now;
             state->uv_min_cell_label = uv_block_min_label_now;
         }
@@ -105,7 +109,7 @@ uint8_t BQ76940_UpdateAlarmState9(const uint16_t voltage_mV[BQ76940_CELL_COUNT_9
         }
     }
 
-    /* =========================================================
+    /* 
      * 3. 更新 OV 状态（带回差，方案B）
      *
      * 进入条件：
@@ -113,16 +117,14 @@ uint8_t BQ76940_UpdateAlarmState9(const uint16_t voltage_mV[BQ76940_CELL_COUNT_9
      *
      * 退出条件：
      *   只有当所有电芯都 <= ov_exit_mV，才允许 OV_FLAG 退出到 0
-     *
-     * 对外显示约定（方案B）：
-     *   ov_count          = 当前仍高于 ov_exit_mV、阻碍OV恢复退出的节数
-     *   ov_max_cell_label = 当前这些阻碍退出电芯里，最高的是哪一节
-     * ========================================================= */
+     */
     {
         uint8_t ov_enter_count_now = 0;
+
         uint8_t ov_block_count_now = 0;
 
         uint16_t ov_block_max_mV_now = 0;
+
         uint8_t ov_block_max_label_now = 0;
 
         uint8_t all_cell_below_ov_exit = 1;
@@ -146,6 +148,7 @@ uint8_t BQ76940_UpdateAlarmState9(const uint16_t voltage_mV[BQ76940_CELL_COUNT_9
 
                 if (voltage_mV[i] > ov_block_max_mV_now)
                 {
+                    /*保存过压毫伏和对应电芯的标签*/
                     ov_block_max_mV_now = voltage_mV[i];
                     ov_block_max_label_now = cell_label[i];
                 }
@@ -191,7 +194,7 @@ uint8_t BQ76940_UpdateAlarmState9(const uint16_t voltage_mV[BQ76940_CELL_COUNT_9
         }
     }
 
-    /* =========================================================
+    /* 
      * 4. 更新 DIFF 状态（带回差）
      *
      * 进入条件：
@@ -199,7 +202,7 @@ uint8_t BQ76940_UpdateAlarmState9(const uint16_t voltage_mV[BQ76940_CELL_COUNT_9
      *
      * 退出条件：
      *   diff_mV < diff_exit_mV
-     * ========================================================= */
+     */
     if (state->diff_flag == 0)
     {
         if (stats->diff_mV > th->diff_enter_mV)

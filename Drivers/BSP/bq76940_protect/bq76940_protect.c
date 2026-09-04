@@ -190,13 +190,12 @@ uint8_t BQ76940_ProtectLoadOcdScd(const BQ76940_OcdScdConfig_t *cfg,
         return 1;
     }
 
-    /* PROTECT1: SCD_DELAY[4:3] + SCD_THRESH[2:0] */
-    protect1 = (uint8_t)(((cfg->scd_delay_code & 0x03U) << 3) |
-                         (cfg->scd_thresh_code & 0x07U));
+    /* RSNS = 1：OCD、SCD均使用手册中的高档位 */
+    protect1 = (uint8_t)((1U << 7) |
+                        ((cfg->scd_delay_code & 0x03U) << 3) | (cfg->scd_thresh_code & 0x07U));
 
     /* PROTECT2: OCD_DELAY[6:4] + OCD_THRESH[3:0] */
-    protect2 = (uint8_t)(((cfg->ocd_delay_code & 0x07U) << 4) |
-                         (cfg->ocd_thresh_code & 0x0FU));
+    protect2 = (uint8_t)(((cfg->ocd_delay_code & 0x07U) << 4) | (cfg->ocd_thresh_code & 0x0FU));
 
     if (BQ76940_WriteReg_CRC(BQ76940_REG_PROTECT1, protect1) != BQ76940_OK)
     {

@@ -13,27 +13,7 @@
 /* I2C时序延时，软件I2C速度不要太快 */
 #define SOFT_I2C1_DELAY_US(x)      delay_us(x)
 
-/*-------------------- SDA模式切换 --------------------*/
-static void SoftI2C1_SDA_Out(void)
-{
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-    GPIO_InitStruct.Pin   = SOFT_I2C1_SDA_PIN;
-    GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_OD;
-    GPIO_InitStruct.Pull  = GPIO_PULLUP;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-    HAL_GPIO_Init(SOFT_I2C1_SDA_PORT, &GPIO_InitStruct);
-}
-
-static void SoftI2C1_SDA_In(void)
-{
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-
-    GPIO_InitStruct.Pin  = SOFT_I2C1_SDA_PIN;
-    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-    GPIO_InitStruct.Pull = GPIO_PULLUP;
-    HAL_GPIO_Init(SOFT_I2C1_SDA_PORT, &GPIO_InitStruct);
-}
 
 /*-------------------- 引脚操作 --------------------*/
 static void SoftI2C1_SCL_High(void)
@@ -59,6 +39,29 @@ static void SoftI2C1_SDA_Low(void)
 static uint8_t SoftI2C1_ReadSDA(void)
 {
     return (uint8_t)HAL_GPIO_ReadPin(SOFT_I2C1_SDA_PORT, SOFT_I2C1_SDA_PIN);
+}
+
+
+/*-------------------- SDA模式切换 --------------------*/
+static void SoftI2C1_SDA_Out(void)
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+    GPIO_InitStruct.Pin   = SOFT_I2C1_SDA_PIN;
+    GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_OD;
+    GPIO_InitStruct.Pull  = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(SOFT_I2C1_SDA_PORT, &GPIO_InitStruct);
+}
+
+static void SoftI2C1_SDA_In(void)
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+    GPIO_InitStruct.Pin  = SOFT_I2C1_SDA_PIN;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    HAL_GPIO_Init(SOFT_I2C1_SDA_PORT, &GPIO_InitStruct);
 }
 
 /*-------------------- 初始化 --------------------*/

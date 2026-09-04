@@ -1,0 +1,2691 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1440</width>
+    <height>820</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>1280</width>
+    <height>720</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>BMS Monitor Pro — 9S 电池管理系统</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">
+QMainWindow { background:#f4f6f8; }
+QWidget { color:#182230; font-family:"Microsoft YaHei UI","Segoe UI"; font-size:13px; }
+QFrame[panel="true"], QFrame[card="true"], QFrame[summaryCard="true"] {
+    background:#ffffff; border:1px solid #d8dee7; border-radius:10px;
+}
+QFrame#frameSidebar { background:#ffffff; border:1px solid #d8dee7; border-radius:7px; }
+QLabel[role="sectionTitle"] { color:#172b4d; font-size:15px; font-weight:800; }
+QLabel[role="summaryTitle"] { color:#475467; font-size:12px; font-weight:700; }
+QLabel[role="summaryValue"] { font-size:25px; font-weight:800; }
+QLabel[role="summaryDetail"] { color:#667085; font-size:11px; background:#f2f4f7; border-radius:7px; padding:2px 7px; }
+QFrame[summaryCard="true"] { background:#ffffff; border:1px solid #d9e0ea; border-radius:10px; }
+QFrame#frameSummaryVoltage { background:#f7fcf8; border-top:3px solid #22a559; }
+QFrame#frameSummaryCurrent { background:#f6f9ff; border-top:3px solid #2878df; }
+QFrame#frameSummarySoc { background:#f6f7f8; border:1px solid #d9dde3; border-top:3px solid #98a2b3; }
+QLabel#labelSocTitle, QLabel#labelSoc, QLabel#labelSocSource { color:#98a2b3; }
+QFrame#frameSummaryTemperature { background:#fffaf3; border-top:3px solid #f59e42; }
+QFrame#frameSummaryAlarm { background:#fff1f2; border:2px solid #e5484d; }
+QLabel#labelAlarmTitle { color:#a61b29; font-weight:800; }
+QFrame#frameSummaryBalance { background:#f7fbff; border-top:3px solid #5b8def; }
+QLabel[role="fieldLabel"] { color:#344054; min-width:56px; }
+QLabel#labelConnectionStatus { color:#667085; font-weight:600; padding:4px 0; }
+QLabel[role="key"] { color:#475467; }
+QLabel[role="value"] { color:#182230; }
+QLabel#labelFaultSummary { color:#168a45; font-size:23px; font-weight:700; padding:4px; }
+QComboBox, QPushButton, QPlainTextEdit, QTableWidget {
+    background:#ffffff; border:1px solid #cfd6e0; border-radius:5px;
+}
+QComboBox { min-height:30px; padding:0 9px; }
+QPushButton { min-height:31px; padding:0 12px; }
+QPushButton:hover { border-color:#1677ff; color:#0b63ce; background:#f1f7ff; }
+QPushButton:pressed { background:#e5f0ff; }
+QPushButton#buttonSendCommand { color:white; background:#276fce; border-color:#276fce; font-weight:600; min-height:36px; }
+QPushButton#buttonSendCommand:hover { background:#1f62b8; color:white; }
+QPlainTextEdit#plainTextEditCommLog { color:#168a45; background:#fbfcfd; font-family:Consolas,"Microsoft YaHei UI"; font-size:11px; padding:5px; }
+QFrame#frameQualityStrip { background:#fff9ed; border:1px solid #f2cf87; border-radius:6px; }
+QLabel#labelQualityIcon { color:#ffffff; background:#f79009; border-radius:5px; padding:2px 7px; font-size:11px; font-weight:800; }
+QLabel#labelQualityText { color:#9a4e00; font-weight:600; }
+QFrame#frameCells { background:#ffffff; border:1px solid #cdd9e8; border-radius:10px; }
+QLabel#labelCellsTitle { color:#163a67; background:#edf4ff; border-left:4px solid #2878df; border-radius:5px; padding:3px 8px; font-size:15px; font-weight:800; }
+QFrame[cellCard="true"] { background:#f8fcf8; border:1px solid #cfe2d3; border-radius:8px; min-height:72px; }
+/* 最高单体使用蓝色边框，最低单体使用红色边框。 */
+QFrame[cellCard="true"][voltageState="highest"] {
+    background:#f5f9ff;
+    border:2px solid #1677ff;
+}
+
+QFrame[cellCard="true"][voltageState="lowest"] {
+    background:#fff7f7;
+    border:2px solid #e5484d;
+}
+/* 单体电压文字颜色跟随最高、最低状态变化。 */
+QLabel[role="cellValue"][voltageState="highest"] {
+    color:#1677ff;
+}
+
+QLabel[role="cellValue"][voltageState="lowest"] {
+    color:#d92d36;
+}
+QLabel[role="cellName"] { color:#344054; font-weight:600; }
+QLabel[role="cellValue"] { color:#168a45; font-size:20px; font-weight:700; }
+
+QLabel#labelCellBadge2 { color:white; background:#1677ff; border-radius:4px; padding:2px 5px; font-size:11px; font-weight:700; }
+QLabel#labelCellBadge4 { color:white; background:#e5484d; border-radius:4px; padding:2px 5px; font-size:11px; font-weight:700; }
+QLabel#labelCellBalance2 { color:#f79009; font-weight:600; font-size:12px; }
+QLabel#labelCellDiffTitle { color:#9a4e00; font-weight:800; }
+QLabel#labelCellDiff { color:#f07818; font-size:22px; font-weight:800; }
+QFrame[detailCard="true"] { background:#ffffff; border:1px solid #d8e0eb; border-radius:10px; }
+QFrame#frameStatusInfo { background:#f8fbff; border-top:3px solid #2878df; }
+QFrame#frameFaultDiag { background:#f8fcf9; border-top:3px solid #22a559; }
+QFrame#frameBalanceDetail { background:#fffaf3; border-top:3px solid #f59e42; }
+QLabel#labelStatusInfoTitle, QLabel#labelFaultTitle, QLabel#labelBalanceDetailTitle { padding:6px 7px; border-bottom:1px solid #dfe5ed; font-size:15px; font-weight:800; }
+QLabel#labelAlarmFlags, QLabel#labelProtectFlags, QLabel#labelCurrentDirection, QLabel#labelStatusTemperature,
+QLabel#labelRuntimeFault, QLabel#labelHwFault, QLabel#labelBringUpFault { background:rgba(255,255,255,185); border:1px solid #e5eaf0; border-radius:5px; padding:5px 7px; font-family:Consolas,"Microsoft YaHei UI"; }
+QLabel#labelFaultSummary { background:#ffffff; border:1px solid #dce7df; border-radius:7px; min-height:38px; }
+QLabel#labelBalanceActive, QLabel#labelBalanceTargetCount, QLabel#labelBalanceTarget,
+QLabel#labelCellBal1, QLabel#labelCellBal2, QLabel#labelCellBal3, QLabel#labelBalancePhase { background:rgba(255,255,255,190); border:1px solid #eee4d5; border-radius:4px; padding:3px 7px; }
+QLabel#labelBalanceStateTitle, QLabel#labelBalanceCountTitle, QLabel#labelBalanceTargetTitle,
+QLabel#labelCellBal1Title, QLabel#labelCellBal2Title, QLabel#labelCellBal3Title, QLabel#labelBalancePhaseTitle { color:#667085; font-weight:700; }
+QLabel[state="danger"] { color:#d92d36; font-weight:600; }
+QLabel[state="warning"] { color:#f07818; font-weight:600; }
+QLabel[state="good"] { color:#168a45; font-weight:600; }
+QTableWidget { gridline-color:#e4e7ec; alternate-background-color:#f8fafc; selection-background-color:#e8f1ff; selection-color:#182230; }
+QHeaderView::section { color:#344054; background:#f2f4f7; border:none; border-right:1px solid #dfe3e8; border-bottom:1px solid #d4dae3; padding:6px; font-weight:600; }
+QFrame#frameBottomStatus { background:#ffffff; border-top:1px solid #d8dee7; }
+QLabel[role="statusItem"] { color:#344054; margin:0 10px; }
+QLabel#labelRunState { color:#168a45; font-weight:700; }
+QScrollArea { background:transparent; border:none; }
+QScrollBar:vertical { background:#eef1f5; width:10px; margin:0; }
+QScrollBar::handle:vertical { background:#b8c0cc; min-height:28px; border-radius:5px; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height:0; }
+
+/* Single-screen dashboard: 1440x820 / 1366x768 logical pixels. */
+QWidget { font-size:12px; }
+QFrame[panel="true"], QFrame[summaryCard="true"], QFrame[detailCard="true"] { border-radius:6px; }
+QLabel[role="sectionTitle"] { font-size:13px; font-weight:700; }
+QLabel[role="summaryValue"] { font-size:22px; }
+QLabel[role="summaryDetail"] { font-size:10px; padding:0; background:transparent; }
+QLabel#labelCellsTitle { background:transparent; border:none; padding:0; font-size:13px; }
+QFrame[cellCard="true"] { min-height:0; border-radius:5px; }
+QLabel[role="cellValue"] { font-size:18px; }
+QLabel[role="cellName"] { font-size:11px; }
+QFrame#frameCellDiff { min-height:0; background:transparent; border:none; }
+QLabel#labelCellDiff, QLabel#labelCellDiffTitle { font-size:13px; }
+QLabel#labelCellExtrema { color:#667085; font-size:11px; }
+QLabel#labelStatusInfoTitle, QLabel#labelFaultTitle, QLabel#labelBalanceDetailTitle { padding:0; border:none; font-size:13px; }
+QLabel#labelAlarmFlags, QLabel#labelProtectFlags, QLabel#labelCurrentDirection, QLabel#labelStatusTemperature,
+QLabel#labelRuntimeFault, QLabel#labelHwFault, QLabel#labelBringUpFault { background:transparent; border:none; padding:0; font-size:11px; }
+QLabel#labelFaultSummary { min-height:0; background:transparent; border:none; padding:0; font-size:16px; }
+QLabel#labelBalanceActive, QLabel#labelBalanceTargetCount, QLabel#labelBalanceTarget,
+QLabel#labelCellBal1, QLabel#labelCellBal2, QLabel#labelCellBal3, QLabel#labelBalancePhase { border:none; padding:0; background:transparent; font-size:11px; }
+QLabel#labelBalanceStateTitle, QLabel#labelBalanceCountTitle, QLabel#labelBalanceTargetTitle,
+QLabel#labelCellBal1Title, QLabel#labelCellBal2Title, QLabel#labelCellBal3Title, QLabel#labelBalancePhaseTitle { font-size:10px; }
+QFrame#frameQualityStrip { border:none; background:transparent; }
+QLabel#labelQualityText { font-size:10px; font-weight:400; }
+QLabel#labelQualityIcon { padding:0 4px; font-size:10px; }
+QComboBox, QPushButton { min-height:25px; }
+QPushButton { padding:0 7px; }
+QPushButton#buttonSendCommand { min-height:28px; }
+QLabel#labelConnectionStatus { padding:0; font-size:11px; }
+QLabel[role="statusItem"] { margin:0 5px; font-size:11px; }
+QHeaderView::section { padding:3px; }</string>
+  </property>
+  <widget class="QWidget" name="centralWidget">
+   <layout class="QVBoxLayout" name="verticalLayoutRoot">
+    <property name="spacing">
+     <number>5</number>
+    </property>
+    <property name="bottomMargin">
+     <number>6</number>
+    </property>
+    <property name="rightMargin">
+     <number>6</number>
+    </property>
+    <property name="topMargin">
+     <number>6</number>
+    </property>
+    <property name="leftMargin">
+     <number>6</number>
+    </property>
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayoutContent" stretch="0,1">
+      <property name="spacing">
+       <number>8</number>
+      </property>
+      <item>
+       <widget class="QFrame" name="frameSidebar">
+        <property name="maximumSize">
+         <size>
+          <width>224</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>224</width>
+          <height>0</height>
+         </size>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayoutSidebar">
+         <property name="spacing">
+          <number>5</number>
+         </property>
+         <property name="bottomMargin">
+          <number>10</number>
+         </property>
+         <property name="rightMargin">
+          <number>10</number>
+         </property>
+         <property name="topMargin">
+          <number>10</number>
+         </property>
+         <property name="leftMargin">
+          <number>10</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="labelConnectionTitle">
+           <property name="text">
+            <string>连接设置</string>
+           </property>
+           <property name="role" stdset="0">
+            <string>sectionTitle</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QFormLayout" name="formLayoutConnection">
+           <property name="horizontalSpacing">
+            <number>8</number>
+           </property>
+           <property name="verticalSpacing">
+            <number>8</number>
+           </property>
+           <item row="0" column="0">
+            <widget class="QLabel" name="labelCanDeviceTitle">
+             <property name="text">
+              <string>CAN设备</string>
+             </property>
+             <property name="role" stdset="0">
+              <string>fieldLabel</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QComboBox" name="comboCanDevice">
+             <property name="minimumContentsLength">
+              <number>6</number>
+             </property>
+             <property name="sizeAdjustPolicy">
+              <enum>QComboBox::AdjustToMinimumContentsLengthWithIcon</enum>
+             </property>
+             <item>
+              <property name="text">
+               <string>正在扫描设备...</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="labelBitrateTitle">
+             <property name="text">
+              <string>波特率</string>
+             </property>
+             <property name="role" stdset="0">
+              <string>fieldLabel</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QComboBox" name="comboBitrate">
+             <property name="minimumContentsLength">
+              <number>6</number>
+             </property>
+             <property name="sizeAdjustPolicy">
+              <enum>QComboBox::AdjustToMinimumContentsLengthWithIcon</enum>
+             </property>
+             <item>
+              <property name="text">
+               <string>500 kbps</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>250 kbps</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="labelFrameTypeTitle">
+             <property name="text">
+              <string>帧类型</string>
+             </property>
+             <property name="role" stdset="0">
+              <string>fieldLabel</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QComboBox" name="comboFrameType">
+             <property name="minimumContentsLength">
+              <number>6</number>
+             </property>
+             <property name="sizeAdjustPolicy">
+              <enum>QComboBox::AdjustToMinimumContentsLengthWithIcon</enum>
+             </property>
+             <item>
+              <property name="text">
+               <string>标准帧</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>扩展帧</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <widget class="QLabel" name="labelConnectionStatus">
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>42</height>
+            </size>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+           <property name="text">
+            <string>● 未连接</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayoutConnectionButtons">
+           <item>
+            <widget class="QPushButton" name="buttonConnect">
+             <property name="text">
+              <string>▶  连接设备</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="buttonRefreshDevices">
+             <property name="text">
+              <string>↻  刷新设备</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <widget class="Line" name="lineSidebar1">
+           <property name="orientation">
+            <enum>Qt::Orientation::Horizontal</enum>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="labelCommandTitle">
+           <property name="text">
+            <string>发送命令（0x401）</string>
+           </property>
+           <property name="role" stdset="0">
+            <string>sectionTitle</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="comboCommand">
+           <property name="minimumContentsLength">
+            <number>6</number>
+           </property>
+           <property name="sizeAdjustPolicy">
+            <enum>QComboBox::AdjustToMinimumContentsLengthWithIcon</enum>
+           </property>
+           <item>
+            <property name="text">
+             <string>请求全部状态（0x01）</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>请求故障诊断（0x02）</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>请求均衡状态（0x03）</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="buttonSendCommand">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="text">
+            <string>▷  发送命令</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="Line" name="lineSidebar2">
+           <property name="orientation">
+            <enum>Qt::Orientation::Horizontal</enum>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="labelLogTitle">
+           <property name="text">
+            <string>事件日志</string>
+           </property>
+           <property name="role" stdset="0">
+            <string>sectionTitle</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPlainTextEdit" name="plainTextEditCommLog">
+           <property name="lineWrapMode">
+            <enum>QPlainTextEdit::WidgetWidth</enum>
+           </property>
+           <property name="readOnly">
+            <bool>true</bool>
+           </property>
+           <property name="plainText">
+            <string />
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayoutLogActions">
+           <item>
+            <widget class="QPushButton" name="buttonClearLog">
+             <property name="text">
+              <string>清空日志</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="horizontalSpacerLog">
+             <property name="orientation">
+              <enum>Qt::Orientation::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="checkAutoScrollLog">
+             <property name="text">
+              <string>自动滚动</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QWidget" name="scrollAreaDashboard">
+        <layout class="QVBoxLayout" name="layoutDashboardHost">
+         <property name="spacing">
+          <number>5</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QWidget" name="scrollAreaWidgetContents">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>0</y>
+             <width>1188</width>
+             <height>760</height>
+            </rect>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayoutDashboard" stretch="0,0,0,0,1">
+            <property name="spacing">
+             <number>7</number>
+            </property>
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <layout class="QHBoxLayout" name="horizontalLayoutSummary" stretch="1,1,1,1,1,1">
+              <property name="spacing">
+               <number>9</number>
+              </property>
+              <item>
+               <widget class="QFrame" name="frameSummaryVoltage">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>76</height>
+                 </size>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>68</height>
+                 </size>
+                </property>
+                <property name="summaryCard" stdset="0">
+                 <bool>true</bool>
+                </property>
+                <layout class="QVBoxLayout" name="layoutSummaryVoltage">
+                 <property name="spacing">
+                  <number>1</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>6</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>6</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>6</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>6</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="labelPackVoltageTitle">
+                   <property name="text">
+                    <string>总电压</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>summaryTitle</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="labelPackVoltage">
+                   <property name="styleSheet">
+                    <string>color:#168a45;</string>
+                   </property>
+                   <property name="text">
+                    <string>34.058 V</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>summaryValue</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="labelPackVoltageSource">
+                   <property name="text">
+                    <string>0x301</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>summaryDetail</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QFrame" name="frameSummaryCurrent">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>76</height>
+                 </size>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>68</height>
+                 </size>
+                </property>
+                <property name="summaryCard" stdset="0">
+                 <bool>true</bool>
+                </property>
+                <layout class="QVBoxLayout" name="layoutSummaryCurrent">
+                 <property name="spacing">
+                  <number>1</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>6</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>6</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>6</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>6</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="labelPackCurrentTitle">
+                   <property name="text">
+                    <string>电流</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>summaryTitle</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="labelPackCurrent">
+                   <property name="styleSheet">
+                    <string>color:#1677ff;</string>
+                   </property>
+                   <property name="text">
+                    <string>0.000 A</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>summaryValue</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="labelPackCurrentSource">
+                   <property name="text">
+                    <string>0x301</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>summaryDetail</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QFrame" name="frameSummarySoc">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>76</height>
+                 </size>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>68</height>
+                 </size>
+                </property>
+                <property name="summaryCard" stdset="0">
+                 <bool>true</bool>
+                </property>
+                <layout class="QVBoxLayout" name="layoutSummarySoc">
+                 <property name="spacing">
+                  <number>1</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>6</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>6</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>6</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>6</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="labelSocTitle">
+                   <property name="text">
+                    <string>SOC</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>summaryTitle</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="labelSoc">
+                   <property name="styleSheet">
+                    <string>color:#98a2b3;</string>
+                   </property>
+                   <property name="text">
+                    <string>-- %</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>summaryValue</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="labelSocSource">
+                   <property name="text">
+                    <string>电量计未接入</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>summaryDetail</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QFrame" name="frameSummaryTemperature">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>76</height>
+                 </size>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>68</height>
+                 </size>
+                </property>
+                <property name="summaryCard" stdset="0">
+                 <bool>true</bool>
+                </property>
+                <layout class="QVBoxLayout" name="layoutSummaryTemperature">
+                 <property name="spacing">
+                  <number>1</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>6</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>6</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>6</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>6</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="labelTemperatureTitle">
+                   <property name="text">
+                    <string>温度</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>summaryTitle</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="labelTemperature">
+                   <property name="styleSheet">
+                    <string>color:#f07818;</string>
+                   </property>
+                   <property name="text">
+                    <string>24.0 °C</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>summaryValue</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="labelTemperatureSource">
+                   <property name="text">
+                    <string>0x304</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>summaryDetail</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QFrame" name="frameSummaryAlarm">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>76</height>
+                 </size>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>68</height>
+                 </size>
+                </property>
+                <property name="summaryCard" stdset="0">
+                 <bool>true</bool>
+                </property>
+                <layout class="QVBoxLayout" name="layoutSummaryAlarm">
+                 <property name="spacing">
+                  <number>1</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>6</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>6</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>6</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>6</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="labelAlarmTitle">
+                   <property name="text">
+                    <string>告警状态</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>summaryTitle</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="labelAlarmStatus">
+                   <property name="styleSheet">
+                    <string>color:#d92d36;</string>
+                   </property>
+                   <property name="text">
+                    <string>DIFF</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>summaryValue</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="labelAlarmDetail">
+                   <property name="text">
+                    <string>压差迟滞保持</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>summaryDetail</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QFrame" name="frameSummaryBalance">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>76</height>
+                 </size>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>68</height>
+                 </size>
+                </property>
+                <property name="summaryCard" stdset="0">
+                 <bool>true</bool>
+                </property>
+                <layout class="QVBoxLayout" name="layoutSummaryBalance">
+                 <property name="spacing">
+                  <number>1</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>6</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>6</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>6</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>6</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="labelBalanceTitle">
+                   <property name="text">
+                    <string>均衡状态</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>summaryTitle</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="labelBalanceStatus">
+                   <property name="styleSheet">
+                    <string>color:#168a45;</string>
+                   </property>
+                   <property name="text">
+                    <string>Active</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>summaryValue</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="labelBalanceTargetSummary">
+                   <property name="text">
+                    <string>目标：Cell 2</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>summaryDetail</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="QFrame" name="frameCells">
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>96</height>
+               </size>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>86</height>
+               </size>
+              </property>
+              <property name="panel" stdset="0">
+               <bool>true</bool>
+              </property>
+              <layout class="QVBoxLayout" name="verticalLayoutCells">
+               <property name="spacing">
+                <number>5</number>
+               </property>
+               <property name="bottomMargin">
+                <number>7</number>
+               </property>
+               <property name="rightMargin">
+                <number>7</number>
+               </property>
+               <property name="topMargin">
+                <number>7</number>
+               </property>
+               <property name="leftMargin">
+                <number>7</number>
+               </property>
+               <item>
+                <layout class="QHBoxLayout" name="horizontalLayoutCellHeader" stretch="1,2,0">
+                 <item>
+                  <widget class="QLabel" name="labelCellsTitle">
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                   <property name="text">
+                    <string>9S 单体电压</string>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>sectionTitle</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="labelCellExtrema">
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignVCenter</set>
+                   </property>
+                   <property name="text">
+                    <string>最高 --   最低 --</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QFrame" name="frameCellDiff">
+                   <property name="cellCard" stdset="0">
+                    <bool>true</bool>
+                   </property>
+                   <layout class="QHBoxLayout" name="layoutCellDiff">
+                    <property name="spacing">
+                     <number>5</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="leftMargin">
+                     <number>0</number>
+                    </property>
+                    <item>
+                     <widget class="QLabel" name="labelCellDiffTitle">
+                      <property name="text">
+                       <string>单体压差</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                      <property name="role" stdset="0">
+                       <string>cellName</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="labelCellDiff">
+                      <property name="text">
+                       <string>139 mV</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <layout class="QGridLayout" name="gridLayoutCells">
+                 <property name="spacing">
+                  <number>6</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <item row="0" column="0">
+                  <widget class="QFrame" name="frameCell1">
+                   <property name="maximumSize">
+                    <size>
+                     <width>16777215</width>
+                     <height>60</height>
+                    </size>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>48</height>
+                    </size>
+                   </property>
+                   <property name="cellCard" stdset="0">
+                    <bool>true</bool>
+                   </property>
+                   <layout class="QVBoxLayout" name="layoutCell1">
+                    <property name="spacing">
+                     <number>5</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="leftMargin">
+                     <number>4</number>
+                    </property>
+                    <item>
+                     <widget class="QLabel" name="labelCellName1">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="text">
+                       <string>Cell 1</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                      <property name="role" stdset="0">
+                       <string>cellName</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="labelCellVoltage1">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="text">
+                       <string>3.826 V</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                      <property name="role" stdset="0">
+                       <string>cellValue</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QFrame" name="frameCell2">
+                   <property name="maximumSize">
+                    <size>
+                     <width>16777215</width>
+                     <height>60</height>
+                    </size>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>48</height>
+                    </size>
+                   </property>
+                   <property name="cellCard" stdset="0">
+                    <bool>true</bool>
+                   </property>
+                   <layout class="QVBoxLayout" name="layoutCell2">
+                    <property name="spacing">
+                     <number>5</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="leftMargin">
+                     <number>4</number>
+                    </property>
+                    <item alignment="Qt::AlignmentFlag::AlignRight">
+                     <widget class="QLabel" name="labelCellBadge2">
+                      <property name="maximumSize">
+                       <size>
+                        <width>0</width>
+                        <height>0</height>
+                       </size>
+                      </property>
+                      <property name="visible">
+                       <bool>false</bool>
+                      </property>
+                      <property name="text">
+                       <string>最高</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="labelCellName2">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="text">
+                       <string>Cell 2</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                      <property name="role" stdset="0">
+                       <string>cellName</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="labelCellVoltage2">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="text">
+                       <string>3.833 V</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                      <property name="role" stdset="0">
+                       <string>cellValue</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="labelCellBalance2">
+                      <property name="maximumSize">
+                       <size>
+                        <width>0</width>
+                        <height>0</height>
+                       </size>
+                      </property>
+                      <property name="visible">
+                       <bool>false</bool>
+                      </property>
+                      <property name="text">
+                       <string>◆  均衡中</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item row="0" column="2">
+                  <widget class="QFrame" name="frameCell3">
+                   <property name="maximumSize">
+                    <size>
+                     <width>16777215</width>
+                     <height>60</height>
+                    </size>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>48</height>
+                    </size>
+                   </property>
+                   <property name="cellCard" stdset="0">
+                    <bool>true</bool>
+                   </property>
+                   <layout class="QVBoxLayout" name="layoutCell3">
+                    <property name="spacing">
+                     <number>5</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="leftMargin">
+                     <number>4</number>
+                    </property>
+                    <item>
+                     <widget class="QLabel" name="labelCellName3">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="text">
+                       <string>Cell 3</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                      <property name="role" stdset="0">
+                       <string>cellName</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="labelCellVoltage3">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="text">
+                       <string>3.782 V</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                      <property name="role" stdset="0">
+                       <string>cellValue</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item row="0" column="3">
+                  <widget class="QFrame" name="frameCell4">
+                   <property name="maximumSize">
+                    <size>
+                     <width>16777215</width>
+                     <height>60</height>
+                    </size>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>48</height>
+                    </size>
+                   </property>
+                   <property name="cellCard" stdset="0">
+                    <bool>true</bool>
+                   </property>
+                   <layout class="QVBoxLayout" name="layoutCell4">
+                    <property name="spacing">
+                     <number>5</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="leftMargin">
+                     <number>4</number>
+                    </property>
+                    <item alignment="Qt::AlignmentFlag::AlignRight">
+                     <widget class="QLabel" name="labelCellBadge4">
+                      <property name="maximumSize">
+                       <size>
+                        <width>0</width>
+                        <height>0</height>
+                       </size>
+                      </property>
+                      <property name="visible">
+                       <bool>false</bool>
+                      </property>
+                      <property name="text">
+                       <string>最低</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="labelCellName4">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="text">
+                       <string>Cell 4</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                      <property name="role" stdset="0">
+                       <string>cellName</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="labelCellVoltage4">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="text">
+                       <string>3.694 V</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                      <property name="role" stdset="0">
+                       <string>cellValue</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item row="0" column="4">
+                  <widget class="QFrame" name="frameCell5">
+                   <property name="maximumSize">
+                    <size>
+                     <width>16777215</width>
+                     <height>60</height>
+                    </size>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>48</height>
+                    </size>
+                   </property>
+                   <property name="cellCard" stdset="0">
+                    <bool>true</bool>
+                   </property>
+                   <layout class="QVBoxLayout" name="layoutCell5">
+                    <property name="spacing">
+                     <number>5</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="leftMargin">
+                     <number>4</number>
+                    </property>
+                    <item>
+                     <widget class="QLabel" name="labelCellName5">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="text">
+                       <string>Cell 5</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                      <property name="role" stdset="0">
+                       <string>cellName</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="labelCellVoltage5">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="text">
+                       <string>3.826 V</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                      <property name="role" stdset="0">
+                       <string>cellValue</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item row="0" column="5">
+                  <widget class="QFrame" name="frameCell6">
+                   <property name="maximumSize">
+                    <size>
+                     <width>16777215</width>
+                     <height>60</height>
+                    </size>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>48</height>
+                    </size>
+                   </property>
+                   <property name="cellCard" stdset="0">
+                    <bool>true</bool>
+                   </property>
+                   <layout class="QVBoxLayout" name="layoutCell6">
+                    <property name="spacing">
+                     <number>5</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="leftMargin">
+                     <number>4</number>
+                    </property>
+                    <item>
+                     <widget class="QLabel" name="labelCellName6">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="text">
+                       <string>Cell 6</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                      <property name="role" stdset="0">
+                       <string>cellName</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="labelCellVoltage6">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="text">
+                       <string>3.750 V</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                      <property name="role" stdset="0">
+                       <string>cellValue</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item row="0" column="6">
+                  <widget class="QFrame" name="frameCell7">
+                   <property name="maximumSize">
+                    <size>
+                     <width>16777215</width>
+                     <height>60</height>
+                    </size>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>48</height>
+                    </size>
+                   </property>
+                   <property name="cellCard" stdset="0">
+                    <bool>true</bool>
+                   </property>
+                   <layout class="QVBoxLayout" name="layoutCell7">
+                    <property name="spacing">
+                     <number>5</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="leftMargin">
+                     <number>4</number>
+                    </property>
+                    <item>
+                     <widget class="QLabel" name="labelCellName7">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="text">
+                       <string>Cell 7</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                      <property name="role" stdset="0">
+                       <string>cellName</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="labelCellVoltage7">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="text">
+                       <string>3.775 V</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                      <property name="role" stdset="0">
+                       <string>cellValue</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item row="0" column="7">
+                  <widget class="QFrame" name="frameCell8">
+                   <property name="maximumSize">
+                    <size>
+                     <width>16777215</width>
+                     <height>60</height>
+                    </size>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>48</height>
+                    </size>
+                   </property>
+                   <property name="cellCard" stdset="0">
+                    <bool>true</bool>
+                   </property>
+                   <layout class="QVBoxLayout" name="layoutCell8">
+                    <property name="spacing">
+                     <number>5</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="leftMargin">
+                     <number>4</number>
+                    </property>
+                    <item>
+                     <widget class="QLabel" name="labelCellName8">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="text">
+                       <string>Cell 8</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                      <property name="role" stdset="0">
+                       <string>cellName</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="labelCellVoltage8">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="text">
+                       <string>3.799 V</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                      <property name="role" stdset="0">
+                       <string>cellValue</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item row="0" column="8">
+                  <widget class="QFrame" name="frameCell9">
+                   <property name="maximumSize">
+                    <size>
+                     <width>16777215</width>
+                     <height>60</height>
+                    </size>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>48</height>
+                    </size>
+                   </property>
+                   <property name="cellCard" stdset="0">
+                    <bool>true</bool>
+                   </property>
+                   <layout class="QVBoxLayout" name="layoutCell9">
+                    <property name="spacing">
+                     <number>5</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="leftMargin">
+                     <number>4</number>
+                    </property>
+                    <item>
+                     <widget class="QLabel" name="labelCellName9">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="text">
+                       <string>Cell 9</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                      <property name="role" stdset="0">
+                       <string>cellName</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="labelCellVoltage9">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="text">
+                       <string>3.790 V</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                      <property name="role" stdset="0">
+                       <string>cellValue</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="horizontalLayoutCharts" stretch="1,1">
+              <item>
+               <widget class="QFrame" name="frameCellDistribution">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>180</height>
+                 </size>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>138</height>
+                 </size>
+                </property>
+                <property name="panel" stdset="0">
+                 <bool>true</bool>
+                </property>
+                <layout class="QVBoxLayout" name="verticalLayoutDistribution">
+                 <property name="spacing">
+                  <number>5</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>7</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="labelDistributionTitle">
+                   <property name="text">
+                    <string>单体电压分布</string>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>sectionTitle</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="VoltageBarChart" name="widgetCellBarChart" native="true">
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>96</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QFrame" name="frameTrend">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>180</height>
+                 </size>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>138</height>
+                 </size>
+                </property>
+                <property name="panel" stdset="0">
+                 <bool>true</bool>
+                </property>
+                <layout class="QVBoxLayout" name="verticalLayoutTrend">
+                 <property name="spacing">
+                  <number>5</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>7</number>
+                 </property>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayoutTrendHeader">
+                   <item>
+                    <widget class="QLabel" name="labelTrendTitle">
+                     <property name="text">
+                      <string>趋势曲线</string>
+                     </property>
+                     <property name="role" stdset="0">
+                      <string>sectionTitle</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayoutTrendControls">
+                     <item>
+                      <widget class="QComboBox" name="comboTrendMetric">
+                       <item>
+                        <property name="text">
+                         <string>总电压</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>电流</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>温度</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                     <item>
+                      <spacer name="horizontalSpacerTrend">
+                       <property name="orientation">
+                        <enum>Qt::Orientation::Horizontal</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>40</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="checkAutoScrollTrend">
+                       <property name="text">
+                        <string>自动滚动</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <widget class="TrendChart" name="widgetTrendChart" native="true">
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>96</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="horizontalLayoutDetails" stretch="10,8,11">
+              <property name="spacing">
+               <number>9</number>
+              </property>
+              <item>
+               <widget class="QFrame" name="frameStatusInfo">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>104</height>
+                 </size>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>96</height>
+                 </size>
+                </property>
+                <property name="panel" stdset="0">
+                 <bool>true</bool>
+                </property>
+                <property name="detailCard" stdset="0">
+                 <bool>true</bool>
+                </property>
+                <layout class="QGridLayout" name="verticalLayoutStatusInfo">
+                 <property name="spacing">
+                  <number>5</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>7</number>
+                 </property>
+                 <item row="0" column="0" colspan="2">
+                  <widget class="QLabel" name="labelStatusInfoTitle">
+                   <property name="text">
+                    <string>状态 0x304</string>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>sectionTitle</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="labelAlarmFlags">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="text">
+                    <string>AlarmFlags        0x04 (DIFF)</string>
+                   </property>
+                   <property name="state" stdset="0">
+                    <string>danger</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QLabel" name="labelProtectFlags">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="text">
+                    <string>ProtectFlags      0x20</string>
+                   </property>
+                   <property name="state" stdset="0">
+                    <string>warning</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="labelCurrentDirection">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="text">
+                    <string>CurrentDir         0（静止）</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="QLabel" name="labelStatusTemperature">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="text">
+                    <string>温度                   24.0 °C</string>
+                   </property>
+                   <property name="state" stdset="0">
+                    <string>good</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="0" colspan="2">
+                  <widget class="QFrame" name="frameQualityStrip">
+                   <layout class="QHBoxLayout" name="horizontalLayoutQuality" stretch="0,1,0">
+                    <property name="spacing">
+                     <number>5</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>1</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>1</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>1</number>
+                    </property>
+                    <property name="leftMargin">
+                     <number>1</number>
+                    </property>
+                    <item>
+                     <widget class="QLabel" name="labelQualityIcon">
+                      <property name="text">
+                       <string>!</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="labelQualityText">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="text">
+                       <string>一致性提示：单体总和 34.075 V，与 Pack 相差 17 mV</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <spacer name="horizontalSpacerQuality">
+                      <property name="orientation">
+                       <enum>Qt::Orientation::Horizontal</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>40</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QFrame" name="frameFaultDiag">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>104</height>
+                 </size>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>96</height>
+                 </size>
+                </property>
+                <property name="panel" stdset="0">
+                 <bool>true</bool>
+                </property>
+                <property name="detailCard" stdset="0">
+                 <bool>true</bool>
+                </property>
+                <layout class="QGridLayout" name="verticalLayoutFaultDiag">
+                 <property name="spacing">
+                  <number>5</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>7</number>
+                 </property>
+                 <item row="0" column="0" colspan="2">
+                  <widget class="QLabel" name="labelFaultTitle">
+                   <property name="text">
+                    <string>故障 0x305</string>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>sectionTitle</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0" colspan="2">
+                  <widget class="QLabel" name="labelFaultSummary">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="text">
+                    <string>无故障</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="labelRuntimeFault">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="text">
+                    <string>●  Runtime        无</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="QLabel" name="labelHwFault">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="text">
+                    <string>●  HwFault         无</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="0" colspan="2">
+                  <widget class="QLabel" name="labelBringUpFault">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="text">
+                    <string>●  BringUp        无</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QFrame" name="frameBalanceDetail">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>104</height>
+                 </size>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>96</height>
+                 </size>
+                </property>
+                <property name="panel" stdset="0">
+                 <bool>true</bool>
+                </property>
+                <property name="detailCard" stdset="0">
+                 <bool>true</bool>
+                </property>
+                <layout class="QGridLayout" name="formLayoutBalanceDetail">
+                 <property name="spacing">
+                  <number>5</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>7</number>
+                 </property>
+                 <item row="0" column="0" colspan="8">
+                  <widget class="QLabel" name="labelBalanceDetailTitle">
+                   <property name="text">
+                    <string>均衡 0x306</string>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>sectionTitle</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="labelBalanceStateTitle">
+                   <property name="text">
+                    <string>状态</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QLabel" name="labelBalanceActive">
+                   <property name="text">
+                    <string>Active</string>
+                   </property>
+                   <property name="state" stdset="0">
+                    <string>good</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="2">
+                  <widget class="QLabel" name="labelBalanceTargetTitle">
+                   <property name="text">
+                    <string>目标</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="3">
+                  <widget class="QLabel" name="labelBalanceTarget">
+                   <property name="text">
+                    <string>Cell 2</string>
+                   </property>
+                   <property name="state" stdset="0">
+                    <string>good</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="4">
+                  <widget class="QLabel" name="labelBalanceCountTitle">
+                   <property name="text">
+                    <string>数量</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="5">
+                  <widget class="QLabel" name="labelBalanceTargetCount">
+                   <property name="text">
+                    <string>1</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="6">
+                  <widget class="QLabel" name="labelBalancePhaseTitle">
+                   <property name="text">
+                    <string>Phase</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="7">
+                  <widget class="QLabel" name="labelBalancePhase">
+                   <property name="text">
+                    <string>1</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="labelCellBal1Title">
+                   <property name="text">
+                    <string>CELLBAL1</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="QLabel" name="labelCellBal1">
+                   <property name="text">
+                    <string>0x02</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="2">
+                  <widget class="QLabel" name="labelCellBal2Title">
+                   <property name="text">
+                    <string>CELLBAL2</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="3">
+                  <widget class="QLabel" name="labelCellBal2">
+                   <property name="text">
+                    <string>0x00</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="4">
+                  <widget class="QLabel" name="labelCellBal3Title">
+                   <property name="text">
+                    <string>CELLBAL3</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="5">
+                  <widget class="QLabel" name="labelCellBal3">
+                   <property name="text">
+                    <string>0x00</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="QFrame" name="frameCanTable">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>216</height>
+               </size>
+              </property>
+              <property name="panel" stdset="0">
+               <bool>true</bool>
+              </property>
+              <layout class="QVBoxLayout" name="verticalLayoutCanTable" stretch="0,1">
+               <property name="spacing">
+                <number>5</number>
+               </property>
+               <property name="bottomMargin">
+                <number>7</number>
+               </property>
+               <property name="rightMargin">
+                <number>7</number>
+               </property>
+               <property name="topMargin">
+                <number>7</number>
+               </property>
+               <property name="leftMargin">
+                <number>7</number>
+               </property>
+               <item>
+                <layout class="QHBoxLayout" name="horizontalLayoutCanTableHeader" stretch="1,1">
+                 <item>
+                  <widget class="QLabel" name="labelCanTableTitle">
+                   <property name="text">
+                    <string>CAN 原始报文</string>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>sectionTitle</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayoutTableActions">
+                   <item>
+                    <spacer name="horizontalSpacerTable">
+                     <property name="orientation">
+                      <enum>Qt::Orientation::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="buttonPauseFrames">
+                     <property name="text">
+                      <string>暂停</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="buttonClearFrames">
+                     <property name="text">
+                      <string>清空</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <widget class="QTableWidget" name="tableCanFrames">
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>200</height>
+                  </size>
+                 </property>
+                 <property name="editTriggers">
+                  <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+                 </property>
+                 <property name="alternatingRowColors">
+                  <bool>true</bool>
+                 </property>
+                 <property name="selectionBehavior">
+                  <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+                 </property>
+                 <property name="columnCount">
+                  <number>6</number>
+                 </property>
+                 <attribute name="verticalHeaderVisible">
+                  <bool>false</bool>
+                 </attribute>
+                 <column>
+                  <property name="text">
+                   <string>时间戳</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>方向</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>CAN ID</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>DLC</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>数据（Hex）</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>解析结果</string>
+                  </property>
+                 </column>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QFrame" name="frameBottomStatus">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>26</height>
+       </size>
+      </property>
+      <layout class="QHBoxLayout" name="horizontalLayoutBottomStatus">
+       <property name="spacing">
+        <number>5</number>
+       </property>
+       <property name="bottomMargin">
+        <number>2</number>
+       </property>
+       <property name="rightMargin">
+        <number>2</number>
+       </property>
+       <property name="topMargin">
+        <number>2</number>
+       </property>
+       <property name="leftMargin">
+        <number>2</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="labelRunStateTitle">
+         <property name="text">
+          <string>运行状态：</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="labelRunState">
+         <property name="text">
+          <string>正常</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="labelRxCount">
+         <property name="text">
+          <string>接收：12,568</string>
+         </property>
+         <property name="role" stdset="0">
+          <string>statusItem</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="labelTxCount">
+         <property name="text">
+          <string>发送：1</string>
+         </property>
+         <property name="role" stdset="0">
+          <string>statusItem</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="labelDropCount">
+         <property name="text">
+          <string>丢帧：0</string>
+         </property>
+         <property name="role" stdset="0">
+          <string>statusItem</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="labelParseErrorCount">
+         <property name="text">
+          <string>解析错误：0</string>
+         </property>
+         <property name="role" stdset="0">
+          <string>statusItem</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacerStatus">
+         <property name="orientation">
+          <enum>Qt::Orientation::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QLabel" name="labelCurrentTime">
+         <property name="text">
+          <string>当前时间：2026-08-25  14:22:31</string>
+         </property>
+         <property name="role" stdset="0">
+          <string>statusItem</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>VoltageBarChart</class>
+   <extends>QWidget</extends>
+   <header>chartwidgets.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>TrendChart</class>
+   <extends>QWidget</extends>
+   <header>chartwidgets.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources />
+ <connections />
+</ui>

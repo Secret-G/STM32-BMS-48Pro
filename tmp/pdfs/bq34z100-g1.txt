@@ -1,0 +1,3950 @@
+===== PAGE 1 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+BQ34Z100-G1 采用 Impedance Track™ 技术的宽量程电量监测计
+1 特性 2 应用
+• 支持锂离子、磷酸铁锂、PbA、镍氢和镍镉化学物 • 轻型电动车辆
+质 • 医疗仪器
+• 对电压为 3V 至 65V 的电池使用已获得专利的 • 移动无线电
+Impedance Track™ 技术估算容量 • 电动工具
+• 不间断电源 (UPS)
+– 老化补偿
+– 自放电补偿 3 说明
+• 支持的电池容量高达 29Ah，并且提供标准配置选项
+• 支持的充电和放电电流高达 32A，并且提供标准配 BQ34Z100-G1 器件是适用于锂离子、铅酸、镍氢和镍
+置选项 镉电池的 Impedance Track™ 电量监测计，并且独立于
+• 外部负温度系数 (NTC) 热敏电阻支持 电池串联配置工作。通过外部电压转换电路可轻松支持
+• 支持与主机系统的两线制 I2C 和 HDQ 单线制通信 3V 至 65V 的电池，此电路可通过自动控制来降低系统
+功耗。
+接口
+• SHA-1/HMAC 认证 BQ34Z100-G1 器件提供多个接口选项，其中包括一个
+• 一个或者四个 LED 直接显示控制 I2C 从接口、一个 HDQ 从接口、一个或四个直接 LED
+• 五个 LED 和通过端口扩展器的更多显示 接口以及一个警报输出引脚。此外，BQ34Z100-G1 还
+• 节能模式（典型电池组运行范围条件） 支持外部端口扩展器，连接四个以上的 LED。
+– 正常工作：< 145µA 平均电流
+器件信息
+– 睡眠：< 84µA 平均电流
+– 全睡眠：< 30µA 平均电流
+器件型号 (1) 封装 封装尺寸（标称值）
+• 封装：14 引脚 TSSOP BQ34Z100-G1 TSSOP (14) 5.00mm × 4.40mm
+(1) 如需了解所有可用封装，请参阅数据表末尾的可订购产品附
+录。
+简化版原理图
+本文档旨在为方便起见，提供有关 TI 产品中文版本的信息，以确认产品的概要。有关适用的官方英文版本的最新信息，请访问
+www.ti.com，其内容始终优先。TI 不保证翻译的准确性和有效性。在实际设计之前，请务必参考最新版本的英文版本。
+English Data Sheet: SLUSBZ5
+
+===== PAGE 2 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+Table of Contents
+1 特性...................................................................................1 6.13 Timing Requirements: HDQ Communication............7
+2 应用...................................................................................1 6.14 Timing Requirements: I2C-Compatible Interface......8
+3 说明...................................................................................1 6.15 Typical Characteristics..............................................9
+4 Revision History..............................................................2 7 Detailed Description......................................................10
+5 Pin Configuration and Functions...................................3 7.1 Overview...................................................................10
+6 Specifications..................................................................4 7.2 Functional Block Diagram.........................................11
+6.1 Absolute Maximum Ratings........................................4 7.3 Feature Description...................................................11
+6.2 ESD Ratings...............................................................4 7.4 Device Functional Modes..........................................44
+6.3 Recommended Operating Conditions.........................4 8 Application and Implementation..................................45
+6.4 Thermal Information....................................................5 8.1 Application Information.............................................45
+6.5 Electrical Characteristics: Power-On Reset................5 8.2 Typical Applications..................................................45
+6.6 Electrical Characteristics: LDO Regulator...................5 9 Power Supply Recommendations................................53
+6.7 Electrical Characteristics: Internal Temperature 10 Layout...........................................................................54
+Sensor Characteristics..................................................5 10.1 Layout Guidelines...................................................54
+6.8 Electrical Characteristics: Low-Frequency 10.2 Layout Example......................................................54
+Oscillator.......................................................................6 11 Device and Documentation Support..........................57
+6.9 Electrical Characteristics: High-Frequency 11.1 Documentation Support..........................................57
+Oscillator.......................................................................6 11.2 接收文档更新通知...................................................57
+6.10 Electrical Characteristics: Integrating ADC 11.3 支持资源..................................................................57
+(Coulomb Counter) Characteristics...............................6 11.4 Trademarks.............................................................57
+6.11 Electrical Characteristics: ADC (Temperature 11.5 Electrostatic Discharge Caution..............................57
+and Cell Measurement) Characteristics........................6 11.6 Glossary..................................................................57
+6.12 Electrical Characteristics: Data Flash Memory 12 Mechanical, Packaging, and Orderable
+Characteristics...............................................................7 Information....................................................................57
+4 Revision History
+Updated the numbering format for tables, figures, and cross-references throughout the document.
+Changes from Revision C (February 2019) to Revision D (April 2021) Page
+• Changed Ground System ................................................................................................................................54
+• Changed Differential Connection Between SRP and SRN Pins with Sense Resistor .....................................55
+Changes from Revision B (July 2016) to Revision C (February 2019) Page
+• Deleted EV2300 references..............................................................................................................................42
+2 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 3 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+5 Pin Configuration and Functions
+P2 1 14 P3/SDA
+VEN 2 13 P4/SCL
+P1 3 12 P5/HDQ
+BAT 4 11 P6/TS
+CE 5 10 SRN
+REGIN 6 9 SRP
+REG25 7 8 VSS
+Nottoscale
+表 5-1. Pin Functions
+PIN
+I/O DESCRIPTION
+NAME NUMBER
+P2 1 O LED 2 or Not Used (connect to Vss)
+Active High Voltage Translation Enable. This signal is optionally used to switch the input voltage
+VEN 2 O divider on/off to reduce the power consumption (typ 45 µA) of the divider network. If not used,
+then this pin can be left floating or tied to Vss.
+LED 1 or Not Used (connect to Vss). This pin is also used to drive an LED for single-LED mode.
+P1 3 O
+Use a small signal N-FET (Q1) in series with the LED as shown on 图 8-4.
+BAT 4 I Translated Battery Voltage Input
+CE 5 I Chip Enable. Internal LDO is disconnected from REGIN when driven low.
+REGIN 6 P Internal integrated LDO input. Decouple with a 0.1-µF ceramic capacitor to Vss.
+REG25 7 P 2.5-V Output voltage of the internal integrated LDO. Decouple with 1-µF ceramic capacitor to Vss.
+VSS 8 P Device ground
+Analog input pin connected to the internal coulomb-counter peripheral for integrating a small
+SRP 9 I
+voltage between SRP and SRN where SRP is nearest the BAT– connection.
+Analog input pin connected to the internal coulomb-counter peripheral for integrating a small
+SRN 10 I
+voltage between SRP and SRN where SRN is nearest the PACK– connection.
+P6/TS 11 I Pack thermistor voltage sense (use 103AT-type thermistor)
+Open drain HDQ Serial communication line (slave). If not used, then this pin can be left floating or
+P5/HDQ 12 I/O
+tied to Vss.
+Slave I2C serial communication clock input. Use with a 10-KΩ pull-up resistor (typical). This pin is
+P4/SCL 13 I also used for LED 4 in the four-LED mode. If not used, then this pin can be left floating or tied to
+Vss.
+Open drain slave I2C serial communication data line. Use with a 10-kΩ pull-up resistor (typical).
+P3/SDA 14 I/O This pin is also used for LED 3 in the four-LED mode. If not used, then this pin can be left floating
+or tied to Vss.
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 3
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 4 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+6 Specifications
+6.1 Absolute Maximum Ratings
+Over operating free-air temperature range (unless otherwise noted)(1)
+MIN MAX UNIT
+V
+REGIN
+Regulator Input Range –0.3 5.5 V
+V
+CC
+Supply Voltage Range –0.3 2.75 V
+V
+IOD
+Open-drain I/O pins (SDA, SCL, HDQ, VEN) –0.3 5.5 V
+V
+BAT
+Bat Input pin –0.3 5.5 V
+V
+I
+Input Voltage range to all other pins (P1, P2, SRP, SRN) –0.3 VCC + 0.3 V
+Human-body model (HBM), BAT pin 1.5 kV
+ESD
+Human-body model (HBM), all other pins 2 kV
+T
+A
+Operating free-air temperature range –40 85 °C
+T
+F
+Functional temperature range –40 100 °C
+Storage temperature range –65 150 °C
+T
+STG
+Lead temperature (soldering, 10 s) –40 100 °C
+(1) Stresses beyond those listed under absolute maximum ratings may cause permanent damage to the device. These are stress ratings
+only, and functional operation of the device at these or any other conditions beyond those indicated under recommended operating
+conditions is not implied. Exposure to absolute–maximum–rated conditions for extended periods may affect device reliability.
+6.2 ESD Ratings
+VALUE UNIT
+Electrostatic Human body model (HBM), per ANSI/ESDA/JEDEC JS-001(1) ±2000
+V V
+(ESD) discharge Charged device model (CDM), per JEDEC specification JESD22-C101(2) ±500
+(1) JEDEC document JEP155 states that 500-V HBM allows safe manufacturing with a standard ESD control process.
+(2) JEDEC document JEP157 states that 250-V CDM allows safe manufacturing with a standard ESD control process.
+6.3 Recommended Operating Conditions
+T =–40°C to 85°C; Typical Values at T = 25°C C = 1.0 µF, and V = 3.6 V (unless otherwise noted)
+A A LDO25 REGIN
+MIN NOM MAX UNIT
+No operating restrictions 2.7 4.5 V
+V Supply Voltage
+REGIN
+No FLASH writes 2.45 2.7 V
+External input capacitor for
+C
+REGIN
+internal LDO between REGIN 0.1 μF
+and VSS Nominal capacitor values specified.
+Recommend a 10% ceramic X5R type
+External output capacitor for capacitor located close to the device.
+C
+LDO25
+internal LDO between VCC and 0.47 1 μF
+VSS
+NORMAL operating-mode Gas Gauge in NORMAL mode,
+I
+CC current I > Sleep Current
+145 μA
+LOAD
+Gas Gauge in SLEEP mode,
+I
+SLP
+SLEEP operating-mode current
+I < Sleep Current
+84 μA
+LOAD
+FULLSLEEP operating-mode Gas Gauge in FULL SLEEP mode,
+I
+SLP+ current I < Sleep Current
+30 μA
+LOAD
+Output voltage, low (SCL, SDA,
+V I = 3 mA 0.4 V
+OL HDQ, VEN) OL
+V OH(PP) Output voltage, high I OH = –1 mA V CC – 0.5 V
+Output voltage, high (SDA, SCL,
+V OH(OD) HDQ, VEN) External pull-up resistor connected to V CC V CC – 0.5 V
+V
+IL
+Input voltage, low –0.3 0.6 V
+4 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 5 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+6.3 Recommended Operating Conditions (continued)
+T =–40°C to 85°C; Typical Values at T = 25°C C = 1.0 µF, and V = 3.6 V (unless otherwise noted)
+A A LDO25 REGIN
+MIN NOM MAX UNIT
+Input voltage, high (SDA, SCL,
+V 1.2 6 V
+IH(OD) HDQ)
+V A1 Input voltage range (TS) VSS – 0.05 1 V
+V A2 Input voltage range (BAT) VSS – 0.125 5 V
+V A3 Input voltage range (SRP, SRN) VSS – 0.125 0.125 V
+I
+LKG
+Input leakage current (I/O pins) 0.3 μA
+t Power-up communication delay 250 ms
+PUCD
+6.4 Thermal Information
+BQ34Z100-G1
+THERMAL METRIC(1) TSSOP (PW) UNIT
+14 PINS
+RθJA,
+High K
+Junction-to-ambient thermal resistance 103.8
+RθJC(top) Junction-to-case(top) thermal resistance 31.9
+RθJB Junction-to-board thermal resistance 46.6
+°C/W
+ψ Junction-to-top characterization parameter 2.0
+JT
+ψ Junction-to-board characterization parameter 45.9
+JB
+RθJC(bottom) Junction-to-case(bottom) thermal resistance N/A
+(1) For more information about traditional and new thermal metrics, see the Semiconductor and IC Package Thermal Metrics Application
+Report, SPRA953.
+6.5 Electrical Characteristics: Power-On Reset
+T = –40°C to 85°C; Typical Values at TA = 25°C and V = 3.6 V (unless otherwise noted)
+A REGIN
+PARAMETER TEST CONDITIONS MIN TYP MAX UNIT
+Positive-going battery voltage
+V 2.05 2.20 2.31 V
+IT+ input at REG25
+V Power-on reset hysteresis 45 115 185 mV
+HYS
+6.6 Electrical Characteristics: LDO Regulator
+T = 25°C, C = 1.0 µF, V = 3.6 V (unless otherwise noted)(1)
+A LDO25 REGIN
+PARAMETER TEST CONDITIONS MIN TYP MAX UNIT
+2.7 V ≤ V ≤ 4.5 V,
+REGIN T = –40°C to 85°C 2.3 2.5 2.7
+Regulator output I OUT ≤ 16 mA A
+V V
+REG25 voltage 2.45 V ≤ V < 2.7 V
+REGIN T = –40°C to 85°C 2.3
+(low battery), I ≤ 3 mA A
+OUT
+Short Circuit
+I SHORT (2) Current Limit V REG25 = 0 V T A = –40°C to 85°C 250 mA
+(1) LDO output current, I , is the sum of internal and external load currents.
+OUT
+(2) Specified by design. Not production tested.
+6.7 Electrical Characteristics: Internal Temperature Sensor Characteristics
+T = –40°C to 85°C, 2.4 V < REG25 < 2.6 V; Typical Values at T = 25°C and REG25 = 2.5 V (unless otherwise noted)
+A A
+PARAMETER TEST CONDITIONS MIN TYP MAX UNIT
+G
+TEMP
+Temperature sensor voltage gain –2 mV/°C
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 5
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 6 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+6.8 Electrical Characteristics: Low-Frequency Oscillator
+T = –40°C to 85°C, 2.4 V < REG25 < 2.6 V; Typical Values at T = 25°C and REG25 = 2.5 V (unless otherwise noted)
+A A
+PARAMETER TEST CONDITIONS MIN TYP MAX UNIT
+f Operating frequency 32.768 kHz
+(LOSC)
+TA = 0°C to 60°C –1.5% 0.25% 1.5%
+f (LEIO) Frequency error(1) (2) TA = –20°C to 70°C –2.5% 0.25% 2.5%
+TA = –40°C to 85°C –4% 0.25% 4%
+t
+(LSXO)
+Start-up time(3) 500 μs
+(1) The frequency drift is included and measured from the trimmed frequency at VCC = 2.5 V, T = 25°C.
+A
+(2) The frequency error is measured from 32.768 kHz.
+(3) The startup time is defined as the time it takes for the oscillator output frequency to be ±3%.
+6.9 Electrical Characteristics: High-Frequency Oscillator
+T = –40°C to 85°C, 2.4 V < REG25 < 2.6 V; Typical Values at T = 25°C and REG25 = 2.5 V (unless otherwise noted)
+A A
+PARAMETER TEST CONDITIONS MIN TYP MAX UNIT
+f Operating frequency 8.389 MHz
+(OSC)
+T
+A
+= 0°C to 60°C –2% 0.38% 2%
+f (EIO) Frequency error(1) (2) T A = –20°C to 70°C –3% 0.38% 3%
+T = –40°C to 85°C –4.5% 0.38% 4.5%
+A
+t Start-up time(2) 2.5 5 ms
+(SXO)
+(1) The frequency error is measured from 2.097 MHz.
+(2) The startup time is defined as the time it takes for the oscillator output frequency to be ±3%.
+6.10 Electrical Characteristics: Integrating ADC (Coulomb Counter) Characteristics
+T = –40°C to 85°C, 2.4 V < REG25 < 2.6 V; Typical Values at T = 25°C and REG25 = 2.5 V (unless otherwise noted)
+A A
+PARAMETER TEST CONDITIONS MIN TYP MAX UNIT
+V (SR) Input voltage range, V (SRN) and V (SRP) V (SR) = V (SRN) – V (SRP) –0.125 0.125 V
+Conversion time Single conversion 1 s
+t
+SR_CONV
+Resolution 14 15 bits
+V Input offset 10 µV
+OS(SR)
+I Integral nonlinearity error ±0.007% ±0.034% FSR(2)
+NL
+Z
+IN(SR)
+Effective input resistance(1) 2.5 MΩ
+I Input leakage current(1) 0.3 µA
+lkg(SR)
+(1) Specified by design. Not tested in production.
+(2) Full-scale reference
+6.11 Electrical Characteristics: ADC (Temperature and Cell Measurement) Characteristics
+T = –40°C to 85°C, 2.4 V < REG25 < 2.6 V; Typical Values at T = 25°C and REG25 = 2.5 V (unless otherwise noted)
+A A
+PARAMETER TEST CONDITIONS MIN TYP MAX UNIT
+V Input voltage range 0.05 1 V
+IN(ADC)
+Conversion time 125 ms
+t
+ADC_CONV
+Resolution 14 15 bits
+V Input offset 1 mV
+OS(ADC)
+Z
+ADC1
+Effective input resistance (TS)(1) 8 MΩ
+BQ34Z100-G1 not measuring cell
+8 MΩ
+voltage
+Z Effective input resistance (BAT)(1)
+ADC2
+BQ34Z100-G1 measuring cell
+100 KΩ
+voltage
+6 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 7 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+6.11 Electrical Characteristics: ADC (Temperature and Cell Measurement) Characteristics
+(continued)
+T = –40°C to 85°C, 2.4 V < REG25 < 2.6 V; Typical Values at T = 25°C and REG25 = 2.5 V (unless otherwise noted)
+A A
+PARAMETER TEST CONDITIONS MIN TYP MAX UNIT
+I Input leakage current(1) 0.3 µA
+lkg(ADC)
+(1) Specified by design. Not tested in production.
+6.12 Electrical Characteristics: Data Flash Memory Characteristics
+T = –40°C to 85°C, 2.4 V < REG25 < 2.6 V; Typical Values at T = 25°C and REG25 = 2.5 V (unless otherwise noted)
+A A
+PARAMETER TEST CONDITIONS MIN TYP MAX UNIT
+Data retention(1) 10 Years
+t
+DR Flash-programming write cycles(1) 20,000 Cycles
+t Word programming time(1) 2 ms
+WORDPROG
+I Flash-write supply current(1) 5 10 mA
+CCPROG
+(1) Specified by design. Not tested in production.
+6.13 Timing Requirements: HDQ Communication
+T = –40°C to 85°C, 2.45 V < V = V < 5.5 V; typical values at T = 25°C and V = V = 3.6 V (unless
+A REGIN BAT A REGIN BAT
+otherwise noted)
+PARAMETER TEST CONDITIONS MIN NOM MAX UNIT
+t
+(CYCH)
+Cycle time, host to BQ34Z100-G1 190 μs
+t
+(CYCD)
+Cycle time, BQ34Z100-G1 to host 190 205 250 μs
+t
+(HW1)
+Host sends 1 to BQ34Z100-G1 0.5 50 μs
+t
+(DW1)
+BQ34Z100-G1 sends 1 to host 32 50 μs
+t
+(HW0)
+Host sends 0 to BQ34Z100-G1 86 145 μs
+t
+(DW0)
+BQ34Z100-G1 sends 0 to host 80 145 μs
+t
+(RSPS)
+Response time, BQ34Z100-G1 to host 190 950 μs
+t
+(B)
+Break time 190 μs
+t
+(BR)
+Break recovery time 40 μs
+t HDQ line rising time to logic 1 (1.2 V) 950 ns
+(RISE)
+t HDQ Reset 1.8 2.2 s
+(RST)
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 7
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 8 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+1.2V
+t (B) t (BR) t (RISE)
+(a)Break and Break Recovery (b)HDQ line rise time
+t
+t (DW1)
+(HW1)
+t
+t (DW0)
+(HW0) t
+t (CYCD)
+(CYCH)
+(d)GaugeTransmitted Bit
+(c)HostTransmitted Bit
+Break 7-bit address 1-bit 8-bit data
+R/W
+t
+(RSPS)
+(e)Gauge to Host Response
+图 6-1. Timing Diagrams
+6.14 Timing Requirements: I2C-Compatible Interface
+T = –40°C to 85°C, 2.45 V < V = V < 5.5 V; typical values at T = 25°C and V = V = 3.6 V (unless
+A REGIN BAT A REGIN BAT
+otherwise noted)
+PARAMETER TEST CONDITIONS MIN NOM MAX UNIT
+t SCL/SDA rise time 300 ns
+r
+t SCL/SDA fall time 300 ns
+f
+t SCL pulse width (high) 600 ns
+w(H)
+t w(L) SCL pulse width (low) 1.3 μs
+t Setup for repeated start 600 ns
+su(STA)
+t Start to first falling edge of SCL 600 ns
+d(STA)
+t Data setup time 100 ns
+su(DAT)
+t Data hold time 0 ns
+h(DAT)
+t Setup time for stop 600 ns
+su(STOP)
+t BUF Bus free time between stop and start 66 μs
+f Clock frequency 400 kHz
+SCL
+tSU(STA) tw(H) tw(L) tf tr t(BUF)
+SCL
+SDA
+td(STA) tf tsu(STOP)
+tr
+th(DAT) tsu(DAT)
+REPEATED STOP START
+START
+图 6-2. I2C-Compatible Interface Timing Diagrams
+8 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 9 =====
+6.15 Typical Characteristics
+Battery Voltage (mV)
+)Vm(
+rorrE
+egatloV
+15 200
+160
+10
+120
+5 V)g e 80
+( m olt a 40
+0 orV Err er y 0
+-1
+-5
+0
+V
+olt
+a g
+e
+Tot
+al
+B
+att
+-
+-
+8
+4
+0
+0
+-120
+-15 -40qC 25qC 85qC -160 -
+-
+4
+2
+0
+0
+°
+°
+C
+C
+2
+6
+5
+5
+°
+°
+C
+C
+85°C
+-20qC 65qC
+-200
+-20 25.2 27 28.8 30.6 32.4 34.2 36 37.8 39.6
+2800 3000 3200 3400 3600 3800 4000 4200 4400 BatteryVoltage (V)
+D002
+D001 图 6-4. V Across VIN (0 mA) 9 s
+图 6-3. V Across VIN (0 mA) (Err)
+(Err)
+Current (mA)
+)Am(
+rorrE
+tnerruC
+25
+20
+15
+10
+5
+0
+-5
+-10
+-15
+-20
+-40qC 25qC 85qC
+-20qC 65qC
+-25
+-3000 -2000 -1000 0 1000 2000 3000
+Temperature (qC)
+D003
+图 6-5. I
+(Err)
+)Cq(
+rorrE
+erutarepmeT
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+2
+1
+0
+-1
+-2
+-3
+-4
+-5
+-6
+-7
+-8
+-9
+-40 -20 0 20 40 60 80 100
+D004
+图 6-6. T
+(Err)
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 9
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 10 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+7 Detailed Description
+7.1 Overview
+The BQ34Z100-G1 device accurately predicts the battery capacity and other operational characteristics of a
+single cell or multiple rechargeable cell blocks, which are voltage balanced when resting. The device supports
+various Li-ion , Lead Acid (PbA), Nickel Metal Hydride (NiMH), and Nickel Cadmium (NiCd) chemistries, and can
+be interrogated by a host processor to provide cell information, such as remaining capacity, full charge capacity,
+and average current.
+Information is accessed through a series of commands called Standard Data Commands (see 节 7.3.1.1).
+Further capabilities are provided by the additional Extended Data Commands set (see 节 7.3.2). Both sets of
+commands, indicated by the general format Command(), are used to read and write information contained within
+the BQ34Z100-G1 device’s control and status registers, as well as its data flash locations. Commands are sent
+from host to gauge using the BQ34Z100-G1 serial communications engines, HDQ and I2C, and can be executed
+during application development, pack manufacture, or end-equipment operation.
+Cell information is stored in the BQ34Z100-G1 in non-volatile flash memory. Many of these data flash locations
+are accessible during application development and pack manufacture. They cannot, generally, be accessed
+directly during end-equipment operation. Access to these locations is achieved by using the BQ34Z100-G1
+device’s companion evaluation software, through individual commands, or through a sequence of data-flash-
+access commands. To access a desired data flash location, the correct data flash subclass and offset must be
+known.
+The BQ34Z100-G1 provides 32 bytes of user-programmable data flash memory. This data space is accessed
+through a data flash interface. For specifics on accessing the data flash, refer to 节 7.3.3.
+The key to the BQ34Z100-G1 device’s high-accuracy gas gauging prediction is Texas Instrument’s
+proprietary Impedance Track algorithm. This algorithm uses voltage measurements, characteristics, and
+properties to create state-of-charge predictions that can achieve accuracy with as little as 1% error across a wide
+variety of operating conditions.
+The BQ34Z100-G1 measures charge/discharge activity by monitoring the voltage across a small-value series
+sense resistor connected in the low side of the battery circuit. When an application’s load is applied, cell
+impedance is measured by comparing its Open Circuit Voltage (OCV) with its measured voltage under loading
+conditions.
+The BQ34Z100-G1 can use an NTC thermistor (default is Semitec 103AT or Mitsubishi BN35-3H103FB-50) for
+temperature measurement, or can also be configured to use its internal temperature sensor. The BQ34Z100-G1
+uses temperature to monitor the battery-pack environment, which is used for fuel gauging and cell protection
+functionality.
+To minimize power consumption, the BQ34Z100-G1 has three power modes: NORMAL, SLEEP, and FULL
+SLEEP. The BQ34Z100-G1 passes automatically between these modes, depending upon the occurrence of
+specific events.
+Multiple modes are available for configuring from one to 16 LEDs as an indicator of remaining state of charge.
+More than four LEDs require the use of one or two inexpensive SN74HC164 shift register expanders.
+A SHA-1/HMAC-based battery pack authentication feature is also implemented on the BQ34Z100-G1. When the
+IC is in UNSEALED mode, authentication keys can be (re)assigned. A scratch pad area is used to receive
+challenge information from a host and to export SHA-1/HMAC encrypted responses. See 节 7.3.15.1 for further
+details.
+10 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 11 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+Note
+Formatting conventions in this document:
+Commands: italics with parentheses and no breaking spaces; for example, RemainingCapacity().
+Data Flash: italics, bold, and breaking spaces; for example, Design Capacity.
+Register Bits and Flags: brackets only; for example, [TDA] Data
+Flash Bits: italic and bold; for example, [LED1]
+Modes and states: ALL CAPITALS; for example, UNSEALED mode.
+7.2 Functional Block Diagram
+7.3 Feature Description
+7.3.1 Data Commands
+7.3.1.1 Standard Data Commands
+The BQ34Z100-G1 uses a series of 2-byte standard commands to enable host reading and writing of battery
+information. Each standard command has an associated command-code pair, as indicated in 表 7-1. Because
+each command consists of two bytes of data, two consecutive HDQ/I2C transmissions must be executed to
+initiate the command function and to read or write the corresponding two bytes of data. Standard commands are
+accessible in NORMAL operation. Also, two block commands are available to read Manufacturer Name and
+Device Chemistry. Read/Write permissions depend on the active access mode.
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 11
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 12 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+表 7-1. Commands
+UNSEALED
+NAME COMMAND CODE UNIT SEALED ACCESS
+ACCESS
+Control() CNTL 0x00/0x01 N/A R/W R/W
+StateOfCharge() SOC 0x02 % R R
+MaxError() ME 0x03 % R R
+RemainingCapacity() RM 0x04/0x05 mAh R R
+FullChargeCapacity() FCC 0x06/0x07 mAh R R
+Voltage() VOLT 0x08/0x09 mV R R
+AverageCurrent() AI 0x0A/0x0B mA R R
+Temperature() TEMP 0x0C/0x0D 0.1 K R R
+Flags() FLAGS 0x0E/0x0F N/A R R
+Current() I 0x10/0x11 mA R R
+FlagsB() FLAGSB 0x12/0x13 N/A R R
+7.3.1.2 Control(): 0x00/0x01
+Issuing a Control() command requires a subsequent two-byte subcommand. These additional bytes specify the
+particular control function desired. The Control() command allows the host to control specific features of the
+BQ34Z100-G1 during normal operation, and additional features when the BQ34Z100-G1 is in different access
+modes, as described in 表 7-2.
+表 7-2. Control() Subcommands
+CNTL FUNCTION CNTL DATA SEALED ACCESS DESCRIPTION
+CONTROL_STATUS 0x0000 Yes Reports the status of key features.
+DEVICE_TYPE 0x0001 Yes Reports the device type of 0x100 (indicating BQ34Z100-G1)
+FW_VERSION 0x0002 Yes Reports the firmware version on the device type
+HW_VERSION 0x0003 Yes Reports the hardware version of the device type
+RESET_DATA 0x0005 Yes Returns reset data
+PREV_MACWRITE 0x0007 Yes Returns previous Control() command code
+Reports the chemical identifier of the Impedance Track
+CHEM_ID 0x0008 Yes
+configuration
+BOARD_OFFSET 0x0009 Yes Forces the device to measure and store the board offset
+CC_OFFSET 0x000A Yes Forces the device to measure the internal CC offset
+CC_OFFSET_SAVE 0x000B Yes Forces the device to store the internal CC offset
+DF_VERSION 0x000C Yes Reports the data flash version on the device
+SET_FULLSLEEP 0x0010 Yes Set the [FULLSLEEP] bit in the control register to 1
+STATIC_CHEM_CHKSUM 0x0017 Yes Calculates chemistry checksum
+SEALED 0x0020 No Places the device in SEALED access mode
+IT_ENABLE 0x0021 No Enables the Impedance Track algorithm
+CAL_ENABLE 0x002D No Toggle CALIBRATION mode enable
+RESET 0x0041 No Forces a full reset of the BQ34Z100-G1
+EXIT_CAL 0x0080 No Exit CALIBRATION mode
+ENTER_CAL 0x0081 No Enter CALIBRATION mode
+OFFSET_CAL 0x0082 No Reports internal CC offset in CALIBRATION mode
+7.3.1.2.1 CONTROL_STATUS: 0x0000
+Instructs the fuel gauge to return status information to Control addresses 0x00/0x01. The status word includes
+the following information.
+12 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 13 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+表 7-3. CONTROL_STATUS Flags
+Bit 7 Bit 6 Bit 5 Bit 4 Bit 3 Bit 2 Bit 1 Bit 0
+High Byte RSVD FAS SS CALEN CCA BCA CSV RSVD
+Low Byte RSVD RSVD FULLSLEEP SLEEP LDMD RUP_DIS VOK QEN
+Legend: RSVD = Reserved
+FAS: Status bit that indicates the BQ34Z100-G1 is in FULL ACCESS SEALED state. Active when set.
+SS: Status bit that indicates the BQ34Z100-G1 is in the SEALED state. Active when set.
+CALEN: Status bit that indicates the BQ34Z100-G1 calibration function is active. True when set.
+Default is 0.
+CCA: Status bit that indicates the BQ34Z100-G1 Coulomb Counter Calibration routine is active. Active when set.
+BCA: Status bit that indicates the BQ34Z100-G1 Board Calibration routine is active. Active when set.
+CSV: Status bit that indicates a valid data flash checksum has been generated. Active when set.
+FULLSLEEP: Status bit that indicates the BQ34Z100-G1 is in FULL SLEEP mode. True when set. The state can only be
+detected by monitoring the power used by the BQ34Z100-G1 because any communication will automatically clear
+it.
+SLEEP: Status bit that indicates the BQ34Z100-G1 is in SLEEP mode. True when set.
+LDMD: Status bit that indicates the BQ34Z100-G1 Impedance Track algorithm using constant-power mode. True when
+set. Default is 0 (CONSTANT CURRENT mode).
+RUP_DIS: Status bit that indicates the BQ34Z100-G1 Ra table updates are disabled. True when set.
+VOK: Status bit that indicates cell voltages are OK for Qmax updates. True when set.
+QEN: Status bit that indicates the BQ34Z100-G1 Qmax updates are enabled. True when set.
+7.3.1.2.2 DEVICE TYPE: 0x0001
+Instructs the fuel gauge to return the device type to addresses 0x00/0x01.
+7.3.1.2.3 FW_VERSION: 0x0002
+Instructs the fuel gauge to return the firmware version to addresses 0x00/0x01.
+7.3.1.2.4 HW_VERSION: 0x0003
+Instructs the fuel gauge to return the hardware version to addresses 0x00/0x01.
+7.3.1.2.5 RESET_DATA: 0x0005
+Instructs the fuel gauge to return the number of resets performed to addresses 0x00/0x01.
+7.3.1.2.6 PREV_MACWRITE: 0x0007
+Instructs the fuel gauge to return the previous command written to addresses 0x00/0x01. The value returned is
+limited to less than 0x0020.
+7.3.1.2.7 CHEM ID: 0x0008
+Instructs the fuel gauge to return the chemical identifier for the Impedance Track configuration to addresses
+0x00/0x01.
+7.3.1.2.8 BOARD_OFFSET: 0x0009
+Instructs the fuel gauge to calibrate board offset. During board offset calibration the [BCA] bit is set.
+7.3.1.2.9 CC_OFFSET: 0x000A
+Instructs the fuel gauge to calibrate the coulomb counter offset. During calibration the [CCA] bit is set.
+7.3.1.2.10 CC_OFFSET_SAVE: 0x000B
+Instructs the fuel gauge to save the coulomb counter offset after calibration.
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 13
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 14 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+7.3.1.2.11 DF_VERSION: 0x000C
+Instructs the fuel gauge to return the data flash version to addresses 0x00/0x01.
+7.3.1.2.12 SET_FULLSLEEP: 0x0010
+Instructs the fuel gauge to set the FULLSLEEP bit in the Control Status register to 1. This allows the gauge to
+enter the FULL SLEEP power mode after the transition to SLEEP power state is detected. In FULL SLEEP
+mode, less power is consumed by disabling an oscillator circuit used by the communication engines. For HDQ
+communication, one host message will be dropped. For I2C communications, the first I2C message will incur a 6-
+ms–8-ms clock stretch while the oscillator is started and stabilized. A communication to the device in FULL
+SLEEP will force the part back to the SLEEP mode.
+7.3.1.2.13 STATIC_CHEM_DF_CHKSUM: 0x0017
+Instructs the fuel gauge to calculate chemistry checksum as a 16-bit unsigned integer sum of all static chemistry
+data. The most significant bit (MSB) of the checksum is masked yielding a 15-bit checksum. This checksum is
+compared with the value stored in the data flash Static Chem DF Checksum. If the value matches, the MSB will
+be cleared to indicate a pass. If it does not match, the MSB will be set to indicate a failure.
+7.3.1.2.14 SEALED: 0x0020
+Instructs the fuel gauge to transition from UNSEALED state to SEALED state. The fuel gauge should always be
+set to SEALED state for use in customer’s end equipment.
+7.3.1.2.15 IT ENABLE: 0x0021
+Forces the fuel gauge to begin the Impedance Track algorithm, sets Bit 2 of UpdateStatus and causes the
+[VOK] and [QEN] flags to be set in the CONTROL STATUS register. [VOK] is cleared if the voltages are not
+suitable for a Qmax update. Once set, [QEN] cannot be cleared. This command is only available when the fuel
+gauge is UNSEALED and is typically enabled at the last step of production after the system test is completed.
+7.3.1.2.16 CAL_ENABLE: 0x002D
+Instructs the fuel gauge to enable entry and exit to CALIBRATION mode.
+7.3.1.2.17 RESET: 0x0041
+Instructs the fuel gauge to perform a full reset. This command is only available when the fuel gauge is
+UNSEALED.
+7.3.1.2.18 EXIT_CAL: 0x0080
+Instructs the fuel gauge to exit CALIBRATION mode.
+7.3.1.2.19 ENTER_CAL: 0x0081
+Instructs the fuel gauge to enter CALIBRATION mode.
+7.3.1.2.20 OFFSET_CAL: 0x0082
+Instructs the fuel gauge to perform offset calibration.
+7.3.1.3 StateOfCharge(): 0x02
+This read-only command returns an unsigned integer value of the predicted remaining battery capacity
+expressed as a percentage of FullChargeCapacity() with a range of 0 to 100%.
+7.3.1.4 MaxError(): 0x03
+This read-only command returns an unsigned integer value of the expected margin of error, in %, in the state-of-
+charge calculation, with a range of 1% to 100%. MaxError() is incremented internally by 0.05% for every
+increment of CycleCount after the last QMAX update. MaxError() is incremented in the display by 1% for each
+increment of CycleCount.
+14 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 15 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+表 7-4. MaxError() Updates
+EVENT MaxError() SETTING
+Full reset Set to 100%
+QMAX and Ra table update Set to 1%
+QMAX update Set to 3%
+Ra table update Set to 5%
+If MaxError() exceeds the value programmed in Max Error Limit, then [CF] in ControlStatus() is set. Only when
+MaxError() returns below this value will [CF] be cleared.
+7.3.1.5 RemainingCapacity(): 0x04/0x05
+This read-only command pair returns the compensated battery capacity remaining. Unit is 1 mAh per bit.
+7.3.1.6 FullChargeCapacity(): 0x06/07
+This read-only command pair returns the compensated capacity of the battery when fully charged with units of
+1 mAh per bit. However, if PackConfiguration [SCALED] is set then the units have been scaled through the
+calibration process. The actual scale is not set in the device and SCALED is just an indicator flag.
+FullChargeCapacity() is updated at regular intervals under the control of the Impedance Track algorithm.
+7.3.1.7 Voltage(): 0x08/0x09
+This read-word command pair returns an unsigned integer value of the measured battery voltage in mV with a
+range of 0 V to 65535 mV.
+7.3.1.8 AverageCurrent(): 0x0A/0x0B
+This read-only command pair returns a signed integer value that is the average current flowing through the
+sense resistor. It is updated every 1 second with units of 1 mA per bit. However, if PackConfiguration
+[SCALED] is set then the units have been scaled through the calibration process. The actual scale is not set in
+the device and SCALED is just an indicator flag.
+7.3.1.9 Temperature(): 0x0C/0x0D
+This read-only command pair returns an unsigned integer value of the temperature, in units of 0.1 K, measured
+by the gas gauge and has a range of 0 to 6553.5 K. The source of the measured temperature is configured by
+the [TEMPS] bit in the Pack Configuration register .
+表 7-5. Temperature Sensor Selection
+TEMPS TEMPERATURE() SOURCE
+0 Internal Temperature Sensor
+1 TS Input (default)
+7.3.1.10 Flags(): 0x0E/0x0F
+This read-only command pair returns the contents of the Gas Gauge Status register, depicting current operation
+status.
+表 7-6. Flags Bit Definitions
+Bit 7 Bit 6 Bit 5 Bit 4 Bit 3 Bit 2 Bit 1 Bit 0
+High Byte OTC OTD BATHI BATLOW CHG_INH XCHG FC CHG
+Low Byte OCVTAKEN RSVD RSVD CF RSVD SOC1 SOCF DSG
+Legend: RSVD = Reserved
+OTC: Overtemperature in Charge condition is detected. True when set
+OTD: Overtemperature in Discharge condition is detected. True when set
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 15
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 16 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+BATHI: Battery High bit that indicates a high battery voltage condition. Refer to the data flash Cell BH parameters for
+threshold settings. True when set
+BATLOW: Battery Low bit that indicates a low battery voltage condition. Refer to the data flash Cell BL parameters for threshold
+settings. True when set
+CHG_INH: Charge Inhibit: unable to begin charging. Refer to the data flash [Charge Inhibit Temp Low, Charge Inhibit Temp
+High] parameters for threshold settings. True when set
+XCHG: Charging not allowed
+FC: Full charge is detected. FC is set when charge termination is reached and FC Set% = –1 (see 节 7.3.11 for details)
+or StateOfCharge() is larger than FC Set% and FC Set% is not –1. True when set
+CHG: (Fast) charging allowed. True when set
+OCVTAKEN: Cleared on entry to RELAX mode and set to 1 when OCV measurement is performed in RELAX mode.
+CF: Condition Flag indicates that the gauge needs to run through an update cycle to optimize accuracy.
+SOC1: State-of-Charge Threshold 1 reached. True when set
+SOCF: State-of-Charge Threshold Final reached. True when set
+DSG: Discharging detected. True when set
+7.3.1.11 FlagsB(): 0x12/0x13
+This read-word function returns the contents of the gas-gauge status register, depicting current operation status.
+表 7-7. Flags B Bit Definitions
+Bit 7 Bit 6 Bit 5 Bit 4 Bit 3 Bit 2 Bit 1 Bit 0
+High Byte SOH LIFE FIRSTDOD RSVD RSVD DODEOC DTRC RSVD
+Low Byte RSVD RSVD RSVD RSVD RSVD RSVD RSVD RSVD
+Legend: RSVD = Reserved
+SOH: StateOfHealth() calculation is active.
+LIFE: Indicates that LiFePO RELAX is enabled.
+4
+FIRSTDOD: Set when RELAX mode is entered and then cleared upon valid DOD measurement for QMAX update or RELAX exit.
+DODEOC: DOD at End-of-Charge is updated.
+DTRC: Indicates RemainingCapacity() has been changed due to change in temperature.
+7.3.1.12 Current(): 0x10/0x11
+This read-only command pair returns a signed integer value that is the current flow through the sense resistor. It
+is updated every 1 s with units of 1 mA; however, if PackConfiguration [SCALED] is set, then the units have
+been scaled through the calibration process. The actual scale is not set in the device and SCALED is just an
+indicator flag.
+7.3.2 Extended Data Commands
+Extended commands offer additional functionality beyond the standard set of commands. They are used in the
+same manner; however, unlike standard commands, extended commands are not limited to 2-byte words. The
+number of command bytes for a given extended command ranges in size from single to multiple bytes, as
+specified in 表 7-8. For details on the SEALED and UNSEALED states, refer to 节 7.3.3.3.
+表 7-8. Extended Commands
+SEALED UNSEALED
+NAME COMMAND CODE UNIT
+ACCESS(1) (2) ACCESS(1) (2)
+AverageTimeToEmpty() ATTE 0x18/0x19 Minutes R R
+AverageTimeToFull() ATTF 0x1A/0x1B Minutes R R
+PassedCharge() PCHG 0x1C/0x1D mAh R R
+DoD0Time() DoD0T 0x1E/0x1F Minutes R R
+AvailableEnergy() AE 0x24/0x25 10 mW/h R R
+16 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 17 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+表 7-8. Extended Commands (continued)
+SEALED UNSEALED
+NAME COMMAND CODE UNIT
+ACCESS(1) (2) ACCESS(1) (2)
+AveragePower() AP 0x26/0x27 10 mW R R
+Serial Number SERNUM 0x28/0x29 N/A R R
+Internal_Temperature() INTTEMP 0x2A/0x2B 0.1 K R R
+CycleCount() CC 0x2C/0x2D Counts R R
+StateOfHealth() SOH 0x2E/0x2F % R R
+ChargeVoltage() CHGV 0x30/0x31 mV R R
+ChargeCurrent() CHGI 0x32/0x33 mA R R
+PackConfiguration() PKCFG 0x3A/0x3B N/A R R
+DesignCapacity() DCAP 0x3C/0x3D mAh R R
+DataFlashClass() (2) DFCLS 0x3E N/A N/A R/W
+DataFlashBlock() (2) DFBLK 0x3F N/A R/W R/W
+Authenticate()/BlockData() A/DF 0x40…0x53 N/A R/W R/W
+AuthenticateCheckSum()/BlockData() ACKS/DFD 0x54 N/A R/W R/W
+BlockData() DFD 0x55…0x5F N/A R R/W
+BlockDataCheckSum() DFDCKS 0x60 N/A R/W R/W
+BlockDataControl() DFDCNTL 0x61 N/A N/A R/W
+GridNumber() GN 0x62 N/A R R
+LearnedStatus() LS 0x63 N/A R R
+DoD@EoC() DEOC 0x64/0x65 N/A R R
+QStart() QS 0x66/0x67 mAh R R
+TrueRC() TRC 0x68/0x69 mAh R R
+TrueFCC() TFCC 0x6A/0x6B mAh R R
+StateTime() ST 0x6C/0x6D s R R
+QMaxPassedQ QPC 0x6E/0x6F mAh R R
+DOD0() DOD0 0x70/0x71 HEX# R R
+QmaxDOD0() QD0 0x72/0x73 N/A R R
+QmaxTime() QT 0x74/0x75 h/16 R R
+Reserved RSVD 0x76...0x7F N/A R R
+(1) SEALED and UNSEALED states are entered via commands to CNTL 0x00/0x01.
+(2) In SEALED mode, data flash cannot be accessed through commands 0x3E and 0x3F.
+7.3.2.1 AverageTimeToEmpty(): 0x18/0x19
+This read-only command pair returns an unsigned integer value of the predicted remaining battery life at the
+present rate of discharge (using AverageCurrent()), in minutes. A value of 65535 indicates that the battery is not
+being discharged.
+7.3.2.2 AverageTimeToFull(): 0x1A/0x1B
+This read-only command pair returns an unsigned integer value of predicted remaining time until the battery
+reaches full charge, in minutes, based upon AverageCurrent(). The computation should account for the taper
+current time extension from the linear TTF computation based on a fixed AverageCurrent() rate of charge
+accumulation. A value of 65535 indicates the battery is not being charged.
+7.3.2.3 PassedCharge(): 0x1C/0x1D
+This read-only command pair returns a signed integer, indicating the amount of charge passed through the
+sense resistor since the last IT simulation in mAh.
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 17
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 18 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+7.3.2.4 DOD0Time(): 0x1E/0x1F
+This read-only command pair returns the time since the last DOD0 update.
+7.3.2.5 AvailableEnergy(): 0x24/0x25
+This read-only command pair returns an unsigned integer value of the predicted charge or energy remaining in
+the battery. The value is reported in units of mWh.
+7.3.2.6 AveragePower(): 0x26/0x27
+This read-word command pair returns an unsigned integer value of the average power of the current discharge.
+A value of 0 indicates that the battery is not being discharged. The value is reported in units of mW.
+7.3.2.7 SerialNumber(): 0x28/0x29
+This read-only command pair returns the assigned pack serial number programmed in Serial Number.
+7.3.2.8 InternalTemperature(): 0x2A/0x2B
+This read-only command pair returns an unsigned integer value of the measured internal temperature of the
+device, in units of 0.1 K, measured by the fuel gauge.
+7.3.2.9 CycleCount(): 0x2C/0x2D
+This read-only command pair returns an unsigned integer value of the number of cycles the battery has
+experienced with a range of 0 to 65535. One cycle occurs when accumulated discharge ≥ CC Threshold.
+7.3.2.10 StateOfHealth(): 0x2E/0x2F
+This read-only command pair returns an unsigned integer value, expressed as a percentage of the ratio of
+predicted FCC (25°C, SOH current rate) over the DesignCapacity(). The FCC (25°C, SOH current rate) is the
+calculated full charge capacity at 25°C and the SOH current rate that is specified in the data flash (State of
+Health Load). The range of the returned SOH percentage is 0x00 to 0x64, indicating 0% to 100%,
+correspondingly.
+7.3.2.11 ChargeVoltage(): 0x30/0x31
+This read-only command pair returns the recommended charging voltage output from the JEITA charging profile.
+It is updated automatically based on the present temperature range.
+7.3.2.12 ChargeCurrent(): 0x32/0x33
+This read-only command pair returns the recommended charging current output from the JEITA charging profile.
+It is updated automatically based on the present temperature range.
+7.3.2.13 PackConfiguration(): 0x3A/0x3B
+This read-only command pair allows the host to read the configuration of selected features of the device
+pertaining to various features.
+7.3.2.14 DesignCapacity(): 0x3C/0x3D
+This read-only command pair returns theoretical or nominal capacity of a new pack. The value is stored in
+Design Capacity and is expressed in mAh.
+7.3.2.15 DataFlashClass(): 0x3E
+UNSEALED Access: This command sets the data flash class to be accessed. The class to be accessed should
+be entered in hexadecimal.
+SEALED Access: This command is not available in SEALED mode.
+7.3.2.16 DataFlashBlock(): 0x3F
+UNSEALED Access: If BlockDataControl has been set to 0x00, this command directs which data flash block
+will be accessed by the BlockData() command. Writing a 0x00 to DataFlashBlock() specifies the BlockData()
+18 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 19 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+command will transfer authentication data. Issuing a 0x01 instructs the BlockData() command to transfer
+Manufacturer Data.
+SEALED Access: This command directs which data flash block will be accessed by the BlockData() command.
+Writing a 0x00 to DataFlashBlock() specifies that the BlockData() command will transfer authentication data.
+Issuing a 0x01 instructs the BlockData() command to transfer Manufacturer Data.
+7.3.2.17 AuthenticateData/BlockData(): 0x40…0x53
+UNSEALED Access: This data block has a dual function: It is used for the authentication challenge and
+response and is part of the 32-byte data block when accessing data flash.
+SEALED Access: This data block has a dual function: It is used for authentication challenge and response, and
+is part of the 32-byte data block when accessing the Manufacturer Data.
+7.3.2.18 AuthenticateChecksum/BlockData(): 0x54
+UNSEALED Access: This byte holds the authentication checksum when writing the authentication challenge to
+the device, and is part of the 32-byte data block when accessing data flash.
+SEALED Access: This byte holds the authentication checksum when writing the authentication challenge to the
+device, and is part of the 32-byte data block when accessing Manufacturer Data.
+7.3.2.19 BlockData(): 0x55…0x5F
+UNSEALED Access: This data block is the remainder of the 32-byte data block when accessing data flash.
+SEALED Access: This data block is the remainder of the 32-byte data block when accessing Manufacturer
+Data.
+7.3.2.20 BlockDataChecksum(): 0x60
+UNSEALED Access: This byte contains the checksum on the 32 bytes of block data read or written to data flash.
+SEALED Access: This byte contains the checksum for the 32 bytes of block data written to Manufacturer Data.
+7.3.2.21 BlockDataControl(): 0x61
+UNSEALED Access: This command is used to control data flash ACCESS mode. Writing 0x00 to this command
+enables BlockData() to access general data flash. Writing a 0x01 to this command enables the SEALED mode
+operation of DataFlashBlock().
+7.3.2.22 GridNumber(): 0x62
+This read-only command returns the active grid point. This data is only valid during DISCHARGE mode when
+[R_DIS] = 0. If [R_DIS] = 1 or not discharging, this value is not updated.
+7.3.2.23 LearnedStatus(): 0x63
+This read-only command returns the learned status of the resistance table.
+表 7-9. LearnedStatus(): 0x63
+Bit 7 Bit 6 Bit 5 Bit 4 Bit 3 Bit 2 Bit 1 Bit 0
+RSVD RSVD RSVD RSVD Qmax ITEN CF1 CF0
+Legend: RSVD = Reserved
+QMax (Bit 3): QMax updates in the field.
+0 = QMax has not been updated in the field.
+1 = QMax updated in the field.
+ITEN (Bit 2): IT enable
+0 = IT is disabled.
+1 = IT is enabled.
+CF1, CF0 (Bits 1–0): QMax Status
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 19
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 20 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+0,0 = Battery is OK.
+0,1 = QMax is first updated in the learning cycle.
+7.3.2.24 Dod@Eoc(): 0x64/0x65
+This read-only command pair returns the depth of discharge (DOD) at the end of charge.
+7.3.2.25 QStart(): 0x66/0x67
+This read-only command pair returns the initial capacity calculated from IT simulation.
+7.3.2.26 TrueRC(): 0x68/0x69
+This read-only command pair returns the True remaining capacity from IT simulation without the effects of the
+smoothing function.
+7.3.2.27 TrueFCC(): 0x6A/0x6B
+This read-only command pair returns the True full charge capacity from IT simulation without the effects of the
+smoothing function.
+7.3.2.28 StateTime(): 0x6C/0x6D
+This read-only command pair returns the time past since last state change (DISCHARGE, CHARGE, REST).
+7.3.2.29 QmaxPassedQ(): 0x6E/0x6F
+This read-only command pair returns the passed capacity since the last Qmax DOD update.
+7.3.2.30 DOD0(): 0x70/0x71
+This unsigned integer indicates the depth of discharge during the most recent OCV reading.
+7.3.2.31 QmaxDod0(): 0x72/0x73
+This read-only command pair returns the DOD0 saved to be used for next QMax update of Cell 1. The value is
+only valid when [VOK] = 1.
+7.3.2.32 QmaxTime(): 0x74/0x75
+This read-only command pair returns the time since the last Qmax DOD update.
+7.3.3 Data Flash Interface
+7.3.3.1 Accessing Data Flash
+The BQ34Z100-G1 data flash is a non-volatile memory that contains BQ34Z100-G1 initialization, default, cell
+status, calibration, configuration, and user information. The data flash can be accessed in several different ways,
+depending on in what mode the BQ34Z100-G1 is operating and what data is being accessed.
+Commonly accessed data flash memory locations, frequently read by a host, are conveniently accessed through
+specific instructions described in 节 7.3.1. These commands are available when the BQ34Z100-G1 is either in
+UNSEALED or SEALED modes.
+Most data flash locations, however, can only be accessible in UNSEALED mode by use of the BQ34Z100-G1
+evaluation software or by data flash block transfers. These locations should be optimized and/or fixed during the
+development and manufacture processes. They become part of a Golden Image File and can then be written to
+multiple battery packs. Once established, the values generally remain unchanged during end-equipment
+operation.
+To access data flash locations individually, the block containing the desired data flash location(s) must be
+transferred to the command register locations where they can be read to the host or changed directly. This is
+accomplished by sending the set-up command BlockDataControl() (code 0x61) with data 0x00. Up to 32 bytes of
+data can be read directly from the BlockData() command locations 0x40…0x5F, externally altered, then re-
+written to the BlockData() command space. Alternatively, specific locations can be read, altered, and re-written if
+their corresponding offsets are used to index into the BlockData() command space. Finally, the data residing in
+20 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 21 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+the command space is transferred to data flash, once the correct checksum for the whole block is written to
+BlockDataChecksum() (command number 0x60).
+Occasionally, a data flash class will be larger than the 32-byte block size. In this case, the DataFlashBlock()
+command is used to designate which 32-byte block in which the desired locations reside. The correct command
+address is then given by 0x40 + offset modulo 32. For example, to access Terminate Voltage in the Gas
+Gauging class, DataFlashClass() is issued 80 (0x50) to set the class. Because the offset is 48, it must reside in
+the second 32-byte block. Hence, DataFlashBlock() is issued 0x01 to set the block offset, and the offset used to
+index into the BlockData() memory area is 0x40 + 48 modulo 32 = 0x40 + 16 = 0x40 + 0x10 = 0x50; for example,
+to modify [VOLTSEL] in Pack Configuration from 0 to 1 to enable the external voltage measurement option.
+Note
+The subclass ID and Offset values are in decimal format in the documentation and in bqStudio. The
+example below shows these values converted to hexadecimal. For example, the Pack Configuration
+subclass is d64 = 0x40.
+1. Unseal the device using the Control() (0x00/0x01) command if the device is sealed.
+a. Write the first 2 bytes of the UNSEAL key using the Control(0x0414) command.
+(wr 0x00 0x14 0x04)
+b. Write the second 2 bytes of the UNSEAL key using the Control(0x3672) command.
+(wr 0x00 0x72 0x36)
+2. Write 0x00 using BlockDataControl() command (0x61) to enable block data flash control.
+(wr 0x61 0x00)
+3. Write 0x40 (Pack Configuration Subclass) using the DataFlashClass() command (0x3E) to access the
+Registers subclass.
+(wr 0x3E 0x40)
+4. Write the block offset location using DataFlashBlock() command (0x3F). To access data located at offset 0 to
+31, use offset = 0x00. To access data located at offset 32 to 63, use offset = 0x01, and so on, as necessary.
+For example, Pack Configuration (offset = 0) is in the first block so use (wr 0x3F 0x00).
+5. To read the data of a specific offset, use address 0x40 + mod(offset, 32). For example, Pack Configuration
+(offset = 0) is located at 0x40 and 0x41; however, [VOLTSEL] is in the MSB so only 0x40 needs to be read.
+Read 1 byte starting at the 0x40 address.
+(rd 0x40 old_Pack_Configuration_MSB)
+In this example, assume [VOLTSEL] = 0 (default).
+6. To read the 1-byte checksum, use the BlockDataChecksum() command (0x60).
+(rd 0x60 OLD_checksum)
+7. In this example, set [VOLTSEL] by setting Bit 3 of old_Pack_Configuration_MSB to create
+new_Pack_Configuration_MSB.
+8. The new value for new_Pack_Configuration_MSB can be written by writing to the specific offset location.
+For example, to write 1-byte new_Pack_Configuration_MSB to Pack Configuration (offset=0) located at
+0x40, use command (wr 0x4B new_Pack_Configuration_MSB).
+9. The data is actually transferred to the data flash when the correct checksum for the whole block (0x40 to
+0x5F) is written to BlockDataChecksum() (0x60).
+(wr 0x60 NEW_checksum)
+The checksum is (255-x) where x is the 8-bit summation of the BlockData() (0x40 to 0x5F) on a byte-by-byte
+basis.
+A quick way to calculate the new checksum is to make use of the old checksum:
+a. temp = mod (255 – OLD_checksum – old_Pack_Configuration_MSB), 256)
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 21
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 22 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+b. NEW_checksum = 255 – mod (temp + new_Pack_Configuration_MSB, 256)
+10. Reset the gauge to ensure the new data flash parameter goes into effect by using Control(0x0041).
+(wr 0x00 0x41 0x00)
+If previously sealed, the gauge will automatically become sealed again after RESET.
+11. If not previously sealed, then seal the gauge by using Control(0x0020).
+(wr 0x00 0x20 0x00)
+Reading and writing subclass data are block operations 32 bytes in length. Data can be written in shorter block
+sizes, however. Blocks can be shorter than 32 bytes in length. Writing these blocks back to data flash will not
+overwrite data that extend beyond the actual block length.
+Note
+None of the data written to memory is bounded by the BQ34Z100-G1: The values are not rejected by
+the gas gauge. Writing an incorrect value may result in hardware failure due to firmware program
+interpretation of the invalid data. The data written is persistent, so a power-on reset resolves the fault.
+7.3.3.2 Manufacturer Information Block
+The BQ34Z100-G1 contains 32 bytes of user-programmable data flash storage: Manufacturer Info Block. The
+method for accessing these memory locations is slightly different, depending on if the device is in UNSEALED or
+SEALED modes.
+When in UNSEALED mode and when an “0x00” has been written to BlockDataControl(), accessing the
+Manufacturer Info Block is identical to accessing general data flash locations. First, a DataFlashClass()
+command is used to set the subclass, then a DataFlashBlock() command sets the offset for the first data flash
+address within the subclass. The BlockData() command codes contain the referenced data flash data. When
+writing the data flash, a checksum is expected to be received by BlockDataChecksum(). Only when the
+checksum is received and verified is the data actually written to data flash.
+As an example, the data flash location for Manufacturer Info Block is defined as having a Subclass = 58 and
+an Offset = 0 through 31 (32 byte block). The specification of Class = System Data is not needed to address
+Manufacturer Info Block, but is used instead for grouping purposes when viewing data flash info in the
+BQ34Z100-G1 evaluation software.
+When in SEALED mode or when “0x01” BlockDataControl() does not contain “0x00”, data flash is no
+longer available in the manner used in UNSEALED mode. Rather than issuing subclass information, a
+designated Manufacturer Information Block is selected with the DataFlashBlock() command. Issuing a 0x01,
+0x02, or 0x03 with this command causes the corresponding information block (A, B, or C, respectively) to be
+transferred to the command space 0x40…0x5F for editing or reading by the host. Upon successful writing of
+checksum information to BlockDataChecksum(), the modified block is returned to data flash.
+Note
+Manufacturer Info Block A is “read only” when in SEALED mode.
+7.3.3.3 Access Modes
+The BQ34Z100-G1 provides three security modes that control data flash access permissions according to 表
+7-10. Public Access refers to those data flash locations specified in 表 7-11 that are accessible to the user.
+Private Access refers to reserved data flash locations used by the BQ34Z100-G1 system. Care should be taken
+to avoid writing to Private data flash locations when performing block writes in FULL ACCESS mode by following
+the procedure outlined in 节 7.3.3.1.
+表 7-10. Data Flash Access
+SECURITY MODE DF—PUBLIC ACCESS DF—PRIVATE ACCESS
+BOOTROM N/A N/A
+22 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 23 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+表 7-10. Data Flash Access (continued)
+SECURITY MODE DF—PUBLIC ACCESS DF—PRIVATE ACCESS
+FULL ACCESS R/W R/W
+UNSEALED R/W R/W
+SEALED R N/A
+Although FULL ACCESS and UNSEALED modes appear identical, FULL ACCESS mode allows the BQ34Z100-
+G1 to directly transition to BOOTROM mode and also write access keys. UNSEALED mode does not have these
+abilities.
+7.3.3.4 Sealing/Unsealing Data Flash Access
+The BQ34Z100-G1 implements a key-access scheme to transition between SEALED, UNSEALED, and FULL
+ACCESS modes. Each transition requires that a unique set of two keys be sent to the BQ34Z100-G1 via the
+Control() command (these keys are unrelated to the keys used for SHA-1/HMAC authentication). The keys must
+be sent consecutively, with no other data being written to the Control() register in between. Note that to avoid
+conflict, the keys must be different from the codes presented in the CNTL DATA column of 表 7-2 subcommands.
+When in SEALED mode, the [SS] bit of Control Status() is set, but when the UNSEAL keys are correctly received
+by the BQ34Z100-G1, the [SS] bit is cleared. When the full access keys are correctly received, then the Flags()
+[FAS] bit is cleared.
+Both sets of keys for each level are 2 bytes each in length and are stored in data flash. The UNSEAL key (stored
+at Unseal Key 0 and Unseal Key 1) and the FULL ACCESS key (stored at Full Access Key 0 and Full Access
+Key 1) can only be updated when in FULL ACCESS mode. The order of the bytes entered through the Control()
+command is the reverse of what is read from the part. For example, if the 1st and 2nd word of the UnSeal Key
+0 returns 0x1234 and 0x5678, then Control() should supply 0x3412 and 0x7856 to unseal the part.
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 23
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 24 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+7.3.4 Data Flash Summary
+表 7-11 summarizes the data flash locations available to the user, including the default, minimum, and maximum
+values.
+表 7-11. Data Flash Summary
+SUBCLASS
+CLASS SUBCLASS OFFSET TYPE NAME MIN MAX DEFAULT UNIT
+ID
+Configuration Safety 2 0 I2 OT Chg 0 1200 550 0.1°C
+Configuration Safety 2 2 U1 OT Chg Time 0 60 2 s
+Configuration Safety 2 3 I2 OT Chg Recovery 0 1200 500 0.1°C
+Configuration Safety 2 5 I2 OT Dsg 0 1200 600 0.1°C
+Configuration Safety 2 7 U1 OT Dsg Time 0 60 2 s
+Configuration Safety 2 8 I2 OT Dsg Recovery 0 1200 550 0.1°C
+Charge Inhibit
+Configuration 32 0 I2 Chg Inhibit Temp Low –400 1200 0 0.1°C
+Cfg
+Charge Inhibit
+Configuration 32 2 I2 Chg Inhibit Temp High –400 1200 450 0.1°C
+Cfg
+Charge Inhibit
+Configuration 32 4 I2 Temp Hys 0 100 50 0.1°C
+Cfg
+Configuration Charge 34 0 I2 Suspend Low Temp –400 1200 –50 0.1°C
+Configuration Charge 34 2 I2 Suspend High Temp –400 1200 550 0.1°C
+Configuration Charge 34 4 U1 Pb EFF Efficiency 0 100 100 %
+0.0195312
+Configuration Charge 34 5 F4 Pb Temp Comp 0 0.078125 %
+5
+Configuration Charge 34 9 U1 Pb Drop Off Percent 0 100 96 %
+Configuration Charge 34 10 F4 Pb Reduction Rate 0 1.25 0.125 %
+Charge
+Configuration 36 0 I2 Taper Current 0 1000 100 mA
+Termination
+Charge
+Configuration 36 2 I2 Min Taper Capacity 0 1000 25 mAh
+Termination
+Charge
+Configuration 36 4 I2 Cell Taper Voltage 0 1000 100 mV
+Termination
+Charge
+Configuration 36 6 U1 Current Taper Window 0 60 40 s
+Termination
+Charge
+Configuration 36 7 I1 TCA Set % –1 100 99 %
+Termination
+Charge
+Configuration 36 8 I1 TCA Clear % –1 100 95 %
+Termination
+Charge
+Configuration 36 9 I1 FC Set % –1 100 100 %
+Termination
+Charge
+Configuration 36 10 I1 FC Clear % –1 100 98 %
+Termination
+Charge
+Configuration 36 11 I2 DODatEOC Delta T 0 1000 100 0.1°C
+Termination
+Charge
+Configuration 36 13 I2 NiMH Delta Temp 0 255 30 0.1°C
+Termination
+Charge
+Configuration 36 15 U2 NiMH Delta Temp Time 0 1000 180 s
+Termination
+Charge
+Configuration 36 17 U2 NiMH Hold Off Time 0 1000 100 s
+Termination
+Charge
+Configuration 36 19 I2 NiMH Hold Off Current 0 32000 240 mA
+Termination
+Charge
+Configuration 36 21 I2 NiMH Hold Off Temp 0 1000 250 0.1°C
+Termination
+Charge
+Configuration 36 23 U1 NiMH Cell Negative Delta Volt 0 100 17 mV
+Termination
+Charge
+Configuration 36 24 U1 NiMH Cell Negative Delta Time 0 255 16 s
+Termination
+24 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 25 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+表 7-11. Data Flash Summary (continued)
+SUBCLASS
+CLASS SUBCLASS OFFSET TYPE NAME MIN MAX DEFAULT UNIT
+ID
+Charge
+Configuration 36 25 I2 NiMH Cell Neg Delta Qual Volt 0 32767 4200 mV
+Termination
+Day +
+Mo*32 +
+Configuration Data 48 2 U2 Manufacture Date 0 65535 0
+(Yr
+-1980)*256
+Configuration Data 48 4 H2 Serial Number 0 ffff 1 hex
+Configuration Data 48 6 U2 Cycle Count 0 65535 0 Counts
+Configuration Data 48 8 I2 CC Threshold 100 32767 900 mAh
+Configuration Data 48 10 U1 Max Error Limit 0 100 100 %
+Configuration Data 48 11 I2 Design Capacity 0 32767 1000 mAh
+Configuration Data 48 13 I2 Design Energy 0 32767 5400 mWh
+Configuration Data 48 15 I2 SOH Load I –32767 0 –400 mA
+Configuration Data 48 17 U2 Cell Charge Voltage T1-T2 0 4600 4200 mV
+Configuration Data 48 19 U2 Cell Charge Voltage T2-T3 0 4600 4200 mV
+Configuration Data 48 21 U2 Cell Charge Voltage T3-T4 0 4600 4100 mV
+Configuration Data 48 23 U1 Charge Current T1-T2 0 100 10 %
+Configuration Data 48 24 U1 Charge Current T2-T3 0 100 50 %
+Configuration Data 48 25 U1 Charge Current T3-T4 0 100 30 %
+Configuration Data 48 26 I1 JEITA T1 –128 127 –10 °C
+Configuration Data 48 27 I1 JEITA T2 –128 127 10 °C
+Configuration Data 48 28 I1 JEITA T3 –128 127 45 °C
+Configuration Data 48 29 I1 JEITA T4 –128 127 55 °C
+Configuration Data 48 30 U1 Design Energy Scale 0 255 1 Num
+BQ34Z100-
+Configuration Data 48 31 S12 Device Name x x —
+G1
+Configuration Data 48 43 S12 Manufacturer Name x x Texas Inst. —
+Configuration Data 48 55 S5 Device Chemistry x x LION —
+Configuration Discharge 49 0 U2 SOC1 Set Threshold 0 65535 150 mAh
+Configuration Discharge 49 2 U2 SOC1 Clear Threshold 0 65535 175 mAh
+Configuration Discharge 49 4 U2 SOCF Set Threshold 0 65535 75 mAh
+Configuration Discharge 49 6 U2 SOCF Clear Threshold 0 65535 100 mAh
+Configuration Discharge 49 8 I2 Cell BL Set Volt Threshold 0 5000 0 mV
+Configuration Discharge 49 10 U1 Cell BL Set Volt Time 0 60 0 s
+Configuration Discharge 49 11 I2 Cell BL Clear Volt Threshold 0 5000 5 mV
+Configuration Discharge 49 13 I2 Cell BH Set Volt Threshold 0 5000 4300 mV
+Configuration Discharge 49 15 U1 Cell BH Volt Time 0 60 2 s
+Configuration Discharge 49 16 I2 Cell BH Clear Volt Threshold 0 5000 5 mV
+Configuration Discharge 49 21 U1 Cycle Delta 0 255 5 0.01%
+Manufacturer
+Configuration 56 0 H2 Pack Lot Code 0 ffff 0 hex
+Data
+Manufacturer
+Configuration 56 2 H2 PCB Lot Code 0 ffff 0 hex
+Data
+Manufacturer
+Configuration 56 4 H2 Firmware Version 0 ffff 0 hex
+Data
+Manufacturer
+Configuration 56 6 H2 Hardware Revision 0 ffff 0 hex
+Data
+Manufacturer
+Configuration 56 8 H2 Cell Revision 0 ffff 0 hex
+Data
+Manufacturer
+Configuration 56 10 H2 DF Config Version 0 ffff 0 hex
+Data
+Configuration Lifetime Data 59 0 I2 Lifetime Max Temp 0 1400 300 0.1°C
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 25
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 26 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+表 7-11. Data Flash Summary (continued)
+SUBCLASS
+CLASS SUBCLASS OFFSET TYPE NAME MIN MAX DEFAULT UNIT
+ID
+Configuration Lifetime Data 59 2 I2 Lifetime Min Temp –600 1400 200 0.1°C
+Configuration Lifetime Data 59 4 I2 Lifetime Max Chg Current –32767 32767 0 mA
+Configuration Lifetime Data 59 6 I2 Lifetime Max Dsg Current –32767 32767 0 mA
+Configuration Lifetime Data 59 8 U2 Lifetime Max Pack Voltage 0 65535 320 20 mV
+Configuration Lifetime Data 59 10 U2 Lifetime Min Pack Voltage 0 65535 350 20 mV
+Lifetime Temp
+Configuration 60 0 U2 LT Flash Cnt 0 65535 0 Counts
+Samples
+Configuration Registers 64 0 H2 Pack Configuration 0 ffff 161 flags
+Configuration Registers 64 2 H1 Pack Configuration B 0 ff ff flags
+Configuration Registers 64 3 H1 Pack Configuration C 0 ff 30 flags
+Configuration Registers 64 4 H1 LED_Comm Configuration 0 ff 0 flags
+Configuration Registers 64 5 H2 Alert Configuration 0 ffff 0 flags
+Configuration Registers 64 7 U1 Number of series cell 0 100 1 Num
+Lifetime
+Configuration 66 0 U1 LT Temp Res 0 255 10 0.1°C
+Resolution
+Lifetime
+Configuration 66 1 U1 LT Cur Res 0 255 100 mA
+Resolution
+Lifetime
+Configuration 66 2 U1 LT V Res 0 255 1 20 mV
+Resolution
+Lifetime
+Configuration 66 3 U2 LT Update Time 0 65535 60 s
+Resolution
+Configuration LED Display 67 0 U1 LED Hold Time 0 255 4 Num
+Configuration Power 68 0 I2 Flash Update OK Cell Volt 0 4200 2800 mV
+Configuration Power 68 2 I2 Sleep Current 0 100 10 mA
+Configuration Power 68 11 U1 FS Wait 0 255 0 s
+Manufacturer
+System Data 58 0 H1 Block A 0 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 1 H1 Block A 1 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 2 H1 Block A 2 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 3 H1 Block A 3 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 4 H1 Block A 4 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 5 H1 Block A 5 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 6 H1 Block A 6 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 7 H1 Block A 7 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 8 H1 Block A 8 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 9 H1 Block A 9 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 10 H1 Block A 10 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 11 H1 Block A 11 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 12 H1 Block A 12 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 13 H1 Block A 13 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 14 H1 Block A 14 0 ff 0 hex
+Info
+26 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 27 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+表 7-11. Data Flash Summary (continued)
+SUBCLASS
+CLASS SUBCLASS OFFSET TYPE NAME MIN MAX DEFAULT UNIT
+ID
+Manufacturer
+System Data 58 15 H1 Block A 15 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 16 H1 Block A 16 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 17 H1 Block A 17 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 18 H1 Block A 18 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 19 H1 Block A 19 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 20 H1 Block A 20 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 21 H1 Block A 21 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 22 H1 Block A 22 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 23 H1 Block A 23 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 24 H1 Block A 24 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 25 H1 Block A 25 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 26 H1 Block A 26 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 27 H1 Block A 27 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 28 H1 Block A 28 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 29 H1 Block A 29 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 30 H1 Block A 30 0 ff 0 hex
+Info
+Manufacturer
+System Data 58 31 H1 Block A 31 0 ff 0 hex
+Info
+Gas Gauging IT Cfg 80 0 U1 Load Select 0 255 1 Num
+Gas Gauging IT Cfg 80 1 U1 Load Mode 0 255 0 Num
+Gas Gauging IT Cfg 80 10 I2 Res Current 0 1000 10 mA
+Gas Gauging IT Cfg 80 14 U1 Max Res Factor 0 255 50 Num
+Gas Gauging IT Cfg 80 15 U1 Min Res Factor 0 255 1 Num
+Gas Gauging IT Cfg 80 17 U2 Ra Filter 0 1000 500 Num
+Min PassedChg NiMH-LA 1st
+Gas Gauging IT Cfg 80 47 U1 1 100 50 %
+Qmax
+Gas Gauging IT Cfg 80 49 U1 Maximum Qmax Change 0 255 100 %
+Gas Gauging IT Cfg 80 53 I2 Cell Terminate Voltage 1000 3700 3000 mV
+Gas Gauging IT Cfg 80 55 I2 Cell Term V Delta 0 4200 200 mV
+Gas Gauging IT Cfg 80 58 U2 ResRelax Time 0 65534 500 s
+Gas Gauging IT Cfg 80 62 I2 User Rate-mA –32767 32767 0 mA
+Gas Gauging IT Cfg 80 64 I2 User Rate-Pwr –32767 32767 0 mW/cW
+Gas Gauging IT Cfg 80 66 I2 Reserve Cap-mAh 0 9000 0 mAh
+Gas Gauging IT Cfg 80 68 I2 Reserve Energy 0 14000 0 mWh/cWh
+Gas Gauging IT Cfg 80 72 U1 Max Scale Back Grid 0 15 4 Num
+Gas Gauging IT Cfg 80 73 U2 Cell Min DeltaV 0 65535 0 mV
+Gas Gauging IT Cfg 80 75 U1 Ra Max Delta 0 255 15 %
+Gas Gauging IT Cfg 80 76 I2 Design Resistance 1 32767 42 mΩ
+Gas Gauging IT Cfg 80 78 U1 Reference Grid 0 14 4 —
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 27
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 28 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+表 7-11. Data Flash Summary (continued)
+SUBCLASS
+CLASS SUBCLASS OFFSET TYPE NAME MIN MAX DEFAULT UNIT
+ID
+Gas Gauging IT Cfg 80 79 U1 Qmax Max Delta % 0 100 10 mAh
+Gas Gauging IT Cfg 80 80 U2 Max Res Scale 0 32767 32000 Num
+Gas Gauging IT Cfg 80 82 U2 Min Res Scale 0 32767 1 Num
+Gas Gauging IT Cfg 80 84 U1 Fast Scale Start SOC 0 100 10 %
+Gas Gauging IT Cfg 80 89 I2 Charge Hys V Shift 0 2000 40 mV
+Gas Gauging IT Cfg 80 91 I2 Smooth Relax Time 1 32767 1000 s
+Current
+Gas Gauging 81 0 I2 Dsg Current Threshold 0 2000 60 mA
+Thresholds
+Current
+Gas Gauging 81 2 I2 Chg Current Threshold 0 2000 75 mA
+Thresholds
+Current
+Gas Gauging 81 4 I2 Quit Current 0 1000 40 mA
+Thresholds
+Current
+Gas Gauging 81 6 U2 Dsg Relax Time 0 8191 60 s
+Thresholds
+Current
+Gas Gauging 81 8 U1 Chg Relax Time 0 255 60 s
+Thresholds
+Current
+Gas Gauging 81 9 U2 Cell Max IR Correct 0 1000 400 mV
+Thresholds
+Gas Gauging State 82 0 I2 Qmax Cell 0 0 32767 1000 mAh
+Gas Gauging State 82 2 U2 Cycle Count 0 65535 0 Num
+Gas Gauging State 82 4 H1 Update Status 0 6 0 Num
+Gas Gauging State 82 5 I2 Cell V at Chg Term 0 5000 4200 mV
+Gas Gauging State 82 7 I2 Avg I Last Run –32768 32767 –299 mA
+Gas Gauging State 82 9 I2 Avg P Last Run –32768 32767 –1131 mWh
+Gas Gauging State 82 11 I2 Cell Delta Voltage –32768 32767 2 mV
+Gas Gauging State 82 13 I2 T Rise 0 32767 20 Num
+Gas Gauging State 82 15 I2 T Time Constant 0 32767 1000 Num
+Ra Table R_a0 88 0 H2 R_a0 Flag 0 ffff ff55 Hex
+Ra Table R_a0 88 2 I2 R_a0 0 0 32767 105 Num
+Ra Table R_a0 88 4 I2 R_a0 1 0 32767 100 Num
+Ra Table R_a0 88 6 I2 R_a0 2 0 32767 113 Num
+Ra Table R_a0 88 8 I2 R_a0 3 0 32767 143 Num
+Ra Table R_a0 88 10 I2 R_a0 4 0 32767 98 Num
+Ra Table R_a0 88 12 I2 R_a0 5 0 32767 97 Num
+Ra Table R_a0 88 14 I2 R_a0 6 0 32767 108 Num
+Ra Table R_a0 88 16 I2 R_a0 7 0 32767 89 Num
+Ra Table R_a0 88 18 I2 R_a0 8 0 32767 86 Num
+Ra Table R_a0 88 20 I2 R_a0 9 0 32767 85 Num
+Ra Table R_a0 88 22 I2 R_a0 10 0 32767 87 Num
+Ra Table R_a0 88 24 I2 R_a0 11 0 32767 90 Num
+Ra Table R_a0 88 26 I2 R_a0 12 0 32767 110 Num
+Ra Table R_a0 88 28 I2 R_a0 13 0 32767 647 Num
+Ra Table R_a0 88 30 I2 R_a0 14 0 32767 1500 Num
+Ra Table R_a0x 89 0 H2 R_a0x Flag 0 ffff ffff Hex
+Ra Table R_a0x 89 2 I2 R_a0x 0 0 32767 105 Num
+Ra Table R_a0x 89 4 I2 R_a0x 1 0 32767 100 Num
+Ra Table R_a0x 89 6 I2 R_a0x 2 0 32767 113 Num
+Ra Table R_a0x 89 8 I2 R_a0x 3 0 32767 143 Num
+Ra Table R_a0x 89 10 I2 R_a0x 4 0 32767 98 Num
+Ra Table R_a0x 89 12 I2 R_a0x 5 0 32767 97 Num
+Ra Table R_a0x 89 14 I2 R_a0x 6 0 32767 108 Num
+28 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 29 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+表 7-11. Data Flash Summary (continued)
+SUBCLASS
+CLASS SUBCLASS OFFSET TYPE NAME MIN MAX DEFAULT UNIT
+ID
+Ra Table R_a0x 89 16 I2 R_a0x 7 0 32767 89 Num
+Ra Table R_a0x 89 18 I2 R_a0x 8 0 32767 86 Num
+Ra Table R_a0x 89 20 I2 R_a0x 9 0 32767 85 Num
+Ra Table R_a0x 89 22 I2 R_a0x 10 0 32767 87 Num
+Ra Table R_a0x 89 24 I2 R_a0x 11 0 32767 90 Num
+Ra Table R_a0x 89 26 I2 R_a0x 12 0 32767 110 Num
+Ra Table R_a0x 89 28 I2 R_a0x 13 0 32767 647 Num
+Ra Table R_a0x 89 30 I2 R_a0x 14 0 32767 1500 Num
+Calibration Data 104 0 F4 CC Gain 1.00E-01 4.00E+01 0.4768 mΩ
+Calibration Data 104 4 F4 CC Delta 2.98E+04 1.19E+06 567744.56 mΩ
+Calibration Data 104 8 I2 CC Offset –32768 32767 –1200 Num
+Calibration Data 104 10 I1 Board Offset –128 127 0 Num
+Calibration Data 104 11 I1 Int Temp Offset –128 127 0 0.1°C
+Calibration Data 104 12 I1 Ext Temp Offset –128 127 0 0.1°C
+Calibration Data 104 14 U2 Voltage Divider 0 65535 5000 mV
+Calibration Current 107 1 U1 Deadband 0 255 5 mA
+Security Codes 112 0 H4 Sealed to Unsealed 0 ffffffff 36720414 hex
+Security Codes 112 4 H4 Unsealed to Full 0 ffffffff ffffffff hex
+Security Codes 112 8 H4 Authen Key3 0 ffffffff 1234567 hex
+Security Codes 112 12 H4 Authen Key2 0 ffffffff 89abcdef hex
+Security Codes 112 16 H4 Authen Key1 0 ffffffff fedcba98 hex
+Security Codes 112 20 H4 Authen Key0 0 ffffffff 76543210 hex
+表 7-12. Data Flash (DF) to EVSW Conversion
+DATA DATA
+SUBCLASS EVSW EVSW DF to EVSW
+CLASS SUBCLASS OFFSET NAME DATA TYPE FLASH FLASH
+ID DEFAULT UNIT CONVERSION
+DEFAULT UNIT
+Manufacture Day+Mo*32+
+Data 48 Data 13 U2 0 code 1-Jan-1980
+Date (Yr-1980)*256
+Gas User Rate-
+80 IT Cfg 59 I2 0 cW 0 mW DF × 10
+Gauging mW
+Gas Reserve
+80 IT Cfg 63 I2 0 cWh 0 mWh DF × 10
+Gauging Cap-mWh
+Calibration 104 Data 0 CC Gain F4 0.47095 Num 10.124 mΩ 4.768/DF
+Calibration 104 Data 4 CC Delta F4 5.595E5 Num 10.147 mΩ 5677445/DF
+7.3.5 Fuel Gauging
+The BQ34Z100-G1 measures the cell voltage, temperature, and current to determine the battery SOC based in
+the Impedance Track algorithm (refer to Theory and Implementation of Impedance Track Battery Fuel-Gauging
+Algorithm Application Report [SLUA450] for more information). The BQ34Z100-G1 monitors charge and
+discharge activity by sensing the voltage across a small-value resistor (5 mΩ to 20 mΩ typ.) between the SRP
+and SRN pins and in-series with the cell. By integrating charge passing through the battery, the cell’s SOC is
+adjusted during battery charge or discharge.
+The total battery capacity is found by comparing states of charge before and after applying the load with the
+amount of charge passed. When an application load is applied, the impedance of the cell is measured by
+comparing the OCV obtained from a predefined function for the present SOC with the measured voltage under
+load. Measurements of OCV and charge integration determine chemical state-of-charge and Chemical Capacity
+(Qmax). The initial Qmax value is taken from a cell manufacturers' data sheet multiplied by the number of
+parallel cells. The parallel value is also used for the value programmed in Design Capacity. The BQ34Z100-G1
+acquires and updates the battery-impedance profile during normal battery usage. It uses this profile, along with
+SOC and the Qmax value, to determine FullChargeCapacity() and StateOfCharge() specifically for the present
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 29
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 30 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+load and temperature. FullChargeCapacity() is reported as capacity available from a fully charged battery under
+the present load and temperature until Voltage() reaches the Terminate Voltage. NominalAvailableCapacity()
+and FullAvailableCapacity() are the uncompensated (no or light load) versions of RemainingCapacity() and
+FullChargeCapacity(), respectively.
+During normal battery usage there could be instances where a small rise of SOC for a short period of time could
+occur at the beginning of discharge. The [RSOC_HOLD] option in Pack Configuration C prevents SOC rises
+during discharge. SOC will be held until the calculated value falls below the actual state.
+The BQ34Z100-G1 has two flags accessed by the Flags() function that warn when the battery’s SOC has fallen
+to critical levels. When RemainingCapacity() falls below the first capacity threshold, specified in SOC1 Set
+Threshold, the [SOC1] (State of Charge Initial) flag is set. The flag is cleared once RemainingCapacity() rises
+above SOC1 Clear Threshold. All units are in mAh.
+When RemainingCapacity() falls below the second capacity threshold, SOCF Set Threshold, the [SOCF] (State
+of Charge Final) flag is set, serving as a final discharge warning. If SOCF Set Threshold = –1, the flag is
+inoperative during discharge. Similarly, when RemainingCapacity() rises above SOCF Clear Threshold and the
+[SOCF] flag has already been set, the [SOCF] flag is cleared. All units are in mAh.
+The BQ34Z100-G1 includes charge efficiency compensation that makes use of four Charge Efficiency factors to
+correct for energy lost due to heat. This is commonly used in NiMH and Lead-Acid chemistries and is not always
+linear with respect to state-of-charge.
+7.3.6 Impedance Track Variables
+The BQ34Z100-G1 has several data flash variables that permit the user to customize the Impedance Track
+algorithm for optimized performance. These variables are dependent upon the power characteristics of the
+application as well as the cell itself.
+7.3.6.1 Load Mode
+Load Mode is used to select either the constant current or constant power model for the Impedance Track
+algorithm as used in Load Select. See the 节 7.3.6.2 section. When Load Mode is 0, the Constant Current
+Model is used (default). When Load Mode is 1, the Constant Power Model is used. The [LDMD] bit of
+CONTROL_STATUS reflects the status of Load Mode.
+7.3.6.2 Load Select
+Load Select defines the type of power or current model to be used to compute load-compensated capacity in
+the Impedance Track algorithm. If Load Mode = 0 (Constant Current), then the options presented in 表 7-13 are
+available.
+表 7-13. Current Model Used When Load Mode = 0
+LOAD SELECT VALUE CURRENT MODEL USED
+Average discharge current from previous cycle: There is an internal register that records the average
+0 discharge current through each entire discharge cycle. The previous average is stored in this register.
+However, if this is the first cycle of the gauge, then the present average current is used.
+Present average discharge current: This is the average discharge current from the beginning of this
+1 (default)
+discharge cycle until present time.
+2 Average Current: based on the AverageCurrent()
+3 Current: based on a low-pass-filtered version of AverageCurrent() (τ=14s)
+4 Design Capacity/5: C Rate based off of Design Capacity /5 or a C/5 rate in mA.
+6 Use the value in User_Rate-mA: This gives a completely user configurable method.
+If Load Mode = 1 (Constant Power), then the following options are available:
+表 7-14. Constant-Power Model Used When Load Mode = 1
+LOAD SELECT VALUE POWER MODEL USED
+Average discharge power from previous cycle: There is an internal register that records the average
+0 (default)
+discharge power through each entire discharge cycle. The previous average is stored in this register.
+30 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 31 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+表 7-14. Constant-Power Model Used When Load Mode = 1 (continued)
+LOAD SELECT VALUE POWER MODEL USED
+Present average discharge power: This is the average discharge power from the beginning of this discharge
+1
+cycle until present time.
+2 Average Current × Voltage: based off the AverageCurrent() and Voltage().
+3 Current × Voltage: based on a low-pass-filtered version of AverageCurrent() (τ=14s) and Voltage()
+4 Design Energy/5: C Rate based off of Design Energy /5 or a C/5 rate in mA.
+6 Use the value in User_Rate-mW/cW. This gives a completely user-configurable method.
+7.3.6.3 Reserve Cap-mAh
+Reserve Cap-mAh determines how much actual remaining capacity exists after reaching 0
+RemainingCapacity() before Terminate Voltage is reached. A loaded rate or no-load rate of compensation can
+be selected for Reserve Cap by setting the [RESCAP] bit in the Pack Configuration register.
+7.3.6.4 Reserve Cap-mWh/cWh
+Reserve Cap-mWh determines how much actual remaining capacity exists after reaching 0 AvailableEnergy()
+before Terminate Voltage is reached. A loaded rate or no-load rate of compensation can be selected for
+Reserve Cap by setting the [RESCAP] bit in the Pack Configuration register.
+7.3.6.5 Design Energy Scale
+Design Energy Scale is used to select the scale/unit of a set of data flash parameters. The value of Design
+Energy Scale can be between 1 and 10 only.
+When using Design Energy Scale > 1, the value for each of the parameters in 表 7-15 must be adjusted to reflect
+the new units. See 节 7.3.12.
+表 7-15. Data Flash Parameter Scale/Unit-Based on Design Energy Scale
+DATA FLASH PARAMETER DESIGN ENERGY SCALE = 1 (default) DESIGN ENERGY SCALE >1
+Design Energy mWh Scaled by Design Energy Scale
+Reserve Energy-mWh/cWh mWh Scaled by Design Energy Scale
+Avg Power Last Run mW Scaled by Design Energy Scale
+User Rate-mW/cW mWh Scaled by Design Energy Scale
+T Rise No Scale Scaled by Design Energy Scale
+7.3.6.6 Dsg Current Threshold
+This register is used as a threshold by many functions in the BQ34Z100-G1 to determine if actual discharge
+current is flowing into or out of the cell. The default for this register should be sufficient for most applications.
+This threshold should be set low enough to be below any normal application load current but high enough to
+prevent noise or drift from affecting the measurement.
+7.3.6.7 Chg Current Threshold
+This register is used as a threshold by many functions in the BQ34Z100-G1 to determine if actual charge current
+is flowing into or out of the cell. The default for this register should be sufficient for most applications. This
+threshold should be set low enough to be below any normal charge current but high enough to prevent noise or
+drift from affecting the measurement.
+7.3.6.8 Quit Current, Dsg Relax Time, Chg Relax Time, and Quit Relax Time
+The Quit Current is used as part of the Impedance Track algorithm to determine when the BQ34Z100-G1 enters
+RELAX mode from a current flowing mode in either the charge direction or the discharge direction. The value of
+Quit Current is set to a default value that should be above the standby current of the host system.
+Either of the following criteria must be met to enter RELAX mode:
+1. |AverageCurrent()| < |Quit Current| for Dsg Relax Time
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 31
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 32 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+2. |AverageCurrent()| > |Quit Current| for Chg Relax Time
+After about 6 minutes in RELAX mode, the device attempts to take accurate OCV readings. An additional
+requirement of dV/dt < 4 μV/s is required for the device to perform Qmax updates. These updates are used in
+the Impedance Track algorithms. It is critical that the battery voltage be relaxed during OCV readings, and that
+the current is not higher than C/20 when attempting to go into RELAX mode.
+Quit Relax Time specifies the minimum time required for AverageCurrent() to remain above the Quit Current
+threshold before exiting RELAX mode.
+7.3.6.9 Qmax
+Qmax Cell 0 contains the maximum chemical capacity of the cell and is determined by comparing states of
+charge before and after applying the load with the amount of charge passed. It also corresponds to capacity at
+low rate of discharge, such as C/20 rate. For high accuracy, this value is periodically updated by the device
+during operation.
+Based on the battery cell capacity information, the initial value of chemical capacity should be entered in the
+Qmax Cell 0 data flash parameter. The Impedance Track algorithm will update this value and maintain it
+internally in the gauge.
+7.3.6.10 Update Status
+The Update Status register indicates the status of the Impedance Track algorithm.
+表 7-16. Update Status Definitions
+UPDATE STATUS STATUS
+Qmax and Ra data are learned, but Impedance Track is not enabled. This should be the standard
+0x02
+setting for a Golden Image File.
+0x04 Impedance Track is enabled but Qmax and Ra data are not yet learned.
+0x05 Impedance Track is enabled and only Qmax has been updated during a learning cycle.
+Impedance Track is enabled. Qmax and Ra data are learned after a successful learning cycle. This
+0x06
+should be the operation setting for end equipment.
+This register should only be updated by the device during a learning cycle or when the IT_ENABLE()
+subcommand is received. Refer to the Preparing Optimized Default Flash Constants for Specific Battery Types
+Application Report (SLUA334B).
+7.3.6.11 Avg I Last Run
+The device logs the current averaged from the beginning to the end of each discharge cycle. It stores this
+average current from the previous discharge cycle in this register. This register should never be modified. It is
+only updated by the device when required.
+7.3.6.12 Avg P Last Run
+The device logs the power averaged from the beginning to the end of each discharge cycle. It stores this
+average power from the previous discharge cycle in this register. To get a correct average power reading, the
+device continuously multiplies instantaneous current times Voltage() to get power. It then logs this data to derive
+the average power. This register should never need to be modified. It is only updated by the device when the
+required.
+7.3.6.13 Cell Delta Voltage
+The device stores the maximum difference of Voltage() during short load spikes and normal load, so the
+Impedance Track algorithm can calculate remaining capacity for pulsed loads. It is not recommended to change
+this value, as the device can learn this during operation.
+32 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 33 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+7.3.6.14 Ra Tables
+This data is automatically updated during device operation. No user changes should be made except for reading
+the values from another pre-learned pack for creating Golden Image Files. Profiles have format Cell0 R_a M,
+where M is the number that indicates state-of-charge to which the value corresponds.
+7.3.6.15 StateOfCharge() Smoothing
+When operating conditions change (such as temperature, discharge current, and resistance, and so on), it can
+lead to large changes of compensated battery capacity and battery capacity remaining. These changes can
+result in large changes of StateOfCharge(). When [SmoothEn] is enabled in Pack Configuration C, the
+smoothing algorithm injects gradual changes of battery capacity when conditions vary. This results in a gradual
+change of StateOfCharge() and can provide a better end-user experience for StateOfCharge() reporting.
+The RemainingCapacity(), FullChargeCapacity(), and StateOfCharge() are modified depending on [SmoothEn],
+as below.
+[SmoothEn] RemainingCapacity() FullChargeCapacity() StateOfCharge()
+0 TrueRC() TrueFCC() TrueRC() / TrueFCC()
+1 FilteredRC() FilteredFCC() FilteredRC() /FilteredFCC()
+7.3.6.16 Charge Efficiency
+Tracking state-of-charge during the charge phase is relatively easy with chemistries such as Li-ion where
+essentially none of the applied energy from the charger is lost to heat. However, lead-acid and NiMH chemistries
+may demonstrate significant losses to heat during charging. Therefore, to more accurately track state of charge
+and Time-to-Full during the charge phase, the BQ34Z100-G1 uses four charge-efficiency factors to compensate
+for charge acceptance. These factors are Charge Efficiency, Charge Eff Reduction Rate, Charge Effi Drop
+Off, and Charge Eff Temperature Compensation.
+The BQ34Z100-G1 applies the Charge Efficiency when RelativeStateOfCharge() is less than the value stored
+in Charge Efficiency Drop Off. When RelativeStateOfCharge() is > or equal to the value coded in Charge
+Efficiency Drop Off, Charge Efficiency and Charge Efficiency Reduction Rate determine the charge
+efficiency rate. Charge Efficiency Reduction Rate defines the percent efficiency reduction per percentage point
+of RelativeStateOfCharge() over Charge Efficiency Drop Off. The Charge Efficiency Reduction Rate has
+units of 0.1%. The BQ34Z100-G1 also adjusts the efficiency factors for temperature. Charge Efficiency
+Temperature Compensation defines the percent efficiency reduction per degree C over 25°C. Charge
+Efficiency Temperature Compensation has units of 0.01%.
+Applying the four factors:
+Effective Charge Efficiency % = Charge Efficiency – Charge Eff Reduction Rate [RSOC() – Charge Effi
+Drop Off] – Charge Eff Temperature Compensation [Temperature – 25°C]
+Where: RSOC() ≥ Charge Efficiency and Temperature ≥ 25°C
+7.3.6.17 Lifetime Data Logging
+The Lifetime Data Logging function helps development and diagnosis with the fuel gauge.
+Note
+IT_ENABLE must be enabled (Command 0x0021) for lifetime data logging functions to be active.
+The fuel gauge logs the lifetime data as specified in the Lifetime Data and Lifetime Temp Samples data flash
+subclasses. The data log recordings are controlled by the Lifetime Resolution data flash subclass.
+The Lifetime Data Logging can be started by setting the IT_ENABLE bit and setting the LTUpdate Time register
+to a non-zero value.
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 33
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 34 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+Once the Lifetime Data Logging function is enabled, the measured values are compared to what is already
+stored in the data flash. If the measured value is higher than the maximum or lower than the minimum value
+stored in the data flash by more than the "Resolution" set for at least one parameter, the entire Data Flash
+Lifetime Registers are updated after at least LTUpdateTime.
+LTUpdateTime sets the minimum update time between DF writes. When a new maximum or minimum is
+detected, an LT Update window of [update time] second is enabled and the DF writes occur at the end of this
+window. Any additional max/min value detected within this window will also be updated. The first new max/min
+value detected after this window will trigger the next LT Update window.
+Internal to the fuel gauge, there exists a RAM maximum/minimum table in addition to the DF maximum/minimum
+table. The RAM table is updated independent of the resolution parameters. The DF table is updated only if at
+least one of the RAM parameters exceeds the DF value by more than the resolution associated with it. When DF
+is updated, the entire RAM table is written to DF. Consequently, it is possible to see a new maximum or minimum
+value for a certain parameter even if the value of this parameter never exceeds the maximum or minimum value
+stored in the data flash for this parameter value by the resolution amount.
+The Life Time Data Logging of one or more parameters can be reset or restarted by writing new default (or
+starting) values to the corresponding data flash registers through sealed or unsealed access as described below.
+However, when using unsealed access, new values will only take effect after device reset.
+The logged data can be accessed as RW in UNSEALED mode from the Lifetime Data Subclass (Subclass ID =
+59) of data flash. Lifetime data may be accessed (RW) when sealed using a process identical Manufacturer
+Info Block B. The DataFlashBlock command code is 4. Note only the first 32 bytes of lifetime data (not
+resolution parameters) can be RW when sealed. See 节 7.3.3.2 for sealed access. The logging settings such as
+Temperature Resolution, Voltage Resolution, Current Resolution, and Update Time can be configured only in
+UNSEALED mode by writing to the Lifetime Resolution Subclass (SubclassID = 66) of the data flash.
+The Lifetime resolution registers contain the parameters that set the limits related to how much a data parameter
+must exceed the previously logged maximum/minimum value to be updated in the lifetime log. For example, V
+must exceed MaxV by more than Voltage Resolution to update MaxV in the data flash.
+7.3.7 Device Configuration
+The BQ34Z100-G1 has many features that can be enabled, disabled, or modified through settings in the Pack
+Configuration registers. These registers are programmed/read via the methods described in 节 7.3.3.1.
+7.3.7.1 Pack Configuration Register
+表 7-17. Pack Configuration Register Bits
+Bit 7 Bit 6 Bit 5 Bit 4 Bit 3 Bit 2 Bit 1 Bit 0
+High Byte RESCAP CAL_EN SCALED RSVD VOLTSEL IWAKE RSNS1 RSNS0
+Low Byte RFACTSTEP SLEEP RMFCC NiDT NiDV QPCCLEAR GNDSEL TEMPS
+Legend: RSVD = Reserved
+RESCAP: No-load rate of compensation is applied to the reserve capacity calculation. True when set. Default is 0.
+CAL_EN: When enabled, entering CALIBRATION mode is permitted. For special use only. Default = 0.
+Scaled Capacity and/or Current bit. The mA, mAh, and cWh settings and reports will take on a value
+that is artificially scaled. This setting has no actual effect within the gauge. It is the responsibility of the
+SCALED:
+host to reinterpret the reported values. Scaled current measurement is achieved by calibrating the
+current measurement to a value lower than actual.
+This bit selects between the use of an internal or external battery voltage divider. The internal divider is
+VOLTSEL:
+for single cell use only. Default is 0.
+1 = External
+0 = Internal
+IWAKE/RSNS1/RSNS0: These bits configure the current wake function (see 表 7-23). Default is 0/0/1.
+RFACTSTEP: Enables Ra step up/down to Max/Min Res Factor before disabling Ra updates. Default is 1.
+SLEEP: The fuel gauge can enter sleep, if operating conditions allow. True when set. Default is 1.
+34 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 35 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+RMFCC: RM is updated with the value from FCC on valid charge termination. True when set. Default is 1.
+Performs primary charge termination using the ΔT/Δt algorithm. See 节 7.3.11. This bit is only acted
+NiDT:
+upon when a NiXX Chem ID is used.
+Performs primary charge termination using the –ΔV algorithm. See 节 7.3.11. This bit is only acted
+NiDV:
+upon when a NiXX Chem ID is used.
+QPCCLEAR: Upon exit from RELAX where a DOD update occurred, the QMAX Passed Charge is cleared.
+The ADC ground select control. The VSS pin is selected as ground reference when the bit is clear. Pin
+GNDSEL:
+10 is selected when the bit is set.
+Selects external thermistor for Temperature() measurements. True when set. Uses internal temp when
+TEMPS:
+clear. Default is 1.
+7.3.7.2 Pack Configuration B Register
+表 7-18. Pack Configuration B Register Bits
+Bit 7 Bit 6 Bit 5 Bit 4 Bit 3 Bit 2 Bit 1 Bit 0
+CHGDoDEoC RSVD VconsEN RSVD JEITA LFPRelax DoDWT FConvEN
+Legend: RSVD = Reserved
+CHGDoDEoC: Enable DoD at EoC during charging only. True when set. Default is 1. Default setting is recommended.
+VconsEN: Enable voltage measurement consistency check. True when set. Default is 1. Default setting is
+recommended.
+JEITA: Enables ChargingVoltage() and ChargingCurrent() to report data per the JEITA charging algorithm.
+When disabled, the values programmed in Cell Charge Voltage T2–T3 and Charge Current T2–T3
+are reported.
+LFPRelax: Enables Lithium Iron Phosphate RELAX mode
+DoDWT: Enable Dod weighting for LiFePO support when chemical ID 400 series is selected. True when set.
+4
+Default is 1.
+FConvEN: Enable fast convergence algorithm. Default is 1. Default setting is recommended.
+7.3.7.3 Pack Configuration C Register
+表 7-19. Pack Configuration C Register Bits
+Bit 7 Bit 6 Bit 5 Bit 4 Bit 3 Bit 2 Bit 1 Bit 0
+RELAX_JUMP_ RELAX_SMOOTH
+SOH_DISP RSOC_HOLD FF_NEAR_EDV SleepWakeCHG LOCK_0 SMOOTH
+OK _OK
+SOH_DISP: Enables State-of-Health Display
+RSOC_HOLD: RSOC_HOLD enables RSOC Hold Feature preventing RSOC from increasing during discharge.
+NOTE: It is recommended to disable RSOC_HOLD when SOC Smoothing is enabled (SMOOTH = 1).
+FF_NEAR_EDV: Enables Fast Filter Near EDV
+SleepWakeCHG: Enable for faster sampling in SLEEP mode. Default setting is recommended.
+LOCK_0: Keep RemainingCapacity() and RelativeStateOfCharge() jumping back during relaxation after 0 is
+reached during discharge.
+RELAX_JUMP_OK: Allows RSOC jump during RELAX mode if [SMOOTH =1]
+RELAX_SMOOTH_OK: Smooth RSOC during RELAX mode if [SMOOTH =1]
+SMOOTH: Enabled RSOC Smoothing
+7.3.8 Voltage Measurement and Calibration
+The device is shipped with a factory configuration for the default case of the 1-series Li-ion cell. This can be
+changed by setting the VOLTSEL bit in the Pack Configuration register and by setting the number of series cells
+in the data flash configuration section.
+Multi-cell applications, with voltages up to 65535 mV, may be gauged by using the appropriate input scaling
+resistors such that the maximum battery voltage, under all conditions, appears at the BAT input as approximately
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 35
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 36 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+900 mV. The actual gain function is determined by a calibration process and the resulting voltage calibration
+factor is stored in the data flash location Voltage Divider.
+For single-cell applications, an external divider network is not required. Inside the IC, behind the BAT pin is a
+nominal 5:1 voltage divider with 88 KΩ in the top leg and 22 KΩ in the bottom leg. This internal divider network
+is enabled by clearing the VOLTSEL bit in the Pack Configuration register. This ratio is optimum for directly
+measuring a single Li-ion cell where charge voltage is limited to 4.5 V.
+For higher voltage applications, an external resistor divider network should be implemented as per the reference
+designs in this document. The quality of the divider resistors is very important to avoid gauging errors over time
+and temperature. It is recommended to use 0.1% resistors with 25-ppm temperature coefficient. Alternately, a
+matched network could be used that tracks its dividing ratio with temperature and age due to the similar
+geometry of each element. Calculation of the series resistor can be made per the equation below.
+Note
+Exceeding Vin max mV results in a measurement with degraded linearity.
+The bottom leg of the divider resistor should be in the range of 15 KΩ to 25 K, using 16.5 KΩ:
+Rseries = 16500 Ω (Vin max mV – 900 mV)/900 mV
+For all applications, the Voltage Divider value in data flash will be used by the firmware to calibrate the total
+divider ratio. The nominal value for this parameter is the maximum expected value for the stack voltage. The
+calibration routine adjusts the value to force the reported voltage to equal the actual applied voltage.
+7.3.8.1 1S Example
+For stack voltages under 4.5 V max, it is not necessary to provide an external voltage divider network. The
+internal 5:1 divider should be selected by clearing the VOLTSEL bit in the Pack Configuration register. The
+default value for Voltage Divider is 5000 (representing the internal 5000:1000 mV divider) when no external
+divider resistor is used, and the default number of series cells = 1. In the 1-S case, there is usually no
+requirement to calibrate the voltage measurement, since the internal divider is calibrated during factory test to
+within 2 mV.
+7.3.8.2 7S Example
+In the multi-cell case, the hardware configuration is different. An external voltage divider network is calculated
+using the Rseries formula above. The bottom leg of the divider should be in the range of 15 KΩ to 25 KΩ. For
+more details on configuration, see 节 8.2.2.1.
+7.3.8.3 Autocalibration
+The device provides an autocalibration feature that will measure the voltage offset error across SRP and SRN
+from time-to-time as operating conditions change. It subtracts the resulting offset error from normal sense
+resistor voltage, V , for maximum measurement accuracy.
+SR
+The gas gauge performs a single offset calibration when:
+1. The interface lines stay low for a minimum of Bus Low Time and
+2. V > Deadband.
+SR
+The gas gauge also performs a single offset when:
+1. The condition of AverageCurrent() ≤ Autocal Min Current and
+2. {Voltage change since last offset calibration ≥ Delta Voltage} or {temperature change since last offset
+calibration is greater than Delta Temperature for ≥ Autocal Time}.
+Capacity and current measurements should continue at the last measured rate during the offset calibration when
+these measurements cannot be performed. If the battery voltage drops more than Cal Abort during the offset
+calibration, the load current has likely increased considerably; hence, the offset calibration will be aborted.
+36 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 37 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+7.3.9 Temperature Measurement
+The BQ34Z100-G1 can measure temperature via the on-chip temperature sensor or via the TS input, depending
+on the setting of the [TEMPS] bit PackConfiguration(). The bit is set by using the PackConfiguration() function,
+described in 节 7.3.2.
+Temperature measurements are made by calling the Temperature() function (see 节 7.3.1.1 for specific
+information).
+When an external thermistor is used, REG25 (pin 7) is used to bias the thermistor and TS (pin 11) is used to
+measure the thermistor voltage (a pull-down circuit is implemented inside the device). The device then correlates
+the voltage to temperature, assuming the thermistor is a Semitec 103AT or similar device.
+7.3.10 Overtemperature Indication
+7.3.10.1 Overtemperature: Charge
+If during charging, Temperature() reaches the threshold of OT Chg for a period of OT Chg Time and
+AverageCurrent() > Chg Current Threshold, then the [OTC] bit of Flags() is set. Note: If OT Chg Time = 0, then
+the feature is completely disabled.
+When Temperature() falls to OT Chg Recovery, the [OTC] of Flags() is reset.
+7.3.10.2 Overtemperature: Discharge
+If during discharging Temperature() reaches the threshold of OT Dsg for a period of OT Dsg Time, and
+AverageCurrent() ≤ –Dsg Current Threshold, then the [OTD] bit of Flags() is set. If OT Dsg Time = 0, then
+the feature is completely disabled.
+When Temperature() falls to OT Dsg Recovery, the [OTD] bit of Flags() is reset.
+7.3.11 Charging and Charge Termination Indication
+For proper BQ34Z100-G1 operation, the battery per cell charging voltage must be specified by the user in Cell
+Charging Voltage. The default value for this variable is Charging Voltage = 4200 mV. This parameter should
+be set to the recommended charging voltage for the entire battery stack divided by the number of series cells.
+The device detects valid charge termination in one of three ways:
+1. Current Taper method:
+a. During two consecutive periods of Current Taper Window, the AverageCurrent() is less than Taper
+Current AND
+b. During the same periods, the accumulated change in capacity > 0.25 mAh /Taper Current Window
+AND
+c. Voltage() is > Charging Voltage – Charging Taper Voltage. When this occurs, the [CHG] bit of Flags()
+is cleared. Also, if the [RMFCC] bit of Pack Configuration is set, and RemainingCapacity() is set equal to
+FullChargeCapacity().
+2. Delta Temperature (ΔT/Δt) method—For ΔT/Δt, the BQ34Z100-G1 detects an increase in temperature
+over many seconds. The ΔT/Δt setting is programmable in the temperature step, Delta Temp (0°C –
+25.5°C), and the time step, Delta Temp Time (0 s–1000 s). Typical settings for 1°C/minute include 2°C/120
+s and 3°C/180 s (default). Longer times may be used for increased slope resolution.
+In addition to the ΔT/Δt timer, a holdoff timer starts when the battery is charged at more than Holdoff
+Current (default is 240 mA), and the temperature is above Holdoff Temp. Until this timer expires, ΔT/Δt
+detection is suspended. If Current() drops below Holdoff Current or Temperature() below Holdoff Temp,
+the holdoff timer resets and restarts only when the current and temperature conditions are met again.
+3. Negative Delta Voltage (–ΔV) method—For negative delta voltage, the BQ34Z100-G1 detects a charge
+termination when the pack voltage drops during charging by Cell Negative Delta Volt for a period of Cell
+Negative Delta Time during which time Voltage() must be greater than Cell Negative Qual Volt.
+When either condition occurs, the Flags()[CHG] bit is cleared. Also, if the [RMFCC] bit of Pack Configuration is
+set, and RemainingCapacity() is set equal to FullChargeCapacity().
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 37
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 38 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+Cell Negative Delta Time
+Cell Negative Delta Volt
+Cell Negative Delta Qual Volt
+Voltage()
+Delta Temp
+Temperature()
+Delta Temp Time
+Current() Holdoff Time
+Holdoff Current
+图 7-1. NiXX Termination
+7.3.12 SCALED Mode
+The device supports high current and high capacity batteries above 32.76 Amperes and 29 Ampere-Hours
+indirectly by scaling the actual sense resistor value compared with the calibrated value stored in the device. The
+need for this is due to the standardization of a 2-byte data command having a maximum representation of +/–
+32767. When [SCALED] is set in the Pack Configuration register, this indicates that the current and capacity
+data is scaled.
+It is important to know that setting the SCALED flag does not actually change anything in the operation of the
+gauge. It serves as a notice to the host that the various reported values should be reinterpreted based on the
+scale used. Because the flag has no actual effect, it can be used to represent other scaling values. See 节
+7.3.6.5.
+Note
+It is recommended to only scale by a value between 1 and 10 to optimize resolution and accuracy
+while still extending the data range.
+7.3.13 LED Display
+The device supports multiple options for using one to 16 LEDs as an output device to display the remaining state
+of charge, or, if Pack Configuration C [SOH_DISP] is set, then state-of-health. The LED/COMM Configuration
+register determines the behavior.
+表 7-20. LED/COMM Configuration Bits
+Bit 7 Bit 6 Bit 5 Bit 4 Bit 3 Bit 2 Bit 1 Bit 0
+EXT_LED3 EXT_LED2 EXT_LED1 EXT_LED0 LED_ON LED_Mode2 LED_Mode1 LED_Mode0
+Bits 0, 1, 2 are a code for one of five modes. 0 = No LED, 1 = Single LED, 2 = Four LEDs, 3 = External LEDs
+with I2C comm, 4 = External LEDs with HDQ comm.
+Setting Bit 3, LED_ON, will cause the LED display to be always on, except in Single LED mode where it is not
+applicable. When clear (default), the LED pattern will only be displayed after holding an LED display button for
+one to two seconds. The button applies 2.5 V from REG25 pin 7 to VEN pin 2 (refer to 节 8.2). The LED Hold
+Time parameter may be used to configure how long the LED display remains on if LED_ON is clear. LED Hold
+Time configures the update interval for the LED display if LED_ON is set.
+38 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 39 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+Bits 4, 5, 6, and 7 are a binary code for number of external LEDs. Code 0 is reserved. Codes 1 through 15
+represents 2~16 external LEDs. So, number of External LEDs is 1 + Value of the 4-bit binary code. Display of
+Remaining Capacity RemainingCapacity()or StateOfHealth() will be evenly divided among the selected number
+of LEDs.
+Single LED mode—Upon detecting an A/D value representing 2.5 V on the VEN pin, Single LED mode will
+toggle the LED as duty cycle on within a period of 1 s where each 1% of RSOC is a 7.8125-ms high time. So, for
+example, 10% RSOC or SOH will have the LED on for 78.1 ms and off for 921.9 ms. 90% RSOC or SOH will
+have the LED on for 703.125 ms and off for 296.875 ms. Any value > 90% will display as 90%.
+Four-LED mode—Upon detecting an A/D value representing 2.5 V on the VEN pin, Four-LED mode will display
+the RSOC or SOH by driving pins RC2(LED1), RC0(LED2), RA1(LED3),RA2(LED4) in a proportional manner
+where each LED represents 25% of the remaining state-of-charge. For example, if RSOC or SOH = 67%, three
+LEDs will be illuminated.
+External LED mode—Upon detecting an A/D value representing 2.5 V on the VEN pin, External LED mode will
+transmit the RSOC into an SN74HC164 (for 2–8 LEDs) or two SN74HC164 devices (for 9–16 LEDs) using a
+bit-banged approach with RC2 as Clock and RC0 as Data (see 图 8-4). LEDs will be lit for a number of seconds
+as defined in a data flash parameter. Refer to the SN54HC164, SN74HC164 8-Bit Parallel-Out Serial Shift
+Registers Data Sheet (SCLS115E) for details on these devices.
+Extended commands are available to turn the LEDs on and off for test purposes.
+7.3.14 Alert Signal
+Based on the selected LED mode, various options are available for the hardware implementation of an Alert
+signal. Software configuration of the Alert Configuration register determines which alert conditions will assert the
+ALERT pin.
+表 7-21. ALERT Signal Pins
+CONFIG REGISTER
+MODE DESCRIPTION ALERT PIN ALERT PIN NAME COMMENT
+HEX CODE
+0 No LED 1 P2 0
+1 Single LED 1 P2 1
+Filter and FETs are required to
+2 4 LED 11 P6 2 eliminate temperature sense pulses.
+See 节 8.2.
+5-LED Expander with I2C
+3 12 P5 43
+Host Comm
+10-LED Expander with I2C
+3 12 P5 93
+Host Comm
+5-LED Expander with HDQ
+4 13 P4 44
+Host Comm
+10-LED Expander with HDQ
+4 13 P4 94
+Host Comm
+The port used for the Alert output will depend on the mode setting in LED/Comm Configuration as defined in 表
+7-21. The default mode is 0. The ALERT pin will be asserted by driving LOW. However, note that in LED/COM
+mode 2, pin TS/P6, which has a dual purpose as temperature sense pin, will be driven low except when
+temperature measurements are made each second. See the reference schematic (图 8-4) for filter
+implementation details if host alert sensing requires a continuous signal.
+The ALERT pin will be a logical OR of the selected bits in the new configuration register when asserted in the
+Flags register. The default value for Alert Configuration register is 0.
+表 7-22. Alert Configuration Register Bit Definitions
+Bit 7 Bit 6 Bit 5 Bit 4 Bit 3 Bit 2 Bit 1 Bit 0
+High Byte OTC OTD BAT_HIGH BATLOW CHG_INH XCHG FC CHG
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 39
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 40 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+表 7-22. Alert Configuration Register Bit Definitions (continued)
+Bit 7 Bit 6 Bit 5 Bit 4 Bit 3 Bit 2 Bit 1 Bit 0
+Low Byte OCVTAKEN RSVD RSVD CF RSVD RCA EOD DSG
+Legend: RSVD = Reserved
+OTC: Over-Temperature in Charge condition is detected. ALERT is enabled when set.
+OTD: Over-Temperature in Discharge condition is detected. ALERT is enabled when set.
+BAT_HIGH: Battery High bit that indicates a high battery voltage condition. Refer to the data flash CELL BH parameters for
+threshold settings. ALERT is enabled when set.
+BATLOW: Battery Low bit that indicates a low battery voltage condition. Refer to the data flash parameters for threshold
+settings. ALERT is enabled when set.
+CHG_INH: Charge Inhibit: unable to begin charging. Refer to the data flash [Charge Inhibit Temp Low, Charge Inhibit Temp
+High] parameters. ALERT is enabled when set.
+XCHG: Charging disallowed ALERT is enabled when set.
+FC: Full charge is detected. FC is set when charge termination is reached and FC Set% = –1 (see 节 7.3.11 for details)
+or StateOfCharge() is larger than FC Set% and FC Set% is not –1. ALERT is enabled when set.
+CHG: (Fast) charging allowed. ALERT is enabled when set.
+OCVTAKEN: Cleared on entry to RELAX mode and set to 1 when OCV measurement is performed in RELAX mode. ALERT is
+enabled when set.
+CF: Condition Flag set. ALERT is enabled when set.
+RCA: Remaining Capacity Alarm reached. ALERT is enabled when set.
+EOD: End-of-Discharge Threshold reached. ALERT is enabled when set.
+DSG: Discharging detected. ALERT is enabled when set.
+7.3.15 Communications
+7.3.15.1 Authentication
+The BQ34Z100-G1 can act as a SHA-1/HMAC authentication slave by using its internal engine. Sending a 160-
+bit SHA-1 challenge message to the device will cause the IC to return a 160-bit digest, based upon the challenge
+message and hidden plain-text authentication keys. When this digest matches an identical one generated by a
+host or dedicated authentication master (operating on the same challenge message and using the same plain
+text keys), the authentication process is successful.
+The device contains a default plain-text authentication key of 0x0123456789ABCDEFFEDCBA987654321. If
+using the device's internal authentication engine, the default key can be used for development purposes, but
+should be changed to a secret key and the part immediately sealed before putting a pack into operation.
+7.3.15.2 Key Programming
+When the device's SHA-1/HMAC internal engine is used, authentication keys are stored as plain-text in memory.
+A plain-text authentication key can only be written to the device while the IC is in UNSEALED mode. Once the IC
+is UNSEALED, a 0x00 is written to BlockDataControl() to enable the authentication data commands. Next,
+subclass ID and offset are specified by writing 0x70 and 0x00 to DataFlashClass() and DataFlashBlock(),
+respectively. The device is now prepared to receive the 16-byte plain-text key, which must begin at command
+location 0x4C. The key is accepted once a successful checksum has been written to BlockDataChecksum() for
+the entire 32-byte block (0x40 through 0x5F), not just the 16-byte key.
+7.3.15.3 Executing an Authentication Query
+To execute an authentication query in UNSEALED mode, a host must first write 0x01 to the BlockDataControl()
+command to enable the authentication data commands. If in SEALED mode, 0x00 must be written to
+DataFlashBlock().
+Next, the host writes a 20-byte authentication challenge to the AuthenticateData() address locations (0x40
+through 0x53). After a valid checksum for the challenge is written to AuthenticateChecksum(), the device uses
+the challenge to perform its own SHA-1/HMAC computation in conjunction with its programmed keys. The
+40 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 41 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+resulting digest is written to AuthenticateData(), overwriting the pre-existing challenge. The host may then read
+this response and compare it against the result created by its own parallel computation.
+7.3.15.4 HDQ Single-Pin Serial Interface
+The HDQ interface is an asynchronous return-to-one protocol where a processor sends the command code to
+the device. With HDQ, the least significant bit (LSB) of a data byte (command) or word (data) is transmitted first.
+Note that the DATA signal on pin 12 is open-drain and requires an external pull-up resistor. The 8-bit command
+code consists of two fields: the 7-bit HDQ command code (bits 0–6) and the 1-bit R/W field (MSB Bit 7). The
+R/W field directs the device either to:
+• Store the next 8 or 16 bits of data to a specified register or
+• Output 8 or 16 bits of data from the specified register.
+The HDQ peripheral can transmit and receive data as either an HDQ master or slave.
+The return-to-one data bit frame of HDQ consists of three distinct sections. The first section is used to start the
+transmission by either the host or by the device taking the DATA pin to a logic-low state for a time t . The
+STRH,B
+next section is for data transmission where the data is valid for a time t after the negative edge used to start
+DSU
+communication. The data is held until a time t , allowing the host or device time to sample the data bit. The final
+DV
+section is used to stop the transmission by returning the DATA pin to a logic-high state by at least a time t
+SSU
+after the negative edge used to start communication. The final logic-high state is held until the end of t ,
+CYCH,B
+allowing time to ensure the transmission was stopped correctly. The timing for data and break communication is
+shown in 节 6.13.
+HDQ serial communication is normally initiated by the host processor sending a break command to the device. A
+break is detected when the DATA pin is driven to a logic-low state for a time t or greater. The DATA pin should
+B
+then be returned to its normal ready high logic state for a time t . The device is now ready to receive
+BR
+information from the host processor.
+The device is shipped in the I2C mode. TI provides tools can be used to switch from I2C to HDQ
+communications.
+7.3.15.5 I2C Interface
+The gas gauge supports the standard I2C read, incremental read, one-byte write quick read, and functions. The
+7-bit device address (ADDR) is the most significant 7 bits of the hex address and is fixed as 1010101. The 8-bit
+device address is therefore 0xAA or 0xAB for write or read, respectively.
+Host Generated Fuel Gauge Generated
+S ADDR[6:0] 0 A CMD[7:0] A DATA[7:0] A P S ADDR[6:0] 1 A DATA[7:0] N P
+(a) 1-byte write (b) quick read
+S ADDR[6:0] 0 A CMD[7:0] A Sr ADDR[6:0] 1 A DATA[7:0] N P
+(c) 1-byte read
+S ADDR[6:0] 0 A CMD[7:0] A Sr ADDR[6:0] 1 A DATA[7:0] A . . . DATA[7:0] N P
+(d) incremental read
+图 7-2. Supported I2C formats: (a) 1-byte write, (b) quick read, (c) 1 byte-read, and (d) incremental read (S
+= Start, Sr = Repeated Start, A = Acknowledge, N = No Acknowledge, and P = Stop).
+The “quick read” returns data at the address indicated by the address pointer. The address pointer, a register
+internal to the I2C communication engine, increments whenever data is acknowledged by the device or the I2C
+master. “Quick writes” function in the same manner and are a convenient means of sending multiple bytes to
+consecutive command locations (such as 2-byte commands that require two bytes of data).
+S ADDR[6:0] 0 A CMD[7:0] A DATA[7:0] A P
+图 7-3. Attempt To Write a Read-Only Address (Nack After Data Sent By Master)
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 41
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 42 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+S ADDR[6:0] 0 A CMD[7:0] N P
+图 7-4. Attempt To Read An Address Above 0x7F (Nack Command)
+S ADDR[6:0] 0 A CMD[7:0] A DATA[7:0] A DATA[7:0] N. . . N P
+图 7-5. Attempt At Incremental Writes (nack All Extra Data Bytes Sent)
+S ADDR[6:0] 0 A CMD[7:0] A Sr ADDR[6:0] 1 A DATA[7:0] A . . . DATA[7:0] N P
+Address Data From Data From
+0x7F addr 0x7F addr 0x00
+图 7-6. Incremental Read at the Maximum Allowed Read Address
+The I2C engine releases both SDA and SCL if the I2C bus is held low for Bus Low Time. If the gas gauge was
+holding the lines, releasing them frees the master to drive the lines. If an external condition is holding either of
+the lines low, the I2C engine enters the low-power SLEEP mode.
+7.3.15.6 Switching Between I2C and HDQ Modes
+Texas Instruments ships the BQ34Z100-G1 device in I2C mode (factory default); however, this mode can be
+changed to HDQ mode if needed.
+Note
+To make changes in the data flash, the device must be in I2C mode.
+7.3.15.6.1 Converting to HDQ Mode
+Using the Battery Management Studio (bqStudio) tool to configure the BQ34Z100-G1 to HDQ mode, a write to
+the Control command [0x00] of [0x7C40] is required.
+To configure HDQ mode with bqStudio:
+1. Navigate to the Registers screen. HDQ mode is configured by writing data [0x7C40] to Control command
+[0x00].
+2. Click on the Control value field.
+3. Write 0x7C40 into the text field and click OK. Because the change in communication protocol involves
+writing a flag for the new protocol to data flash, it takes about 200 ms to complete. During this time,
+communications are disabled. Once the command takes effect, the bqStudio will no longer communicate
+with the gauge.
+4. Close bqStudio. Change communication connections from the gauge to the HDQ port of the EV2400 device
+(www.ti.com/tool/ev2400 for more information). Run bqStudio. The bqStudio auto-detection only works for
+devices that operate in I2C mode.
+When the BQ34Z100-G1 device is in HDQ mode, it will not be detected.
+5. Select BQ34Z100-G1 manually. Click OK to all messages that indicate that the device is not detected or not
+responsive. When the Registers screen starts, it will take a period of time from when bqStudio first tries to
+communicate with the device in I2C before trying HDQ mode.
+Once it is complete, the Registers screen will display data as it had done initially when it was in I2C mode. The
+refresh is noticeably slower, due to the slow speed of HDQ.
+Use the Registers screen only while the BQ34Z100-G1 is in HDQ mode. All other functions will not be supported
+in Battery Management Studio.
+7.3.15.6.2 Converting to I2C Mode
+Texas Instruments ships the BQ34Z100-G1 device in I2C mode, which is required when updating data flash.
+However, this mode can be changed to HDQ mode if needed.
+42 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 43 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+To configure the device to use I2C mode when presently in the HDQ mode, a write to the Control command
+[0x00] of [0x29E7] is required. Use the Battery Management Studio (bqStudio) tool, as follows:
+1. Click on the Control value field. Write [0x29E7] in the text field and click OK. Once the command takes
+effect, bqStudio will no longer communicate with the gauge.
+2. Close bqStudio. Change communication connections from the gauge to the I2C port of the EV2400 device.
+Run bqStudio.
+7.3.16 Power Control
+7.3.16.1 Reset Functions
+When the device detects either a hardware or software reset ( MRST pin is driven low or the [RESET] bit of
+Control() is initiated, respectively), it determines the type of reset and increments the corresponding counter.
+This information is accessible by issuing the command Control() function with the RESET_DATA subcommand.
+As shown in 图 7-7, if a partial reset was detected, a RAM checksum is generated and compared against the
+previously stored checksum. If the checksum values do not match, the RAM is reinitialized (a “Full Reset”).
+The stored checksum is updated every time RAM is altered.
+DEVICE RESET
+GenerateActive
+RAM checksum
+value
+NO
+Stored Do the Checksum Re-initialize all
+checksum Values Match? RAM
+YES
+NORMAL
+OPERATION
+Active RAM
+NO changed ?
+YES
+Store Generate new
+checksum checksum value
+图 7-7. Partial Reset Flow Diagram
+7.3.16.2 Wake-Up Comparator
+The wake up comparator is used to indicate a change in cell current while the device is in SLEEP mode.
+PackConfiguration() uses bits [RSNS1–RSNS0] to set the sense resistor selection. PackConfiguration() uses
+the [IWAKE] bit to select one of two possible voltage threshold ranges for the given sense resistor selection. An
+internal interrupt is generated when the threshold is breached in either charge or discharge directions. A setting
+of 0x00 of RSNS1..0 disables this feature.
+表 7-23. I t=Threshold Settings
+WAKE
+RSNS1 (1) RSNS0 IWAKE Vth(SRP–SRN)
+0 0 0 Disabled
+0 0 1 Disabled
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 43
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 44 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+表 7-23. I t=Threshold Settings (continued)
+WAKE
+RSNS1 (1) RSNS0 IWAKE Vth(SRP–SRN)
+0 1 0 +1.25 mV or –1.25 mV
+0 1 1 +2.5 mV or –2.5 mV
+1 0 0 +2.5 mV or –2.5 mV
+1 0 1 +5 mV or –5 mV
+1 1 0 +5 mV or –5 mV
+1 1 1 +10 mV or –10 mV
+(1) The actual resistance value vs. the setting of the sense resistor is not important. Only the actual voltage threshold when calculating the
+configuration is important.
+7.3.16.3 Flash Updates
+Data flash can only be updated if Voltage() ≥ Flash Update OK Voltage. Flash programming current can cause
+an increase in LDO dropout. The value of Flash Update OK Voltage should be selected such that the
+device V voltage does not fall below its minimum of 2.4 V during Flash write operations. The default value of
+CC
+2800 mV is appropriate; however, for more information, refer to Step 3.
+7.4 Device Functional Modes
+The device has three power modes: NORMAL mode, SLEEP mode, and FULL SLEEP mode.
+• In NORMAL mode, the device is fully powered and can execute any allowable task.
+• In SLEEP mode, the gas gauge exists in a reduced-power state, periodically taking measurements and
+performing calculations.
+• In FULL SLEEP mode, the high frequency oscillator is turned off, and power consumption is further reduced
+compared to SLEEP mode.
+7.4.1 NORMAL Mode
+The gas gauge is in NORMAL mode when not in any other power mode. During this mode, AverageCurrent(),
+Voltage(), and Temperature() measurements are taken, and the interface data set is updated. Determinations to
+change states are also made. This mode is exited by activating a different power mode.
+7.4.2 SLEEP Mode
+SLEEP mode is entered automatically if the feature is enabled (Pack Configuration [SLEEP] = 1) and Average
+Current() is below the programmable level Sleep Current. Once entry to sleep has been qualified but prior to
+entry to SLEEP mode, the device performs an ADC autocalibration to minimize offset. Entry to SLEEP mode can
+be disabled by the [SLEEP] bit of Pack Configuration(), where 0 = disabled and 1 = enabled. During SLEEP
+mode, the device periodically wakes to take data measurements and updates the data set, after which it then
+returns directly to SLEEP. The device exits SLEEP if any entry condition is broken, a change in protection status
+occurs, or a current in excess of I through R is detected.
+WAKE SENSE
+7.4.3 FULL SLEEP Mode
+FULL SLEEP mode is entered automatically when the device is in SLEEP mode and the timer counts down to 0
+(Full Sleep Wait Time > 0). FULL SLEEP mode is disabled when Full Sleep Wait Time is set to 0.
+During FULL SLEEP mode, the device periodically takes data measurements and updates its data set. However,
+a majority of its time is spent in an idle condition.
+The gauge exits the FULL SLEEP mode when there is any communication activity. Therefore, the execution of
+SET_FULLSLEEP sets [FULLSLEEP] bit, but the EVSW might still display the bit clear. The FULL SLEEP mode
+can be verified by measuring the current consumption of the gauge. In this mode, the high frequency oscillator is
+turned off. The power consumption is further reduced compared to the SLEEP mode.
+While in FULL SLEEP mode, the fuel gauge can suspend serial communications as much as 4 ms by holding
+the communication line(s) low. This delay is necessary to correctly process host communication since the fuel
+gauge processor is mostly halted. For HDQ communication one host message will be dropped.
+44 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 45 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+8 Application and Implementation
+Note
+Information in the following applications sections is not part of the TI component specification, and TI
+does not warrant its accuracy or completeness. TI’s customers are responsible for determining
+suitability of components for their purposes, as well as validating and testing their design
+implementation to confirm system functionality.
+8.1 Application Information
+The BQ34Z100-G1 is a flexible gas gauge device with many options. The major configuration choices comprise
+the battery chemistry, digital interface, and display.
+8.2 Typical Applications
+图 8-1 is a simplified diagram of the main features of the BQ34Z100-G1. Specific implementations detailing the
+main configuration options are shown later in this section.
+图 8-1. BQ34Z100-G1 Simplified Implementation
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 45
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 46 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+The BQ34Z100-G1 can be used to provide a single Li-ion cell gas gauge with a 5-bar LED display.
+GND
+0.1uF
+or
+at
+e d
+p
+C3 P2
+nc
+or
+4 3
+S D A
+2
+S CLor
+ALE RT
+1
+G N D
+J9
+4 3
+H D Q or
+ALE RT
+2 1
+G N D
+J10
+REGIN
+U3
+S N74
+HC164P W
+1
+14
+A
+VCC
+2
+13
+B
+QH
+3
+12
+QA
+QG
+4
+11
+QB
+QF
+5
+10
+QC
+QE
+9
+6
+~
+Q
+C
+D
+LR
+8
+7
+C
+G
+L
+N
+K
+D Tex
+as I nstr
+u m e
+nts I
+1
+6,
+GND GND
+GND 2 0
+ht
+©
+g
+470 470 470 470 470
+o
+pyri
+R53 100 R55 100
+GND
+R13 100 D2AZ23C5V6-7
+P1 R8 R9 R10 R11 R12
+C
+R54 100 R56 100
+D1 AZ23C5V6-7
+R14 100
+GND QTLP610C-4
+GR N
+QTLP610C-4
+GR N
+QTLP610C-4
+GR N
+QTLP610C-4
+GR N
+QTLP610C-4
+GR N
+RT1 10K D9 D10 D11 D12 D3
+REGIN
+D4 D3 D2 D1 D0
+LE LE LE LE LE
+AGND
+U2
+B
+Q34Z100P W
+1
+14
+P2
+P3/SDA
+2
+13
+VEN
+P4/SCL
+3
+12
+P1
+P5/HDQ
+4
+11
+BAT
+P6/TS
+5
+10
+CE
+SRN
+9
+6
+S
+R
+R
+E
+P
+GIN
+8
+7
+V
+R
+S
+E
+S
+G25 C8
+1uF
+0.1uF
+C7 0.1uF
+0.1uF
+P2 P1 W1
+Display
+R1 1K
+C5 C6
+SD
+LE
+AGND R5 100 R6 100
+C1 0.1uF C2 0.1uF
+mpp57010.
+AGND REGIN 03R
+AGND GND
+2HS1HS
+1 2 3
+TB3
+B
+AT +
+B
+AT -
+PA
+C K -
+图 8-2. 1-Cell Li-ion and 5-LED Display
+The BQ34Z100-G1 can also be used to provide a gas gauge for a multi-cell Li-ion battery with a 5-bar LED
+display.
+46 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 47 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+4 3
+SDA
+2
+SCLor
+ALERT
+1
+GND
+J9
+GND
+4 3
+HDQ or
+ALERT
+2 1
+GND
+J10
+GND
+REGIN
+U3
+SN74HC164P W
+C3
+0.1uF
+14
+A
+VCC
+13
+B
+QH
+GND
+12
+QA
+QG
+11
+QB
+QF
+10
+QC
+QE
+9
+Q
+~
+D
+CLR
+8
+G
+CL
+N
+K
+D
+P2
+Texas
+Instru
+ments
+Incorporated
+R53 100 R55 100
+GND
+R13 100 D2AZ23C5V6-7
+1
+P1
+2
+R8
+1k
+3
+R9
+1k
+4
+R10
+1k
+5
+R11
+1k
+6
+R12
+1k
+7
+GND
+Copyright
+©
+2016,
+R54 100 R56 100
+D1 AZ23C5V6-7
+R14 100
+GND QTLP610C-4
+GRN
+QTLP610C-4
+GRN
+QTLP610C-4
+GRN
+QTLP610C-4
+GRN
+QTLP610C-4
+GRN
+D9 D10 D11 D12 D3
+REGIN
+LED4 LED3 LED2 LED1 LED0
+RT1 10K
+REG25
+AGND
+U2
+BQ34Z100P W
+1
+14
+P2
+P3/SDA
+2
+13
+VEN
+P4/SCL
+3
+12
+P1
+P5/HDQ
+4
+11
+BAT
+P6/TS
+5
+10
+CE
+SRN
+9
+6
+S
+R
+R
+EG
+P
+IN
+8
+7
+V
+R
+S
+EG
+S
+25 C8
+1uF
+0.1uF
+C7 0.1uF
+0.1uF
+REG25 C5 C6
+P2 P1 R15 1k
+100 100
+Q42N7002
+S2
+GND C1 3300 pF
+AGND
+S
+W1
+LED
+Display
+R5 R6
+G1
+R
+R
+2
+4 1
+1
+6
+0
+5
+0
+K
+K
+*
+*
+D3
+Q5BSS84
+R1
+VOLTAGE
+DIVIDER
+.1
+%
+25PPM *
+7R
+16.5
+K
+.1 %
+25PPM *
+D7
+BZT52C5V6T
+R3
+AGND
+10k *
+GND
+Q3
+REGIN
+2N7002
+C2 0.1uF
+AGND
+1
+SH2
+AGND
+2
+SH1
+3
+R30
+GND
+.010
+75ppm *
+*
+Opti
+mize
+for
+required
+voltage
+and
+current
+TB3
+BAT + BAT - PACK -
+图 8-3. Multi-Cell and 5-LED Display
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 47
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 48 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+图 8-4 shows the BQ34Z100-G1 full features enabled.
+SDA SCL GND HDQ GND ALERT GND
+4 3 2 1
+J7
+GND 4 3 2 1
+J4
+GND
+1 2 3
+GND
+TB1
+Fiducial
+Marks
+or
+at e d
+p
+or
+R36
+R35 1
+1
+0
+0
+0
+0
+R37
+R34
+100
+100
+D1 AZ23C5V6-7
+R13
+GND
+R14 1
+1
+0
+0
+0
+0 D2AZ23C5V6-7
+GND
+R25 200 ALERT
+CONFIGURATION
+LED
+CONFIGURATION
+OPTIONS
+J6
+12
+D
+34
+C
+56
+B
+78
+A
+910
+EXT Tex
+as I
+nstr
+u m
+e
+nts I
+nc
+2 0 1 6
+©
+,
+REGIN
+R
+R
+2
+3
+9
+1
+3
+1
+1
+0
+0
+k
+k
+P3
+P4
+REG25
+RT1 10K
+GND
+R21 220K
+P2
+2SK3019Q7
+1 2 3 4 5 6 7 8
+R7
+J3
+2M
+Q6 2SK3019
+A B C D
+C1 1uF
+GND
+R
+R
+R
+R
+1
+1
+1
+1
+5
+6
+7
+9 1.5K
+1
+1
+.
+.
+5
+5
+K
+K
+1.5K
+N
+N
+N
+R
+R
+R
+G
+G
+G
+4
+4
+4
+D
+D
+D
+D
+8
+3
+4
+5
+-
+-
+-
+C
+C
+C
+0
+0
+0
+LED
+C
+1
+1
+1 LED D
+LED B 6
+6
+6
+P
+P
+P
+L
+L
+L
+T
+T
+T
+Q
+Q
+Q
+Q2 2SK3019
+GND
+GND
+P4 P3 P2 P1 REGIN
+R331M GND
+C o pyri g ht
+U2 BQ34Z1X0 P W
+1
+14
+P2
+P3/SDA
+2
+13
+VEN
+P4/SCL
+3
+12
+P1
+P5/HDQ
+4
+11
+BAT
+P6/TS
+5
+10
+CE
+SRN
+6
+9
+REGIN
+SRP 8
+7
+V
+R
+S
+EG
+S
+25 C8
+1uF
+AGND
+0.1uF
+C7 0.1uF
+0.1uF
+J1
+REGIN
+1
+2
+NRG
+Open
+for
+I2C
+4-C01 LED A 6PLTQ Q1 2SK3019 R321M GND
+0
+does
+not provi
+de
+0
+R
+R
+2
+4
+Q4
+1
+1
+1
+1
+0
+6
+0
+5
+K
+K
+BSS138 GND J2
+12
+16V
+Q5 1
+3
+BSS84
+4
+32V
+5
+R1
+R R 2 2 6 7
+6
+48V
+300K .1
+3 3
+%
+0 0 0 0 K K . . 1 1 % %
+P2
+3300 pF C9
+T T P P 1 2
+AGND
+V V s s c c a a l l e e L H o i
+D7
+BZT52C5V6S-7
+27K R3
+P1
+2
+GND
+27K R41 Q3
+2N7002 R39 47
+C2 S W1
+4
+J
+Q
+5
+8
+LED
+Display
+2N7002
+0.1uF
+1
+R40
+<= 5 V
+AGND
+2
+47
+R38 1k
+3
+REGIN
+<= 5 V 4 5 > 5 V 6 7
+REG25
+R28
+16.5K .1 % > 5 V 8
+AGND
+100
+C
+R5
+5
+R6 100
+C6
+U3 SN74HC164P W
+C3 0.1uF
+1 14 A VCC
+P1
+2 13 B QH
+GND
+D9 QTLP610C-7 RED
+R8 1.5K
+3 12 QA QG
+QTLP610C-7 RED D
+R9
+10
+1.5K
+4 11 QB QF
+QTLP610C-7 RED D
+R1
+1
+0
+1
+1.5K
+1 5 0 QC QE
+QTLP610C-3 YEL D
+R1
+1
+1
+2
+1.5K
+6 9 QD ~CLR 7 8 G CL N K D GND
+D
+R1
+1
+2
+3 QT
+1
+L
+.
+P
+5
+6
+K
+10C-3 YEL D
+R1
+1
+8
+4 QT
+1
+L
+.
+P
+5
+6
+K
+10C-3 YEL D
+R2
+1
+0
+5 QT
+1
+L
+.
+P
+5
+6
+K
+10C-4 GRN D
+R2
+1
+2
+6 QT
+1
+LP
+.5
+6
+K
+10C-4 GRN
+U1 SN74HC164P W
+C4 0.1uF
+1 14 A VCC 2 13
+TP8
+B QH
+GND
+D
+R2
+1
+3
+7 QT
+1
+LP
+.5
+6
+K
+10C-4 GRN
+1 3 2
+TP7
+Q Q G A
+R
+D
+2
+6
+4
+QT
+1
+LP
+.5
+6
+K
+10C-4 GRN
+11 4
+TP6
+Q Q F B 10 5 T
+T
+P
+P
+3
+5
+Q Q E C 6 9 TP4 Q ~ D CLR 7 8 G CL N K D
+P2
+GND
+O ptio nal for a d
+ditio nal po wer
+savi n g
+A dj ust for mi ni m u
+m c urre nt
+co ns u m ptio n i n t he a p
+plicatio n
+I 2 C p ull u ps nor
+mally i m ple
+me nte d i n t he host. D u
+plicate d here si nce
+E V 2 3
+O pti mize for re q
+uire d L E D po
+wer dissi patio n
+mpp57010. 2HS
+AGND
+LED9 LED8 LED7 LED6 LED5 LED4 LED3 LED2 LED1 LED0 1 2 3 4
+03R GND
+1HS
+1 2 3
+TB3
+BAT + BAT - PACK -
+图 8-4. Full-Featured Evaluation Module EVM
+8.2.1 Design Requirements
+For additional design guidelines, refer to the BQ34Z100 EVM Wide Range Impedance Track Enabled Battery
+Fuel Gauge User's Guide (SLUU904).
+48 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 49 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+8.2.2 Detailed Design Procedure
+8.2.2.1 Step-by-Step Design Procedure
+8.2.2.1.1 STEP 1: Review and Modify the Data Flash Configuration Data.
+While many of the default parameters in the data flash are suitable for most applications, the following should
+first be reviewed and modified to match the intended application.
+• Design Capacity: Enter the value in mAh for the battery, even from the “design energy” point of view.
+• Design Energy: Enter the value in mWh.
+• Cell Charge Voltage Tx-Ty: Enter the desired cell charge voltage for each JEITA temperature range.
+8.2.2.1.2 STEP 2: Review and Modify the Data Flash Configuration Registers.
+• LED_Comm Configuration: See 表 7-20 and 表 7-21 to aid in selection of an LED mode. Note that the pin
+used for the optional Alert signal is dependent upon the LED mode selected.
+• Alert Configuration: See 表 7-22 to aid in selection of which faults will trigger the ALERT pin.
+• Number of Series Cells
+• Pack Configuration: Ensure that the VOLSEL bit is set for multi-cell applications and cleared for single-cell
+applications.
+8.2.2.1.3 STEP 3: Design and Configure the Voltage Divider.
+If the battery contains more than 1-s cells, a voltage divider network is required. Design the divider network,
+based on the formula below. The voltage division required is from the highest expected battery voltage, down to
+approximately 900 mV. For example, using a lower leg resistor of 16.5 KΩ where the highest expected voltage
+is 32000 mV:
+Rseries = 16.5 KΩ (32000 mV – 900 mV)/900 mV = 570.2 KΩ
+Based on price and availability, a 600-K resistor or pair of 300-K resistors could be used in the top leg along with
+a 16.5-K resistor in the bottom leg.
+Set the Voltage Divider in the Data Flash Calibration section of the Evaluation Software to 32000 mV.
+Use the Evaluation Software to calibrate to the applied nominal voltage; for example, 24000 mV. After
+calibration, a slightly different value will appear in the Voltage Divider parameter, which can be used as a
+default value for the project.
+Following the successful voltage calibration, calculate and apply the value to Flash Update OK Cell Volt as:
+Flash Update OK Cell Volt = 2800 mV × Number Of Series Cells × 5000/Voltage Divider.
+8.2.2.1.4 STEP 4: Determine the Sense Resistor Value.
+To ensure accurate current measurement, the input voltage generated across the current sense resistor should
+not exceed +/–125 mV. For applications with a very high dynamic range, it is allowable to extend this range to
+absolute maximum of +/–300 mV for overload conditions where a protector device will be taking independent
+protective action. In such an overloaded state, current reporting and gauging accuracy will not function correctly.
+The value of the current sense resistor should be entered into both CC Gain and CC Delta parameters in the
+Data Flash Calibration section of the Evaluation Software.
+8.2.2.1.5 STEP 5: Review and Modify the Data Flash Gas Gauging Configuration, Data, and State.
+• Load Select: See 表 7-13 and 表 7-14.
+• Load Mode: See 表 7-13 and 表 7-14.
+• Cell Terminate Voltage: This is the theoretical voltage where the system will begin to fail. It is defined as
+zero state-of-charge. Generally a more conservative level is used in order to have some reserve capacity.
+Note the value is for a single cell only.
+• Quit Current: Generally should be set to a value slightly above the expected idle current of the system.
+• Qmax Cell 0: Start with the C-rate value of your battery.
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 49
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 50 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+8.2.2.1.6 STEP 6: Determine and Program the Chemical ID.
+Use the BQChem feature in the Evaluation Software to select and program the chemical ID matching your cell. If
+no match is found, use the procedure defined in TI's (Mathcad Chemistry Selection Tool (SLUC138).
+8.2.2.1.7 STEP 7: Calibrate.
+Follow the steps on the Calibration screen in the Evaluation Software. Achieving the best possible calibration is
+important before moving on to Step 8. For mass production, calibration is not required for single-cell applications.
+For multi-cell applications, only voltage calibration is required. Current and temperature may be calibrated to
+improve gauging accuracy if needed.
+8.2.2.1.8 STEP 8: Run an Optimization Cycle.
+Refer to the Preparing Optimized Default Flash Constants for Specific Battery Types Application Report
+(SLUA334B).
+8.2.3 Battery Chemistry Configuration
+When changing the battery chemistry, there are several configurations that need to be considered specific to
+each chemistry. The CHEM ID drives the majority of the changes but some do remain. These are mostly
+associated to the charge termination algorithm, but there are some additional registers that should be
+programmed based on the main chemistry type selected.
+8.2.3.1 Battery Chemistry Charge Termination
+The default setup of the BQ34Z100-G1 is for Li-ion chemistries.
+The charge-termination specific configurations include:
+表 8-1. Charge Termination Configurations
+Class Name Subclass Name Parameter Name Default Value Units
+Configuration Charge Termination Taper Current 100 mA
+Configuration Charge Termination Min Taper Capacity 25 mAh
+Configuration Charge Termination Cell Taper Voltage 100 mV
+Configuration Charge Termination Current Taper Window 40 s
+When changing to Lead Acid chemistry there are further configuration options.
+表 8-2. Configuration Options
+Class Name Subclass Name Parameter Name Default Value Units
+Configuration Charge Pb Temp Comp 25%
+Configuration Charge Pb Reduction Rate 10%
+When using Nickel Metal Hydride (NiMH) or Nickel Cadmium (NiCd) batteries, the charge termination criteria
+change significantly.
+表 8-3. NiMH and NiCd Charge Configuration Options
+Class Name Subclass Name Parameter Name Default Value Units
+Configuration Charge Termination NiMH Delta Temp 3 0.1°C
+Configuration Charge Termination NiMH Delta Temp Time 180 s
+Configuration Charge Termination NiMH Hold Off Time 100 s
+Configuration Charge Termination NiMH Hold Off Current 240 mA
+Configuration Charge Termination NiMH Hold Off Temp 25 0.1°C
+Configuration Charge Termination NiMH Cell Negative Delta Volt 17 mV
+Configuration Charge Termination NiMH Cell Negative Delta Time 16 s
+Configuration Charge Termination NiMH Cell Neg Delta Qual Volt 4200 mV
+50 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 51 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+To switch the charge termination criteria suitable for NiMH/NiCd, set the [NiDT] and/or [NiDV] bits. See 节 7.3.11
+for further details.
+Where:
+NiDT: Performs primary charge termination using the ΔT/Δt algorithm.
+NiDV: Performs primary charge termination using the –ΔV algorithm.
+Note
+When a Nickel-based chemistry Chem ID is used, then the Li-ion/PbA charge termination method is
+NOT used regardless of the configuration of the NiDV and NiDT bits.
+表 8-4. Additional Chemistry-Related Configurations
+Parameters Li-ion Lead Acid NiMH/NiCd
+Default Load Select 1 3 3
+Cell Term V Delta 200 100 100
+Min % Passed Chg for 1st Qmax 90 50 50
+8.2.4 Replaceable Battery Systems
+The BQ34Z100-G1 is also capable of being used as a system-side gauge where the actual battery can be
+removed and replaced from the system. However, there are limitations to this feature. The replacing battery
+should be of the same chemistry and close to the original design capacity of the one to be replaced, as this
+ensures that the other configuration options of the device are still valid.
+The BQ34Z100-G1 is enabled to have the option to learn new Impedance Track data in larger steps through the
+following configuration registers:
+表 8-5. Learning Configuration Registers for Replaceable Battery Packs (Host Side Gauge)
+Class Name Subclass name Parameter Name Default Value Units
+Gas Gauging IT Cfg Max Res Factor 50 n/a
+Gas Gauging IT Cfg Min Res Factor 1 n/a
+Gas Gauging IT Cfg Max Res Scale 32000 n/a
+Gas Gauging IT Cfg Min Res Scale 1 n/a
+Gas Gauging IT Cfg Max QMAX Change 100 n/a
+If the BQ34Z100-G1 and the battery are not designed to be separated, it is recommended to make the following
+changes. This helps to prevent erroneous measurements from causing the Impedance Track data to be updated
+to extreme values.
+表 8-6. Learning Configuration Registers for Non-Removable Battery Packs
+Class Name Subclass name Parameter Name Value Units
+Gas Gauging IT Cfg Max Res Factor 15 n/a
+Gas Gauging IT Cfg Min Res Factor 3 n/a
+Gas Gauging IT Cfg Max Res Scale 5000 n/a
+Gas Gauging IT Cfg Min Res Scale 200 n/a
+Gas Gauging IT Cfg Max QMAX Change 30 n/a
+8.2.5 Digital Interface Options
+The default setup of the BQ34Z100-G1 uses the I2C digital interface with the ALERT pin as an additional digital
+interrupt output. It is recommended to keep the device in this mode throughout development and battery
+production even if the single-wire HDQ interface will be used in the field. The I2C is much faster so any
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 51
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 52 =====
+modifications to the device configuration and any data logging during battery evaluation or testing would be
+faster.
+There are a series of commands required to switch between I2C and HDQ, which are detailed in 节 7.3.15.6.
+8.2.6 Display Options
+By default, the display is disabled. To setup the appropriate display, the LED/COMM Configuration data flash
+register needs to be programmed. Care should be taken to ensure the correct digital interface options
+(Communications and ALERT) are not interfered with when configuring the display. See 节 7.3.14 for further
+details.
+8.2.7 Application Curves
+Battery Voltage (mV)
+)Vm(
+rorrE
+egatloV
+15 200
+160
+10
+120
+5 V)g e 80
+( m olt a 40
+0 orV Err er y 0
+-1
+-5
+0
+V
+olt
+a g
+e
+Tot
+al
+B
+att
+-
+-
+8
+4
+0
+0
+-120
+-15 -40qC 25qC 85qC -160 -
+-
+4
+2
+0
+0
+°
+°
+C
+C
+2
+6
+5
+5
+°
+°
+C
+C
+85°C
+-20qC 65qC
+-200
+-20 25.2 27 28.8 30.6 32.4 34.2 36 37.8 39.6
+2800 3000 3200 3400 3600 3800 4000 4200 4400 BatteryVoltage (V)
+D002
+D001 图 8-6. V Across VIN (0 mA) 9 s
+图 8-5. V Across VIN (0 mA) (Err)
+(Err)
+Current (mA)
+)Am(
+rorrE
+tnerruC
+25
+20
+15
+10
+5
+0
+-5
+-10
+-15
+-20
+-40qC 25qC 85qC
+-20qC 65qC
+-25
+-3000 -2000 -1000 0 1000 2000 3000
+Temperature (qC)
+D003
+图 8-7. I
+(Err)
+)Cq(
+rorrE
+erutarepmeT
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+2
+1
+0
+-1
+-2
+-3
+-4
+-5
+-6
+-7
+-8
+-9
+-40 -20 0 20 40 60 80 100
+D004
+图 8-8. T
+(Err)
+52 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 53 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+9 Power Supply Recommendations
+Power supply requirements for the BQ34Z100-G1 are simplified due to the presence of the internal LDO voltage
+regulation. The REGIN pin accepts any voltage level between 2.7 V and 4.5 V, which is optimum for a single-cell
+Li-ion application. For higher battery voltage applications, a simple pre-regulator can be provided to power the
+bq34Z100-G1 and any optional LEDs. Decoupling the REGIN pin should be done with a 0.1-µF 10% ceramic
+X5R capacitor placed close to the device. While the pre-regulator circuit is not critical, special attention should be
+paid to its quiescent current and power dissipation. The input voltage should handle the maximum battery stack
+voltage. The output voltage can be centered within the 2.7-V to 4.5-V range as recommended for the REGIN pin.
+For high stack count applications, a commercially available LDO is often the best quality solution, but comes with
+a cost tradeoff. To lower the BOM cost, the following approaches are recommended.
+In 图 9-1, Q1 is used to drop the battery stack voltage to roughly 4 V to power the BQ34Z100-G1 REGIN pin and
+also to feed the anode of any LEDs used in the application. To avoid unwanted quiescent current consumption,
+R1 should be set as high as is practical. It is recommended to use a low-current Zener diode.
+From Battery Stack +
+R1
+Q1
+~4 V
+D1 To REGIN/LED(s)
+5.6 V
+图 9-1. Q1 Dropping Battery Stack Voltage to 4 V
+Alternatively, if the range of a high-voltage battery stack can be well defined, a simple source follower based on
+a resistive divider can be used to lower the BOM cost and the quiescent current. For example:
+From Battery Stack+
+R1
+Q1
+R2 2.7V~ 4.5V
+To REGIN/LED(s)
+图 9-2. Source Follower on a Resistive Divider
+Power dissipation of the linear pre-regulator may become an important design decision when multiple LEDs are
+employed in the application. For example, the BQ34Z100-G1 EVM uses a pair of FETs in parallel to
+inexpensively dissipate enough power for 10-LED evaluation.
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 53
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 54 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+10 Layout
+10.1 Layout Guidelines
+10.1.1 Introduction
+Attention to layout is critical to the success of any battery management circuit board. The mixture of high-current
+paths with an ultralow-current microcontroller creates the potential for design issues that are not always trivial to
+solve. Some of the key areas of concern are described in the following sections, and can help to enable
+success.
+10.1.2 Power Supply Decoupling Capacitor
+Power supply decoupling from VCC to ground is important for optimal operation of the gas gauge. To keep the
+loop area small, place this capacitor next to the IC and use the shortest possible traces. A large loop area
+renders the capacitor useless and forms a small-loop antenna for noise pickup.
+Ideally, the traces on each side of the capacitor should be the same length and run in the same direction to avoid
+differential noise during ESD. If possible, place a via near the VSS pin to a ground plane layer.
+10.1.3 Capacitors
+Power supply decoupling for the gas gauges requires a pair of 0.1-µF ceramic capacitors for (BAT) and (VCC)
+pins. These should be placed reasonably close to the IC without using long traces back to VSS. The LDO
+voltage regulator, whether external or internal to the main IC, requires a 0.47-µF ceramic capacitor to be placed
+fairly close to the regulation output pin. This capacitor is for amplifier loop stabilization and as an energy well for
+the 2.5-V supply.
+10.1.4 Communication Line Protection Components
+The 5.6-V Zener diodes, used to protect the communication pins of the gas gauge from ESD, should be located
+as close as possible to the pack connector. The grounded end of these Zener diodes should be returned to the
+Pack(–) node rather than to the low-current digital ground system. This way, ESD is diverted away from the
+sensitive electronics as much as possible.
+In some applications, it is sometimes necessary to cause transitions on the communication lines to trigger events
+that manage the gas gauge power modes. An example of one of these transitions is detecting a sustained low
+logic level on the communication lines to detect that a pack has been removed. Given that most of the gas
+gauges do not have internal pulldown networks, it is necessary to add a weak pulldown resistor to accomplish
+this when there's an absence of a strong pullup resistor on the system side. If the weak pulldown resistor is
+used, it may take less board space to use a small capacitor in parallel instead of the Zener diode to absorb any
+ESD transients that are received through communication lines.
+10.2 Layout Example
+10.2.1 Ground System
+The gas gauge requires a low-current ground system separate from the high-current PACK(–) path. ESD
+ground is defined along the high-current path from the PACK(–) terminal to low-side protector FETs (if present)
+or the sense resistor. It is important that the low-current ground systems only connect to the BAT(–) path at the
+sense resistor Kelvin pick-off point. It is recommended to use an optional inner layer ground plane for the low-
+current ground system. In 图 10-1, the green is an example of using the low-current ground as a shield for the
+gas gauge circuit. Notice how it is kept separate from the high-current ground, which is shown in red. The high-
+current path is joined with the low-current path only at one point, shown with the small blue connection between
+the two planes.
+54 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 55 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+图 10-1. Differential Filter Component with Symmetrical Layout
+10.2.2 Kelvin Connections
+Kelvin voltage sensing is very important to accurately measure current and cell voltage. Notice how the
+differential connections at the sense resistor do not add any voltage drop across the copper etch that carries the
+high current path through the sense resistor. See 图 10-1 and 图 10-2.
+10.2.3 Board Offset Considerations
+Although the most important component for board offset reduction is the decoupling capacitor for V , additional
+CC
+benefit is possible by using this recommended pattern for the coulomb counter differential low-pass filter
+network. Maintain the symmetrical placement pattern shown for optimum current offset performance. Use
+symmetrical shielded differential traces, if possible, from the sense resistor to the 100-Ω resistors, as shown in
+图 10-2.
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 55
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 56 =====
+BQ34Z100-G1
+ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021 www.ti.com.cn
+图 10-2. Differential Connection Between SRP and SRN Pins with Sense Resistor
+10.2.4 ESD Spark Gap
+Protect the communication lines from ESD with a spark gap at the connector. 图 10-3 shows the recommended
+pattern with its 0.2-mm spacing between the points.
+图 10-3. Recommended Spark-Gap Pattern Helps Protect Communication Lines from ESD
+56 Submit Document Feedback Copyright © 2021 Texas Instruments Incorporated
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 57 =====
+BQ34Z100-G1
+www.ti.com.cn ZHCSD95D – JANUARY 2015 – REVISED APRIL 2021
+11 Device and Documentation Support
+11.1 Documentation Support
+For related documentation, see the application report BQ34Z100-G1 High Cell Count and High Capacity
+Applications (SLUA760).
+11.2 接收文档更新通知
+要接收文档更新通知，请导航至 ti.com 上的器件产品文件夹。点击订阅更新 进行注册，即可每周接收产品信息更
+改摘要。有关更改的详细信息，请查看任何已修订文档中包含的修订历史记录。
+11.3 支持资源
+TI E2E™ 支持论坛是工程师的重要参考资料，可直接从专家获得快速、经过验证的解答和设计帮助。搜索现有解
+答或提出自己的问题可获得所需的快速设计帮助。
+链接的内容由各个贡献者“按原样”提供。这些内容并不构成 TI 技术规范，并且不一定反映 TI 的观点；请参阅
+TI 的《使用条款》。
+11.4 Trademarks
+Impedance Track™ is a trademark of Texas Instruments.
+TI E2E™ are trademarks of Texas Instruments.
+所有商标均为其各自所有者的财产。
+11.5 Electrostatic Discharge Caution
+This integrated circuit can be damaged by ESD. Texas Instruments recommends that all integrated circuits be handled
+with appropriate precautions. Failure to observe proper handling and installation procedures can cause damage.
+ESD damage can range from subtle performance degradation to complete device failure. Precision integrated circuits may
+be more susceptible to damage because very small parametric changes could cause the device not to meet its published
+specifications.
+11.6 Glossary
+TI Glossary This glossary lists and explains terms, acronyms, and definitions.
+12 Mechanical, Packaging, and Orderable Information
+The following pages include mechanical, packaging, and orderable information. This information is the most
+current data available for the designated devices. This data is subject to change without notice and revision of
+this document. For browser-based versions of this data sheet, refer to the left-hand navigation.
+Copyright © 2021 Texas Instruments Incorporated Submit Document Feedback 57
+Product Folder Links: BQ34Z100-G1
+
+===== PAGE 58 =====
+重要声明和免责声明
+TI 提供技术和可靠性数据（包括数据表）、设计资源（包括参考设计）、应用或其他设计建议、网络工具、安全信息和其他资源，不保证没
+有瑕疵且不做出任何明示或暗示的担保，包括但不限于对适销性、某特定用途方面的适用性或不侵犯任何第三方知识产权的暗示担保。
+这些资源可供使用 TI 产品进行设计的熟练开发人员使用。您将自行承担以下全部责任：(1) 针对您的应用选择合适的 TI 产品，(2) 设计、验
+证并测试您的应用，(3) 确保您的应用满足相应标准以及任何其他安全、安保或其他要求。这些资源如有变更，恕不另行通知。TI 授权您仅可
+将这些资源用于研发本资源所述的 TI 产品的应用。严禁对这些资源进行其他复制或展示。您无权使用任何其他 TI 知识产权或任何第三方知
+识产权。您应全额赔偿因在这些资源的使用中对 TI 及其代表造成的任何索赔、损害、成本、损失和债务，TI 对此概不负责。
+TI 提供的产品受 TI 的销售条款 (https:www.ti.com/legal/termsofsale.html) 或 ti.com 上其他适用条款/TI 产品随附的其他适用条款的约束。TI
+提供这些资源并不会扩展或以其他方式更改 TI 针对 TI 产品发布的适用的担保或担保免责声明。重要声明
+邮寄地址：Texas Instruments, Post Office Box 655303, Dallas, Texas 75265
+Copyright © 2021，德州仪器 (TI) 公司
+
+===== PAGE 59 =====
+PACKAGE OPTION ADDENDUM
+www.ti.com 9-Nov-2025
+PACKAGING INFORMATION
+Orderable part number Status Material type Package | Pins Package qty | Carrier RoHS Lead finish/ MSL rating/ Op temp (°C) Part marking
+(1) (2) (3) Ball material Peak reflow (6)
+(4) (5)
+BQ34Z100PW-G1 Active Production TSSOP (PW) | 14 90 | TUBE Yes NIPDAU Level-2-260C-1 YEAR -40 to 85 34Z100
+BQ34Z100PW-G1.B Active Production TSSOP (PW) | 14 90 | TUBE Yes NIPDAU Level-2-260C-1 YEAR -40 to 85 34Z100
+BQ34Z100PWR-G1 Active Production TSSOP (PW) | 14 2000 | LARGE T&R Yes NIPDAU Level-2-260C-1 YEAR -40 to 85 34Z100
+BQ34Z100PWR-G1.B Active Production TSSOP (PW) | 14 2000 | LARGE T&R Yes NIPDAU Level-2-260C-1 YEAR -40 to 85 34Z100
+BQ34Z100PWR-G1G4 Active Production TSSOP (PW) | 14 2000 | LARGE T&R Yes NIPDAU Level-2-260C-1 YEAR -40 to 85 34Z100
+BQ34Z100PWR-G1G4.B Active Production TSSOP (PW) | 14 2000 | LARGE T&R Yes NIPDAU Level-2-260C-1 YEAR -40 to 85 34Z100
+(1) Status: For more details on status, see our product life cycle.
+(2) Material type: When designated, preproduction parts are prototypes/experimental devices, and are not yet approved or released for full production. Testing and final process, including without limitation quality assurance,
+reliability performance testing, and/or process qualification, may not yet be complete, and this item is subject to further changes or possible discontinuation. If available for ordering, purchases will be subject to an additional
+waiver at checkout, and are intended for early internal evaluation purposes only. These items are sold without warranties of any kind.
+(3) RoHS values: Yes, No, RoHS Exempt. See the TI RoHS Statement for additional information and value definition.
+(4) Lead finish/Ball material: Parts may have multiple material finish options. Finish options are separated by a vertical ruled line. Lead finish/Ball material values may wrap to two lines if the finish value exceeds the maximum
+column width.
+(5) MSL rating/Peak reflow: The moisture sensitivity level ratings and peak solder (reflow) temperatures. In the event that a part has multiple moisture sensitivity ratings, only the lowest level per JEDEC standards is shown.
+Refer to the shipping label for the actual reflow temperature that will be used to mount the part to the printed circuit board.
+(6) Part marking: There may be an additional marking, which relates to the logo, the lot trace code information, or the environmental category of the part.
+Multiple part markings will be inside parentheses. Only one part marking contained in parentheses and separated by a "~" will appear on a part. If a line is indented then it is a continuation of the previous line and the two
+combined represent the entire part marking for that device.
+Important Information and Disclaimer:The information provided on this page represents TI's knowledge and belief as of the date that it is provided. TI bases its knowledge and belief on information provided by third parties, and
+makes no representation or warranty as to the accuracy of such information. Efforts are underway to better integrate information from third parties. TI has taken and continues to take reasonable steps to provide representative
+and accurate information but may not have conducted destructive testing or chemical analysis on incoming materials and chemicals. TI and TI suppliers consider certain information to be proprietary, and thus CAS numbers
+and other limited information may not be available for release.
+In no event shall TI's liability arising out of such information exceed the total purchase price of the TI part(s) at issue in this document sold by TI to Customer on an annual basis.
+Addendum-Page 1
+
+===== PAGE 60 =====
+PACKAGE OPTION ADDENDUM
+www.ti.com 9-Nov-2025
+Addendum-Page 2
+
+===== PAGE 61 =====
+PACKAGE MATERIALS INFORMATION
+www.ti.com 18-Jun-2025
+TAPE AND REEL INFORMATION
+REEL DIMENSIONS TAPE DIMENSIONS
+K0 P1
+W
+B0
+Reel
+Diameter
+Cavity A0
+A0 Dimension designed to accommodate the component width
+B0 Dimension designed to accommodate the component length
+K0 Dimension designed to accommodate the component thickness
+W Overall width of the carrier tape
+P1 Pitch between successive cavity centers
+Reel Width (W1)
+QUADRANT ASSIGNMENTS FOR PIN 1 ORIENTATION IN TAPE
+Sprocket Holes
+Q1 Q2 Q1 Q2
+Q3 Q4 Q3 Q4 User Direction of Feed
+Pocket Quadrants
+*All dimensions are nominal
+Device Package Package Pins SPQ Reel Reel A0 B0 K0 P1 W Pin1
+Type Drawing Diameter Width (mm) (mm) (mm) (mm) (mm) Quadrant
+(mm) W1 (mm)
+BQ34Z100PWR-G1 TSSOP PW 14 2000 330.0 12.4 6.9 5.6 1.6 8.0 12.0 Q1
+BQ34Z100PWR-G1G4 TSSOP PW 14 2000 330.0 12.4 6.9 5.6 1.6 8.0 12.0 Q1
+Pack Materials-Page 1
+
+===== PAGE 62 =====
+PACKAGE MATERIALS INFORMATION
+www.ti.com 18-Jun-2025
+TAPE AND REEL BOX DIMENSIONS
+Width (mm) H
+W L
+*All dimensions are nominal
+Device Package Type Package Drawing Pins SPQ Length (mm) Width (mm) Height (mm)
+BQ34Z100PWR-G1 TSSOP PW 14 2000 338.1 338.1 20.6
+BQ34Z100PWR-G1G4 TSSOP PW 14 2000 338.1 338.1 20.6
+Pack Materials-Page 2
+
+===== PAGE 63 =====
+PACKAGE MATERIALS INFORMATION
+www.ti.com 18-Jun-2025
+TUBE
+T - Tube
+height L - Tube length
+W - Tube
+width
+B - Alignment groove width
+*All dimensions are nominal
+Device Package Name Package Type Pins SPQ L (mm) W (mm) T (µm) B (mm)
+BQ34Z100PW-G1 PW TSSOP 14 90 530 10.2 3600 3.5
+BQ34Z100PW-G1.B PW TSSOP 14 90 530 10.2 3600 3.5
+Pack Materials-Page 3
+
+===== PAGE 64 =====
+PACKAGE OUTLINE
+PW0014A TSSOP - 1.2 mm max height
+SCALE 2.500
+SMALL OUTLINE PACKAGE
+SEATING
+PLANE
+C
+6.6
+TYP
+6.2
+A
+0.1 C
+PIN 1 INDEX AREA
+12X 0.65
+14
+1
+2X
+5.1 3.9
+4.9
+NOTE 3
+4X (0 -12 )
+7
+8
+0.30
+14X
+0.17
+B 4 4 . . 5 3 0.1 C A B 1.2 MAX
+NOTE 4
+(0.15) TYP
+SEE DETAIL A
+0.25
+GAGE PLANE
+0.15
+0.05
+0.75
+0.50
+0 -8
+DETA 20AIL A
+TYPICAL
+4220202/B 12/2023
+NOTES:
+1. All linear dimensions are in millimeters. Any dimensions in parenthesis are for reference only. Dimensioning and tolerancing
+per ASME Y14.5M.
+2. This drawing is subject to change without notice.
+3. This dimension does not include mold flash, protrusions, or gate burrs. Mold flash, protrusions, or gate burrs shall not
+exceed 0.15 mm per side.
+4. This dimension does not include interlead flash. Interlead flash shall not exceed 0.25 mm per side.
+5. Reference JEDEC registration MO-153.
+www.ti.com
+
+===== PAGE 65 =====
+EXAMPLE BOARD LAYOUT
+PW0014A TSSOP - 1.2 mm max height
+SMALL OUTLINE PACKAGE
+14X (1.5) SYMM
+(R0.05) TYP
+1
+14
+14X (0.45)
+SYMM
+12X (0.65)
+7 8
+(5.8)
+LAND PATTERN EXAMPLE
+EXPOSED METAL SHOWN
+SCALE: 10X
+SOLDER MASK METAL UNDER SOLDER MASK
+OPENING METAL SOLDER MASK OPENING
+EXPOSED METAL EXPOSED METAL
+0.05 MAX 0.05 MIN
+ALL AROUND ALL AROUND
+NON-SOLDER MASK SOLDER MASK
+DEFINED DEFINED
+(PREFERRED) SOLDE15.000 R MASK DETAILS
+4220202/B 12/2023
+NOTES: (continued)
+6. Publication IPC-7351 may have alternate designs.
+7. Solder mask tolerances between and around signal pads can vary based on board fabrication site.
+www.ti.com
+
+===== PAGE 66 =====
+EXAMPLE STENCIL DESIGN
+PW0014A TSSOP - 1.2 mm max height
+SMALL OUTLINE PACKAGE
+14X (1.5) SYMM
+(R0.05) TYP
+1
+14X (0.45) 14
+SYMM
+12X (0.65)
+7 8
+(5.8)
+SOLDER PASTE EXAMPLE
+BASED ON 0.125 mm THICK STENCIL
+SCALE: 10X
+4220202/B 12/2023
+NOTES: (continued)
+8. Laser cutting apertures with trapezoidal walls and rounded corners may offer better paste release. IPC-7525 may have alternate
+design recommendations.
+9. Board assembly site may have different recommendations for stencil design.
+www.ti.com
+
+===== PAGE 67 =====
+重要通知和免责声明
+TI“按原样”提供技术和可靠性数据（包括数据表）、设计资源（包括参考设计）、应用或其他设计建议、网络工具、安全信息和其他资源，不
+保证没有瑕疵且不做出任何明示或暗示的担保，包括但不限于对适销性、与某特定用途的适用性或不侵犯任何第三方知识产权的暗示担保。
+这些资源可供使用 TI 产品进行设计的熟练开发人员使用。您将自行承担以下全部责任：(1) 针对您的应用选择合适的 TI 产品，(2) 设计、验
+证并测试您的应用，(3) 确保您的应用满足相应标准以及任何其他安全、安保法规或其他要求。
+这些资源如有变更，恕不另行通知。TI 授权您仅可将这些资源用于研发本资源所述的 TI 产品的相关应用。严禁以其他方式对这些资源进行复
+制或展示。您无权使用任何其他 TI 知识产权或任何第三方知识产权。对于因您对这些资源的使用而对 TI 及其代表造成的任何索赔、损害、
+成本、损失和债务，您将全额赔偿，TI 对此概不负责。
+TI 提供的产品受 TI 销售条款)、TI 通用质量指南 或 ti.com 上其他适用条款或 TI 产品随附的其他适用条款的约束。TI 提供这些资源并不会扩
+展或以其他方式更改 TI 针对 TI 产品发布的适用的担保或担保免责声明。 除非德州仪器 (TI) 明确将某产品指定为定制产品或客户特定产品，
+否则其产品均为按确定价格收入目录的标准通用器件。
+TI 反对并拒绝您可能提出的任何其他或不同的条款。
+IMPORTANT NOTICE
+版权所有 © 2025，德州仪器 (TI) 公司
+最后更新日期：2025 年 10 月

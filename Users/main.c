@@ -38,7 +38,6 @@ static void BMS_EnterFaultStopMode(void)
 
     /*
      * 调试用：允许 MCU 进入 STOP 后仍保持调试连接。
-     * 注意：这会增加低功耗下的功耗，正式版本不要依赖它。
      */
     HAL_DBGMCU_EnableDBGStopMode();
 
@@ -65,16 +64,7 @@ static void BMS_EnterFaultStopMode(void)
     __HAL_RCC_PWR_CLK_ENABLE();
 
     /*
-     * 进入 STOP 模式：
-     *
-     * PWR_LOWPOWERREGULATOR_ON：
-     *   使用低功耗稳压器，进一步降低功耗。
-     *
-     * PWR_STOPENTRY_WFI：
-     *   执行 WFI 指令进入等待中断状态。
-     *
-     * 当前没有主动配置唤醒源，
-     * 设计目标是故障后等待人工复位 / 重新上电。
+     * 进入 STOP 模式
      */
 
     BMS_LOG_RUNTIME("[MAIN] stop\r\n");

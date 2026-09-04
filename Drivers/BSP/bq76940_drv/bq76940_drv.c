@@ -550,6 +550,7 @@ uint8_t BQ76940_AnalyzeCellVoltages9(const uint16_t voltage_mV[BQ76940_CELL_COUN
 
     stats->max_mV = voltage_mV[max_idx];
     stats->min_mV = voltage_mV[min_idx];
+    
     stats->diff_mV = (uint16_t)(stats->max_mV - stats->min_mV);
 
     stats->max_cell_label = cell_label[max_idx];

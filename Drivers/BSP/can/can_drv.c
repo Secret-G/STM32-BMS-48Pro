@@ -103,11 +103,6 @@ uint8_t CAN_DrvInit(void)
 
 void HAL_CAN_MspInit(CAN_HandleTypeDef *hcan)
 {
-	
-	
-	
-	
-
     GPIO_InitTypeDef GPIO_InitStruct = {0};
 
     if (hcan->Instance == CAN1)

@@ -361,9 +361,8 @@ uint8_t BQ76940_AppBalanceDecide(BQ76940_AppCtx_t *ctx, BQ76940_BalanceRequest_t
 		 */
 
 		/* 刷新周期未到：不重算，不写 I2C */
-		if (BQ76940_AppBalanceRefreshDue(now_ms,
-																		 ctx->bal_last_refresh_ms,
-																		 ctx->bal_cfg.refresh_period_ms) == 0U)
+		if (BQ76940_AppBalanceRefreshDue(now_ms,ctx->bal_last_refresh_ms,
+										ctx->bal_cfg.refresh_period_ms) == 0U)
 		{
 				return 0U;
 		}
@@ -499,8 +498,7 @@ uint8_t BQ76940_AppBalanceApplyHw(BQ76940_BalanceRequest_t *req)
     return 0U;
 }
 
-uint8_t BQ76940_AppBalanceCommit(BQ76940_AppCtx_t *ctx,
-                                 const BQ76940_BalanceRequest_t *req)
+uint8_t BQ76940_AppBalanceCommit(BQ76940_AppCtx_t *ctx, const BQ76940_BalanceRequest_t *req)
 {
     if ((ctx == 0) || (req == 0))
     {
@@ -542,8 +540,8 @@ uint8_t BQ76940_AppBalanceCommit(BQ76940_AppCtx_t *ctx,
         ctx->bal_active = 0U;
         ctx->bal_target_label = 0U;
         ctx->bal_target_count = 0U;
-				ctx->bal_last_refresh_ms = 0U;
-				ctx->bal_parity_phase = 0U;
+		ctx->bal_last_refresh_ms = 0U;
+		ctx->bal_parity_phase = 0U;
 
         BMS_LOG_BALANCE("[BAL] off:%d\r\n", req->reason);
     }

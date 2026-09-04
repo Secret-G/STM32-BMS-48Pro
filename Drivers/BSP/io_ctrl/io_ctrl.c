@@ -37,5 +37,5 @@ void BQ_WAKE_Pulse(void)
     BQ_WAKE_High();
     delay_ms(100);
     BQ_WAKE_Low();
-		delay_ms(20);
+	delay_ms(20);
 }

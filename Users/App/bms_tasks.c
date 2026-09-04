@@ -112,9 +112,8 @@ BaseType_t BMS_TasksCreate(BQ76940_AppCtx_t *app)
     }
 
     /*
-     * 创建 BMS 上下文互斥锁。
-     * 作用：
-     *   保护 BQ76940_AppCtx_t 全局状态，防止多个任务同时读写 app。
+       创建 BMS 上下文互斥锁。
+     * 作用： 保护 BQ76940_AppCtx_t 全局状态，防止多个任务同时读写 app。
      */
     g_bms_ctx_mutex = xSemaphoreCreateMutex();
     if (g_bms_ctx_mutex == NULL)
@@ -310,14 +309,13 @@ static void BMS_SampleTask(void *argument)
     uint8_t enter_fault;
     uint8_t recovered;
     uint8_t notify_protect = 0U;
+    BQ76940_AdcCalib_t calib_snapshot;
+    BQ76940_AppSampleData_t sample;
 
 #if (BMS_TEST_FORCE_RUNTIME_FAULT != 0U)
     uint8_t test_cycle_count = 0U;
     uint8_t test_fail_left = 0U;
 #endif
-
-    BQ76940_AdcCalib_t calib_snapshot;
-    BQ76940_AppSampleData_t sample;
 
     for (;;)
     {
@@ -361,8 +359,7 @@ static void BMS_SampleTask(void *argument)
          */
         if (ret == 0U)
         {
-            if (xSemaphoreTake(g_i2c_bus_mutex,
-                               pdMS_TO_TICKS(BMS_I2C_MUTEX_TIMEOUT_MS)) == pdTRUE)
+            if (xSemaphoreTake(g_i2c_bus_mutex,pdMS_TO_TICKS(BMS_I2C_MUTEX_TIMEOUT_MS)) == pdTRUE)
             {
                 ret = BQ76940_AppSampleReadHw(&calib_snapshot, &sample);
 
@@ -441,17 +438,17 @@ static void BMS_SampleTask(void *argument)
                 }
 
                 xSemaphoreGive(g_bms_ctx_mutex);
-
-                if (notify_protect != 0)
-                {
-                    xSemaphoreGive(g_protect_sem);
-                }
             }
             else
             {
                 ret = 2U;
                 fault_code = BQ76940_RT_FAULT_CTX_LOCK;
                 fault_stage = BQ76940_RT_STAGE_SAMPLE_COMMIT;
+            }
+
+            if (notify_protect != 0)
+            {
+                xSemaphoreGive(g_protect_sem);
             }
         }
 
@@ -567,10 +564,6 @@ static void BMS_RuntimeTask(void *argument)
 
             /*
              * 3. 尝试关闭 BQ76940 AFE
-             *
-             * 这里采用 do-while：
-             * - 第一次一定执行
-             * - 如果失败且 RuntimeDiag 允许快速重试，则延时后继续执行
              */
             do
             {
@@ -579,17 +572,11 @@ static void BMS_RuntimeTask(void *argument)
 
                 /*
                  * 3.1 只拿 I2C 锁，执行 BQ76940 硬件关断
-                 *
-                 * BQ76940_AppForceAfeOffHw() 只负责硬件动作：
-                 * - CELLBAL = 0
-                 * - BQ76940 CHG/DSG = OFF
-                 *
-                 * 注意：
-                 * 这个函数不应该修改 app 状态。
                  */
-                if (xSemaphoreTake(g_i2c_bus_mutex,
-                                   pdMS_TO_TICKS(BMS_I2C_MUTEX_TIMEOUT_MS)) == pdTRUE)
+                if (xSemaphoreTake(g_i2c_bus_mutex,pdMS_TO_TICKS(BMS_I2C_MUTEX_TIMEOUT_MS)) == pdTRUE)
                 {
+
+                    /*关闭成功返回0*/
                     safe_off_result = BQ76940_AppForceAfeOffHw();
 
                     xSemaphoreGive(g_i2c_bus_mutex);
@@ -605,18 +592,11 @@ static void BMS_RuntimeTask(void *argument)
 
                 /*
                  * 3.2 再拿 ctx 锁，提交软件状态和 RuntimeDiag 结果
-                 *
-                 * 注意：
-                 * 这里不访问 I2C。
                  */
                 if (xSemaphoreTake(g_bms_ctx_mutex, portMAX_DELAY) == pdTRUE)
                 {
                     /*
                      * 根据 safe_off_result 提交软件状态。
-                     *
-                     * 例如：
-                     * - CELLBAL 写成功，才清 bal_active / bal_target_label
-                     * - FET 写成功，才提交相关执行状态
                      */
                     BQ76940_AppForceAfeOffCommit(app, safe_off_result);
 
@@ -627,9 +607,7 @@ static void BMS_RuntimeTask(void *argument)
                      * - retry_allowed = 1：允许继续快速重试
                      * - retry_allowed = 0：达到上限，进入故障保持
                      */
-                    BQ76940_AppRuntimeDiagCommitSafeOffResult(app,
-                                                              safe_off_result,
-                                                              &retry_allowed);
+                    BQ76940_AppRuntimeDiagCommitSafeOffResult(app,safe_off_result, &retry_allowed);
 
                     xSemaphoreGive(g_bms_ctx_mutex);
                 }
@@ -640,24 +618,21 @@ static void BMS_RuntimeTask(void *argument)
                      * 如果真的失败，不再快速重试，避免状态不可控。
                      */
                     safe_off_result = SAFE_OFF_FAIL_CTX_LOCK;
+
                     retry_allowed = 0U;
                 }
 
-                BMS_LOG_RUNTIME("[RT] AFE off:%02X retry:%d\r\n",
-                                safe_off_result,
-                                retry_allowed);
+                BMS_LOG_RUNTIME("[RT] AFE off:%02X retry:%d\r\n", safe_off_result,retry_allowed);
 
                 /*
                  * Safe-Off 失败且允许快速重试，则延迟一小段时间再试。
                  */
-                if ((safe_off_result != SAFE_OFF_FAIL_NONE) &&
-                    (retry_allowed != 0U))
+                if ((safe_off_result != SAFE_OFF_FAIL_NONE) && (retry_allowed != 0U))
                 {
                     vTaskDelay(pdMS_TO_TICKS(BQ76940_RT_SAFE_OFF_RETRY_DELAY_MS));
                 }
 
-            } while ((safe_off_result != SAFE_OFF_FAIL_NONE) &&
-                     (retry_allowed != 0U));
+            } while ((safe_off_result != SAFE_OFF_FAIL_NONE) && (retry_allowed != 0U));
 
 #if (BMS_TEST_SAFE_OFF_READBACK_ENABLE != 0U)
             BMS_RuntimeSafeOffReadback(app);
@@ -844,8 +819,7 @@ static void BMS_ProtectTask(void *argument)
                             ret = BQ76940_AppOtProtectApplyHw(&ot_req);
                         }
 
-                        if ((ret == 0U) &&
-                            (ut_req.action != BQ76940_UT_ACTION_NONE))
+                        if ((ret == 0U) && (ut_req.action != BQ76940_UT_ACTION_NONE))
                         {
                             ret = BQ76940_AppUtProtectApplyHw(&ut_req);
                         }

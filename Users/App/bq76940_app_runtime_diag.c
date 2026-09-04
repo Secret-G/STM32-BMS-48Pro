@@ -109,8 +109,10 @@ void BQ76940_AppRuntimeDiagRecordSampleFail(BQ76940_AppCtx_t *ctx,
 {
     BQ76940_RuntimeDiag_t *diag;
 
+    /*地址*/
     if (enter_fault != 0)
     {
+        /*数据*/
         *enter_fault = 0U;
     }
 
@@ -199,6 +201,7 @@ void BQ76940_AppRuntimeDiagTakeSafeOffRequest(BQ76940_AppCtx_t *ctx,
 
         if (need_safe_off != 0)
         {
+            /*发送安全关断命令*/
             *need_safe_off = 1U;
         }
     }

@@ -5,46 +5,46 @@
 
 #include "stdio.h"
 
-static uint8_t BQ76940_AppHandleTempProtect(BQ76940_AppCtx_t *ctx)
-{
-    uint8_t ret;
-    BQ76940_OtProtectRequest_t req;
+//static uint8_t BQ76940_AppHandleTempProtect(BQ76940_AppCtx_t *ctx)
+//{
+//    uint8_t ret;
+//    BQ76940_OtProtectRequest_t req;
 
-    if (ctx == 0)
-    {
-        return 1U;
-    }
+//    if (ctx == 0)
+//    {
+//        return 1U;
+//    }
 
-    /*
-     * 兼容旧接口：
-     *   1. Decide  只判断
-     *   2. ApplyHw 只写硬件
-     *   3. Commit  只更新 ctx
-     *
-     * 注意：
-     *   本函数本身不负责加锁。
-     *   后续在 FreeRTOS ProtectTask 中，应直接调用三段式接口。
-     */
-    ret = BQ76940_AppOtProtectDecide(ctx, &req);
-    if (ret != 0U)
-    {
-        return 10U;
-    }
+//    /*
+//     * 兼容旧接口：
+//     *   1. Decide  只判断
+//     *   2. ApplyHw 只写硬件
+//     *   3. Commit  只更新 ctx
+//     *
+//     * 注意：
+//     *   本函数本身不负责加锁。
+//     *   后续在 FreeRTOS ProtectTask 中，应直接调用三段式接口。
+//     */
+//    ret = BQ76940_AppOtProtectDecide(ctx, &req);
+//    if (ret != 0U)
+//    {
+//        return 10U;
+//    }
 
-    ret = BQ76940_AppOtProtectApplyHw(&req);
-    if (ret != 0U)
-    {
-        return 20U;
-    }
+//    ret = BQ76940_AppOtProtectApplyHw(&req);
+//    if (ret != 0U)
+//    {
+//        return 20U;
+//    }
 
-    ret = BQ76940_AppOtProtectCommit(ctx, &req);
-    if (ret != 0U)
-    {
-        return 30U;
-    }
+//    ret = BQ76940_AppOtProtectCommit(ctx, &req);
+//    if (ret != 0U)
+//    {
+//        return 30U;
+//    }
 
-    return 0U;
-}
+//    return 0U;
+//}
 
 void BQ76940_AppOtProtectRequestClear(BQ76940_OtProtectRequest_t *req)
 {
@@ -90,10 +90,10 @@ uint8_t BQ76940_AppOtProtectDecide(const BQ76940_AppCtx_t *ctx,
      * OT 过温触发，并且当前还没有进入 OT 截止状态。
      * 需要关闭 CHG / DSG。
      */
-    if ((req->ot_now != 0U) &&
-        (req->ot_cutoff_active_snapshot == 0U))
+    if ((req->ot_now != 0U) && (req->ot_cutoff_active_snapshot == 0U))
     {
         req->action = BQ76940_OT_ACTION_FET_OFF;
+
         return 0U;
     }
 
@@ -104,11 +104,9 @@ uint8_t BQ76940_AppOtProtectDecide(const BQ76940_AppCtx_t *ctx,
      * 保持你原来的逻辑：
      *   只有当前没有 OV / UV 时，才允许恢复 CHG / DSG。
      */
-    if ((req->ot_now == 0U) &&
-        (req->ot_cutoff_active_snapshot != 0U))
+    if ((req->ot_now == 0U) && (req->ot_cutoff_active_snapshot != 0U))
     {
-        if ((req->ov_now == 0U) &&
-            (req->uv_now == 0U))
+        if ((req->ov_now == 0U) && (req->uv_now == 0U))
         {
             req->action = BQ76940_OT_ACTION_FET_ON;
             return 0U;
@@ -180,8 +178,7 @@ uint8_t BQ76940_AppOtProtectApplyHw(const BQ76940_OtProtectRequest_t *req)
 }
 
 
-uint8_t BQ76940_AppOtProtectCommit(BQ76940_AppCtx_t *ctx,
-                                    const BQ76940_OtProtectRequest_t *req)
+uint8_t BQ76940_AppOtProtectCommit(BQ76940_AppCtx_t *ctx,const BQ76940_OtProtectRequest_t *req)
 {
     if ((ctx == 0) || (req == 0))
     {
@@ -203,10 +200,6 @@ uint8_t BQ76940_AppOtProtectCommit(BQ76940_AppCtx_t *ctx,
     {
         ctx->ot_cutoff_active = 1U;
 
-#if (BQ76940_PROTECT_EVENT_PRINT_ENABLE != 0U)
-        BMS_LOG_PROTECT("[PROT] OT off\r\n");
-#endif
-
         return 0U;
     }
 
@@ -216,10 +209,6 @@ uint8_t BQ76940_AppOtProtectCommit(BQ76940_AppCtx_t *ctx,
     if (req->action == BQ76940_OT_ACTION_FET_ON)
     {
         ctx->ot_cutoff_active = 0U;
-
-#if (BQ76940_PROTECT_EVENT_PRINT_ENABLE != 0U)
-        BMS_LOG_PROTECT("[PROT] OT recover\r\n");
-#endif
 
         return 0U;
     }
@@ -277,46 +266,46 @@ uint8_t BQ76940_AppProtectUpdateAlarms(BQ76940_AppCtx_t *ctx)
     return 0U;
 }
 
-static uint8_t BQ76940_AppHandleLowTempProtect(BQ76940_AppCtx_t *ctx)
-{
-    uint8_t ret;
-    BQ76940_UtProtectRequest_t req;
+//static uint8_t BQ76940_AppHandleLowTempProtect(BQ76940_AppCtx_t *ctx)
+//{
+//    uint8_t ret;
+//    BQ76940_UtProtectRequest_t req;
 
-    if (ctx == 0)
-    {
-        return 1U;
-    }
+//    if (ctx == 0)
+//    {
+//        return 1U;
+//    }
 
-    /*
-     * 兼容旧接口：
-     *   1. Decide  只判断
-     *   2. ApplyHw 只写硬件
-     *   3. Commit  只更新 ctx
-     *
-     * 注意：
-     *   本函数本身不负责加锁。
-     *   后续在 FreeRTOS ProtectTask 中，应直接调用三段式接口。
-     */
-    ret = BQ76940_AppUtProtectDecide(ctx, &req);
-    if (ret != 0U)
-    {
-        return 10U;
-    }
+//    /*
+//     * 兼容旧接口：
+//     *   1. Decide  只判断
+//     *   2. ApplyHw 只写硬件
+//     *   3. Commit  只更新 ctx
+//     *
+//     * 注意：
+//     *   本函数本身不负责加锁。
+//     *   后续在 FreeRTOS ProtectTask 中，应直接调用三段式接口。
+//     */
+//    ret = BQ76940_AppUtProtectDecide(ctx, &req);
+//    if (ret != 0U)
+//    {
+//        return 10U;
+//    }
 
-    ret = BQ76940_AppUtProtectApplyHw(&req);
-    if (ret != 0U)
-    {
-        return 20U;
-    }
+//    ret = BQ76940_AppUtProtectApplyHw(&req);
+//    if (ret != 0U)
+//    {
+//        return 20U;
+//    }
 
-    ret = BQ76940_AppUtProtectCommit(ctx, &req);
-    if (ret != 0U)
-    {
-        return 30U;
-    }
+//    ret = BQ76940_AppUtProtectCommit(ctx, &req);
+//    if (ret != 0U)
+//    {
+//        return 30U;
+//    }
 
-    return 0U;
-}
+//    return 0U;
+//}
 
 
 void BQ76940_AppUtProtectRequestClear(BQ76940_UtProtectRequest_t *req)
@@ -367,10 +356,10 @@ uint8_t BQ76940_AppUtProtectDecide(const BQ76940_AppCtx_t *ctx,
      * 低温保护策略：
      *   只关闭 CHG，不关闭 DSG。
      */
-    if ((req->ut_now != 0U) &&
-        (req->ut_chg_block_active_snapshot == 0U))
+    if ((req->ut_now != 0U) && (req->ut_chg_block_active_snapshot == 0U))
     {
         req->action = BQ76940_UT_ACTION_CHG_OFF;
+
         return 0U;
     }
 
@@ -383,8 +372,7 @@ uint8_t BQ76940_AppUtProtectDecide(const BQ76940_AppCtx_t *ctx,
      *   - 当前没有 OT
      *   - 当前没有 OT 截止状态
      */
-    if ((req->ut_now == 0U) &&
-        (req->ut_chg_block_active_snapshot != 0U))
+    if ((req->ut_now == 0U) && (req->ut_chg_block_active_snapshot != 0U))
     {
         if ((req->ov_now == 0U) &&
             (req->ot_now == 0U) &&
@@ -434,18 +422,6 @@ uint8_t BQ76940_AppUtProtectApplyHw(const BQ76940_UtProtectRequest_t *req)
             return 2U;
         }
 
-#if (BQ76940_PROTECT_DBG_ENABLE != 0U)
-        /*
-         * 读回 SYS_CTRL2 只用于调试确认。
-         * 默认关闭，避免增加 I2C 访问和 Flash 字符串。
-         */
-        ret = BQ76940_AppPrintSysCtrl2Readback("UT ACTIVE READBACK");
-        if (ret != 0U)
-        {
-            return 4U;
-        }
-#endif
-
         return 0U;
     }
 
@@ -464,25 +440,13 @@ uint8_t BQ76940_AppUtProtectApplyHw(const BQ76940_UtProtectRequest_t *req)
             return 3U;
         }
 
-#if (BQ76940_PROTECT_DBG_ENABLE != 0U)
-        /*
-         * 恢复后读回 SYS_CTRL2，仅用于调试确认。
-         */
-        ret = BQ76940_AppPrintSysCtrl2Readback("UT RECOVER READBACK");
-        if (ret != 0U)
-        {
-            return 5U;
-        }
-#endif
-
         return 0U;
     }
 
     return 6U;
 }
 
-uint8_t BQ76940_AppUtProtectCommit(BQ76940_AppCtx_t *ctx,
-                                    const BQ76940_UtProtectRequest_t *req)
+uint8_t BQ76940_AppUtProtectCommit(BQ76940_AppCtx_t *ctx,const BQ76940_UtProtectRequest_t *req)
 {
     if ((ctx == 0) || (req == 0))
     {
@@ -504,9 +468,6 @@ uint8_t BQ76940_AppUtProtectCommit(BQ76940_AppCtx_t *ctx,
     {
         ctx->ut_chg_block_active = 1U;
 
-#if (BQ76940_PROTECT_EVENT_PRINT_ENABLE != 0U)
-        BMS_LOG_PROTECT("[PROT] UT CHG off\r\n");
-#endif
 
         return 0U;
     }
@@ -517,10 +478,6 @@ uint8_t BQ76940_AppUtProtectCommit(BQ76940_AppCtx_t *ctx,
     if (req->action == BQ76940_UT_ACTION_CHG_ON)
     {
         ctx->ut_chg_block_active = 0U;
-
-#if (BQ76940_PROTECT_EVENT_PRINT_ENABLE != 0U)
-        BMS_LOG_PROTECT("[PROT] UT recover\r\n");
-#endif
 
         return 0U;
     }
@@ -552,84 +509,84 @@ uint8_t BQ76940_AppProtectUpdateBase(BQ76940_AppCtx_t *ctx)
     return BQ76940_AppProtectUpdateAlarms(ctx);
 }
 
-uint8_t BQ76940_AppProtectUpdate(BQ76940_AppCtx_t *ctx)
-{
-    uint8_t ret;
+//uint8_t BQ76940_AppProtectUpdate(BQ76940_AppCtx_t *ctx)
+//{
+//    uint8_t ret;
 
-    if (ctx == 0)
-    {
-        return 1U;
-    }
+//    if (ctx == 0)
+//    {
+//        return 1U;
+//    }
 
-    /*
-     * 1. 更新单体电压相关软件告警：
-     * UV / OV / DIFF
-     */
-    ret = BQ76940_UpdateAlarmState9(ctx->cell_mV,
-                                    &ctx->cell_stats,
-                                    &ctx->alarm_th,
-                                    &ctx->alarm_state);
-    if (ret != 0U)
-    {
-        return 13U;
-    }
+//    /*
+//     * 1. 更新单体电压相关软件告警：
+//     * UV / OV / DIFF
+//     */
+//    ret = BQ76940_UpdateAlarmState9(ctx->cell_mV,
+//                                    &ctx->cell_stats,
+//                                    &ctx->alarm_th,
+//                                    &ctx->alarm_state);
+//    if (ret != 0U)
+//    {
+//        return 13U;
+//    }
 
-    /*
-     * 2. 更新 TS1 过温告警
-     */
-    ret = BQ76940_UpdateTempAlarmTs1(ctx->ts1_temp_dC,
-                                     &ctx->alarm_th,
-                                     &ctx->alarm_state);
-    if (ret != 0U)
-    {
-        BMS_LOG_ERROR("[PROT] temp alarm:%d\r\n", ret);
-        return 20U;
-    }
+//    /*
+//     * 2. 更新 TS1 过温告警
+//     */
+//    ret = BQ76940_UpdateTempAlarmTs1(ctx->ts1_temp_dC,
+//                                     &ctx->alarm_th,
+//                                     &ctx->alarm_state);
+//    if (ret != 0U)
+//    {
+//        BMS_LOG_ERROR("[PROT] temp alarm:%d\r\n", ret);
+//        return 20U;
+//    }
 
-    /*
-     * 3. 更新 TS1 低温告警
-     */
-    ret = BQ76940_UpdateLowTempAlarmTs1(ctx->ts1_temp_dC,
-                                        &ctx->alarm_th,
-                                        &ctx->alarm_state);
-    if (ret != 0U)
-    {
-        BMS_LOG_ERROR("[PROT] low alarm:%d\r\n", ret);
-        return 22U;
-    }
+//    /*
+//     * 3. 更新 TS1 低温告警
+//     */
+//    ret = BQ76940_UpdateLowTempAlarmTs1(ctx->ts1_temp_dC,
+//                                        &ctx->alarm_th,
+//                                        &ctx->alarm_state);
+//    if (ret != 0U)
+//    {
+//        BMS_LOG_ERROR("[PROT] low alarm:%d\r\n", ret);
+//        return 22U;
+//    }
 
-    /*
-     * 4. 处理过温联动控制：
-     * OT 生效时，充放电都禁止。
-     */
-    ret = BQ76940_AppHandleTempProtect(ctx);
-    if (ret != 0U)
-    {
-        BMS_LOG_ERROR("[PROT] temp:%d\r\n", ret);
-        return 21U;
-    }
+//    /*
+//     * 4. 处理过温联动控制：
+//     * OT 生效时，充放电都禁止。
+//     */
+//    ret = BQ76940_AppHandleTempProtect(ctx);
+//    if (ret != 0U)
+//    {
+//        BMS_LOG_ERROR("[PROT] temp:%d\r\n", ret);
+//        return 21U;
+//    }
 
-    /*
-     * 5. 处理低温联动控制：
-     * UT 生效时，只禁止充电。
-     */
-    ret = BQ76940_AppHandleLowTempProtect(ctx);
-    if (ret != 0U)
-    {
-        BMS_LOG_ERROR("[PROT] low:%d\r\n", ret);
-        return 25U;
-    }
+//    /*
+//     * 5. 处理低温联动控制：
+//     * UT 生效时，只禁止充电。
+//     */
+//    ret = BQ76940_AppHandleLowTempProtect(ctx);
+//    if (ret != 0U)
+//    {
+//        BMS_LOG_ERROR("[PROT] low:%d\r\n", ret);
+//        return 25U;
+//    }
 
-    /*
-     * 6. 处理 OCD / SCD 放电侧硬件保护状态
-     */
-    ret = BQ76940_AppHandleOcdScdProtect(ctx);
-    if (ret != 0U)
-    {
-        BMS_LOG_ERROR("[PROT] OCD/SCD:%d\r\n", ret);
-        return 27U;
-    }
+//    /*
+//     * 6. 处理 OCD / SCD 放电侧硬件保护状态
+//     */
+//    ret = BQ76940_AppHandleOcdScdProtect(ctx);
+//    if (ret != 0U)
+//    {
+//        BMS_LOG_ERROR("[PROT] OCD/SCD:%d\r\n", ret);
+//        return 27U;
+//    }
 
-    return 0U;
-}
+//    return 0U;
+//}
 
