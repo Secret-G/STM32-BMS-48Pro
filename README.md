@@ -1,1015 +1,476 @@
 # STM32-BMS-48Pro
 
-基于 **STM32F103C8T6 + BQ76940** 的 9S 锂电池管理系统（BMS）重构项目。
+基于 **STM32F103C8T6 + BQ76940** 的 9S 锂电池管理系统，
+结合 FreeRTOS、CAN 与 Qt 上位机，实现从电池数据采集、保护与均衡到 PC 端状态监控的完整链路，
+并正在接入 **BQ34Z100-G1 SOC/SOH 电量管理**。
 
-本项目以真实硬件平台为基础，围绕 BMS 核心功能逐步实现了电池采样、软件告警、硬件保护、自动均衡、执行控制、异常安全处理、FreeRTOS 多任务调度以及 CAN 通讯闭环。
+**技术栈：** `C` · `STM32 HAL` · `FreeRTOS` · `Soft I2C` · `CAN` · `C++17` · `Qt 6` · `Keil MDK` · `CMake`
 
-项目当前 **V1 版本已完成**，已实现核心功能联调与 PCAN-View 实物验证。当前阶段主要进入 README、流程图、测试截图、项目复盘与求职展示材料整理。
+![Qt BMS Monitor 上位机运行界面](docs/images/qt-bms-monitor.png)
 
----
+*Qt 实物联调界面：PCAN-USB、500 kbps、9S 单体电压、Pack 状态、告警、故障、均衡与原始 CAN 报文。截图中的 SOC 和趋势曲线尚未接入。*
 
-## 1. 项目简介
+## 1. 项目概述
 
-`STM32-BMS-48Pro` 是一个面向嵌入式学习与求职展示的 BMS 项目。
+### 1.1 项目背景
 
-项目以 **BQ76940 电池监控芯片** 为核心，完成 9 串锂电池的电压、电流、温度采集，并在此基础上实现：
+本项目围绕真实 9S 电池平台，将芯片驱动、保护策略、任务调度和 PC 监控整合为一套 BMS 应用。开发从 BQ76940 硬件调试出发，逐步完成应用模块拆分、FreeRTOS 迁移和 CAN / Qt 联调。
 
-* 软件告警：UV / OV / DIFF / OT / UT
-* 硬件保护：OCD / SCD / DSG 阻断
-* 自动均衡：多电芯 Balance Mask、非相邻选择、奇偶窗口、读回校验
-* 执行控制：BQ76940 FET 控制、BQ76200 执行层状态机、Safe-Off
-* 异常处理：BringUp 初始化异常、Runtime 采样异常、HwFault 硬件故障异常
-* FreeRTOS 多任务调度：Task / Mutex / Semaphore / Queue
-* CAN 通讯：周期上报、RX 命令接收、ACK 响应、PCAN-View 验证
+工程重点是让采样、保护、均衡和执行控制协同工作，并在采样失败、硬件保护触发等情况下保留明确的处理路径与可观察的诊断状态。
 
-本项目重点不只是“功能能跑”，而是尽量按照实际嵌入式工程思路进行模块划分和架构重构，包括：
+### 1.2 项目目标
 
-* 驱动层与应用层分离
-* 采样、保护、均衡、控制、通信任务拆分
-* I2C 总线互斥访问
-* 全局 BMS 状态互斥保护
-* CAN 接收中断与任务解析解耦
-* 故障状态下的安全关断与写保护
-* 关键状态通过 CAN 和串口进行可视化验证
+- 完成 9S 电池的电压、电流、温度采集与状态管理。
+- 实现软件告警、硬件保护事件处理、自动均衡和执行层控制。
+- 通过 FreeRTOS 拆分任务，明确共享状态与 I2C 总线的访问边界。
+- 实现 CAN 周期上报、查询命令与 ACK 响应，并通过 Qt 展示实时状态。
+- 接入 BQ34Z100-G1 电量计，逐步补齐 SOC/SOH、容量学习和上位机显示链路。
 
----
+### 1.3 当前完成情况
 
-## 2. 硬件平台
+**BMS 核心固件、FreeRTOS 任务协作和 CAN 查询/ACK 已实现，Qt 已接入实物数据。** 上位机可查看 9S 电压、Pack 电流、温度、告警、故障和均衡状态，并显示原始 CAN 报文。
 
-| 模块      | 型号 / 说明                     |
-| ------- | --------------------------- |
-| MCU     | STM32F103C8T6               |
-| 电池监控芯片  | BQ76940                     |
-| 电池串数    | 当前实物调试为 9 串                 |
-| 高边驱动器   | BQ76200，执行层接口与状态机已实现        |
-| 电量计     | BQ34Z100-G1，接口预留 / 后续扩展     |
-| CAN 收发器 | TJA1050                     |
-| 通讯接口    | CAN 500 kbps                |
-| 调试接口    | UART 串口、USB-CAN / PCAN-View |
-| I2C     | 软件 I2C，PB8 / PB9            |
-| LED     | PA15                        |
-| BQ 唤醒控制 | PA8                         |
+BQ34Z100 电量管理、SOC/SOH 通讯接入与历史趋势曲线正在开发，完成度统一见第 13 节。
 
----
+## 2. 项目亮点
 
-## 3. 软件平台
+| 工程亮点 | 设计与实现 |
+| --- | --- |
+| **FreeRTOS 任务解耦** | Sample → Protect → Balance → Control，通过 Semaphore 串联业务链路，Mutex 管理共享 I2C 与状态上下文 |
+| **CAN 中断与业务解耦** | RX ISR → Queue → CANTask，中断负责取帧，任务完成周期上报、查询解析和带序号 ACK |
+| **均衡决策与硬件操作分离** | Decide → ApplyHw → Commit，结合非相邻筛选、奇偶分时、迟滞和 CELLBAL 读回校验 |
+| **故障后的写入约束** | RuntimeFault 锁存后禁止常规 AFE 写入，独立任务执行 Safe-Off、记录结果并处理重试 |
+| **保护与恢复条件管理** | 分离软件告警和硬件故障，结合迟滞、DSG 阻断与显式恢复条件组织保护动作 |
+| **执行输出集中控制** | BQ76200 状态机统一管理 CHG、DSG、CP、PCHG，提供 Force-Off 入口 |
+| **采样到界面的完整链路** | 9S 通道映射、校准换算、CAN 打包与 Qt 解析衔接，直观展示电压极值、压差及诊断状态 |
+| **Qt 模块划分** | CanConnection、BmsCanProtocol 与 MainWindow 分别负责设备、协议和界面，便于扩展报文与展示功能 |
 
-| 类型    | 说明                        |
-| ----- | ------------------------- |
-| 开发语言  | C                         |
-| RTOS  | FreeRTOS                  |
-| IDE   | Keil MDK                  |
-| MCU 库 | STM32 HAL                 |
-| 通讯    | Soft I2C、CAN、UART         |
-| 代码管理  | Git / GitHub              |
-| 文档记录  | Obsidian、draw.io、Markdown |
+## 3. 系统总体架构
 
----
+### 3.1 系统架构图
 
-## 4. 系统功能概览
-
-当前 V1 已完成以下核心模块：
-
-| 功能模块                      | 状态          |
-| ------------------------- | ----------- |
-| BQ76940 Bring-up          | 已完成         |
-| 9 节单体电压采样                 | 已完成         |
-| Pack 总压计算                 | 已完成         |
-| CC 电流采样                   | 已完成         |
-| TS1 温度采样                  | 已完成         |
-| UV / OV / DIFF 软件告警       | 已完成         |
-| OT / UT 温度保护              | 已完成         |
-| OCD / SCD 硬件保护接入          | 已完成         |
-| CHG / DSG FET 控制          | 已完成         |
-| BQ76200 执行层状态机            | 已完成 V1      |
-| 自动均衡 V2                   | 已完成         |
-| BringUp 初始化异常处理           | 已完成         |
-| RuntimeFault Safe-Off     | 已完成 V1      |
-| HwFault 硬件故障处理            | 已完成 V1      |
-| FreeRTOS 多任务架构            | 已完成         |
-| Mutex / Semaphore / Queue | 已完成         |
-| CAN 周期上报                  | 已完成         |
-| CAN RX 命令接收               | 已完成         |
-| CAN ACK 响应                | 已完成         |
-| PCAN-View 实物验证            | 已完成         |
-| BQ34Z100 电量计              | 接口预留 / 后续扩展 |
-| Qt 上位机                    | 后续扩展        |
-
----
-
-## 5. BQ76940 Bring-up
-
-已实现 BQ76940 基础初始化流程：
-
-* BQ76940 唤醒
-* 基础寄存器读取
-* CRC 写寄存器
-* ADCGAIN / ADCOFFSET 校准参数读取
-* CC_CFG 配置
-* SYS_CTRL1 / SYS_CTRL2 配置
-* PROTECT1 / PROTECT2 / PROTECT3 配置
-* OCD / SCD 硬件保护参数配置
-* 初始化阶段自检
-* 初始化失败后的 Fail-Safe 处理
-
-Bring-up 阶段不仅完成芯片配置，还会对关键寄存器与采样链路进行检查，避免 BQ76940 初始化失败后系统继续进入正常任务调度。
-
----
-
-## 6. 电池采样模块
-
-### 6.1 电压采样
-
-当前实物调试为 9 串电池，BQ76940 通道映射如下：
-
-```text
-VC1, VC2, VC5, VC6, VC7, VC10, VC11, VC12, VC15
+```mermaid
+flowchart LR
+    Cells[9S 电池组] --> AFE[BQ76940 电池监控]
+    Cells -.-> Gauge[BQ34Z100-G1 / 开发中]
+    AFE <-->|Soft I2C| MCU[STM32F103C8T6 / FreeRTOS]
+    AFE -->|ALERT| MCU
+    Gauge <-. Soft I2C .-> MCU
+    MCU -->|GPIO| Exec[BQ76200 执行层]
+    Exec --> MOS[充放电 MOS / 预充外围]
+    MCU <-->|CAN| PHY[TJA1050]
+    PHY <--> USB[USB-CAN / PCAN]
+    USB <--> Qt[Qt BMS Monitor]
+    MCU -->|UART| Log[串口日志]
 ```
 
-已实现：
+*实线表示核心功能链路，虚线表示开发中的电量计接入；图中展示功能关系。*
 
-* 单体电压原始 ADC 读取
-* 单体电压 mV 换算
-* Pack 总压计算
-* 最大单体 / 最小单体统计
-* 最大压差计算
-* 最大 / 最小单体标签记录
-* 采样数据提交到全局 BMS 状态
+### 3.2 数据流 / 控制流
 
----
+**数据流：**电芯与传感器 → BQ76940 → I2C 原始采样 → 换算与状态提交 → CAN 状态帧 → Qt 解析与展示。
 
-### 6.2 电流采样
+**控制流：**采样状态 → 软件保护判断 → 均衡决策 → 执行层更新；硬件 ALERT 和运行异常通过独立路径触发故障处理。
 
-已实现 BQ76940 Coulomb Counter 电流采样：
+**PC 查询链路：**Qt 发送 `0x401` → CAN 接收队列 → CANTask 解析 → 返回请求数据与 `0x307` ACK。
 
-* CC_HI / CC_LO 原始值读取
-* 电流 mA 换算
-* 充电 / 放电 / 近零方向判断
-* Pack 电流状态保存
-* CAN 状态帧上报
+### 3.3 主要模块关系
 
----
+采样模块将数据提交到 BMS 上下文，保护与均衡模块据此生成动作，驱动完成寄存器访问，控制模块更新 BQ76200 执行层。CAN 使用状态快照组织报文，Qt 解析后刷新界面，使业务判断、硬件操作与数据显示各自承担明确职责。
 
-### 6.3 温度采样
+## 4. 硬件平台
 
-已实现 TS1 温度采样：
+| 小节 | 模块 | 当前用途 |
+| --- | --- | --- |
+| 4.1 | STM32F103C8T6 | 主控，负责任务调度、I2C 访问、CAN 通讯与 GPIO 控制 |
+| 4.2 | BQ76940 | 9S 电压、电流、TS1 温度采样，硬件保护状态与被动均衡控制 |
+| 4.3 | BQ34Z100-G1 | 电量计，SOC/SOH 与容量读取框架已实现，系统接入开发中 |
+| 4.4 | BQ76200 | 高边驱动执行层，已实现控制接口与状态机 |
+| 4.5 | TJA1050 | CAN 物理层收发器，当前通讯为 500 kbps |
+| 4.6 | 9S 电池组及外围硬件 | 电芯连接、采样电阻、NTC、均衡与充放电外围 |
 
-* TS1 ADC 读取
-* 热敏电阻温度换算
-* 温度单位采用 0.1°C，即 dC
-* 过温 / 低温告警判断
-* 温度状态通过串口和 CAN 上报
+当前软件接口包括 Soft I2C（PB8/PB9）、BQ 唤醒控制（PA8）、LED（PA15）、CAN 和 UART。接口变更应同步核对板卡接线与 BSP 配置。
 
----
+## 5. 软件架构
 
-## 7. 软件告警模块
-
-当前实现的软件告警包括：
-
-* UV：单体欠压告警
-* OV：单体过压告警
-* DIFF：单体压差告警
-* OT：过温告警
-* UT：低温告警
-
-软件告警支持：
-
-* 进入阈值
-* 恢复阈值
-* 迟滞判断
-* 计数滤波
-* 最大 / 最小异常单体记录
-* 告警标志位统一打包
-* CAN `0x304` 状态帧上报
-
-软件告警与执行控制解耦，告警模块只负责判断状态，实际 FET / 执行层动作由保护和控制任务统一处理。
-
----
-
-## 8. 硬件保护模块
-
-已接入 BQ76940 硬件保护相关配置与状态读取：
-
-* OV 硬件保护配置
-* UV 硬件保护配置
-* OCD 过流保护配置
-* SCD 短路保护配置
-* SYS_STAT 硬件故障位读取
-* OCD / SCD 故障识别
-* OCD / SCD 故障锁存
-* DSG 阻断
-* 硬件故障诊断帧上报
-
-当前 HwFault 处理逻辑采用独立任务处理：
+### 5.1 软件分层
 
 ```text
-BQ76940 ALERT
-    ↓
-HwFaultTask
-    ↓
-读取 SYS_STAT
-    ↓
-判断 OCD / SCD
-    ↓
-锁存硬件故障
-    ↓
-阻断 DSG
-    ↓
-通知 ControlTask 更新执行层状态
+Application：Users/App
+    采样、保护、均衡、控制、诊断、CAN 协议、电量计应用、任务编排
+        ↓
+Driver / BSP：Drivers/BSP
+    BQ 芯片驱动、执行端口、Soft I2C、CAN、GPIO、LED 等
+        ↓
+HAL / 底层支持：Drivers/STM32F1xx_HAL_Driver 等
+        ↓
+Hardware：STM32、监控芯片、执行器与总线
 ```
 
-硬件故障与软件告警分离，便于区分 BQ76940 自动保护事件和应用层软件判断事件。
+应用层组织业务，`Drivers/BSP` 封装芯片驱动与板级接口，底层通过 HAL 和 GPIO 等接口访问硬件。
 
----
+### 5.2 模块划分
 
-## 9. FET 与执行控制
+| 模块 | 主要职责 |
+| --- | --- |
+| `bq76940_app` | 应用上下文、默认配置、Bring-up 与自检 |
+| `bq76940_app_sample` | 原始采样组织、换算与数据提交 |
+| `bq76940_app_protect` | 软件告警和保护动作处理 |
+| `bq76940_app_balance` | 均衡决策、硬件应用与状态提交 |
+| `bq76940_app_control` | 执行层输入组织与状态更新 |
+| `bq76940_app_runtime_diag` | 运行时采样失败诊断与 Safe-Off 状态管理 |
+| `bq76940_app_hw_fault` | OCD/SCD 识别、阻断、锁存与条件恢复 |
+| `bq76940_app_can` | 状态帧、诊断帧、命令解析与 ACK |
+| `bq34z100_app` | 电量计数据读取与有效性记录 |
+| `bms_tasks` | 任务创建、同步、共享资源访问与各业务调用 |
 
-### 9.1 BQ76940 内部 FET 控制
+### 5.3 全局 BMS 状态设计
 
-已实现 BQ76940 内部 FET 控制接口：
+`BQ76940_AppCtx_t` 汇总电压、电流、温度、告警、保护、均衡、运行诊断和硬件故障状态。任务在互斥保护下读取快照或提交结果，使算法计算与硬件访问尽量在全局状态锁之外完成。
 
-* CHG FET 控制
-* DSG FET 控制
-* CHG / DSG 同时控制
-* SYS_CTRL2 读回验证
-* 故障状态下关闭 CHG / DSG
+电量计使用独立的 `BQ34Z100_AppCtx_t` 保存 SOC、SOH、容量和有效性等信息；当前尚未形成电量计数据到 CAN、Qt 的完整链路。
 
----
+## 6. BMS 核心功能
 
-### 9.2 BQ76200 执行层状态机
+### 6.1 BQ76940 Bring-up
 
-当前已实现 BQ76200 执行层接口设计：
+启动阶段完成唤醒、基础寄存器访问、ADCGAIN/ADCOFFSET 校准参数读取、CC_CFG、SYS_CTRL 和保护寄存器配置，并进行采样链路自检。初始化失败进入启动故障处理，执行安全关断、诊断上报与故障保持。
 
-* CHG_EN 控制
-* DSG_EN 控制
-* CP_EN 控制
-* PCHG_EN 控制
-* GPIO 读回
-* 故障状态下 Force-Off
+流程源文件：[Bring-up 与自检流程图](docs/diagrams-drawio/Bring-up与自检流程图.drawio)。
 
-执行层状态包括：
+### 6.2 数据采集
 
-| 状态            | 含义     |
-| ------------- | ------ |
-| OFF           | 全部关闭   |
-| PRECHARGE     | 预充状态   |
-| NORMAL_ON     | 正常充放电  |
-| CHG_BLOCK     | 禁止充电   |
-| DSG_BLOCK     | 禁止放电   |
+| 数据 | 实现内容 |
+| --- | --- |
+| 单体电压 | 读取原始 ADC，换算 mV，统计最高/最低电芯及压差 |
+| Pack 电压 | 根据当前 9S 单体电压求和 |
+| 电流 | 读取 BQ76940 CC 数据，换算 mA，记录方向 |
+| 温度 | 读取 TS1，完成热敏电阻温度换算，以 0.1°C 保存 |
+
+当前逻辑电芯 C1～C9 对应的 BQ76940 物理通道为：
+
+```text
+C1   C2   C3   C4   C5   C6    C7    C8    C9
+VC1  VC2  VC5  VC6  VC7  VC10  VC11  VC12  VC15
+```
+
+Qt 显示的 C 序号与驱动中的 VC 标签需要按此映射区分。采样流程见 [采样流程图](docs/diagrams-drawio/采样流程.drawio)。
+
+### 6.3 软件告警与硬件保护
+
+软件告警包括 UV、OV、DIFF、OT 和 UT，采用进入/恢复阈值、迟滞与计数滤波。应用根据告警和已有保护状态决定动作，恢复路径也检查相关告警，避免不满足条件时重新开启。
+
+BQ76940 侧配置 OV/UV/OCD/SCD 硬件保护，软件通过 SYS_STAT 和 ALERT 路径处理硬件事件。OCD/SCD 处理包含 DSG 阻断、故障记录和执行层同步。
+
+当前还实现了带条件的一次恢复路径：需要显式设置恢复标志、DSG 处于阻断状态、OCD/SCD 当前位已清除，且没有 UV/OT 告警。该恢复入口不属于当前 CAN 查询命令。
+
+### 6.4 自动均衡
+
+均衡模块根据电压、压差、电流及故障状态判断是否允许动作，通过多电芯 Balance Mask、非相邻筛选、奇偶窗口轮换和迟滞保持组织被动均衡。
+
+```text
+BalanceDecide：读取状态，生成 START / STOP / NONE 请求
+    ↓
+BalanceApplyHw：写入 CELLBAL1/2/3，并读回校验
+    ↓
+BalanceCommit：提交 active、mask、目标数量、标签与 phase
+```
+
+写入前检查故障相关限制，减少旧请求在故障发生后继续作用于硬件的风险。均衡状态通过 `0x306` 上报。
+
+流程源文件：[均衡决策](docs/diagrams-drawio/BQ76940_均衡决策流程.drawio)、[均衡任务](docs/diagrams-drawio/均衡任务流程.drawio)。
+
+### 6.5 BQ34Z100-G1 电量管理
+
+当前已实现 SOC、SOH、剩余容量、满充容量、电压、电流、温度、循环次数和状态标志等读取逻辑，并维护数据有效性与错误码。
+
+GaugeTask 通过共享 I2C 总线周期读取电量计，当前由 `BMS_ENABLE_GAUGE_TASK = 0U` 默认关闭。参数配置、校准、Qmax/容量学习和 CAN / Qt 接入属于后续电量管理开发内容。
+
+### 6.6 BQ76200 执行控制
+
+执行层使用统一接口管理 CHG_EN、DSG_EN、CP_EN 和 PCHG_EN，并提供 Force-Off。控制任务根据保护与诊断状态组织执行输入。
+
+| 状态 | 含义 |
+| --- | --- |
+| OFF | 全部关闭 |
+| PRECHARGE | 已定义预充状态及输出映射 |
+| NORMAL_ON | 正常充放电 |
+| CHG_BLOCK | 禁止充电 |
+| DSG_BLOCK | 禁止放电 |
 | CHG_DSG_BLOCK | 充放电均禁止 |
 
-执行层根据 OT / UT / OCD / SCD / RuntimeFault 等状态进行统一决策，避免多个模块直接操作执行 GPIO。
+当前 PRECHARGE 提供状态定义与输出映射，完整预充流程仍需完善电压判据、超时处理与负载验证。
 
----
+### 6.7 异常安全处理
 
-## 10. 自动均衡模块
+| 异常 | 触发来源 | 处理思路 |
+| --- | --- | --- |
+| BringUp Fault | 初始化或自检失败 | 启动 Safe-Off、诊断帧、LED 提示与 STOP 故障保持 |
+| Runtime Fault | 连续运行采样失败 | 锁存诊断、禁止常规 AFE 写入、触发 Safe-Off 与失败重试 |
+| HwFault | BQ76940 OCD/SCD 事件 | 读取状态、DSG 阻断、故障记录、同步执行层 |
+| RTOS Init Fault | 任务或同步资源创建失败 | 启动 Safe-Off 并发送专用故障类型 |
 
-已实现基于 BQ76940 CELLBAL 寄存器的自动均衡控制。
+Safe-Off 优先关闭 BQ76200 执行输出，并尝试关闭 BQ76940 FET 与 CELLBAL，记录操作返回结果。通讯失败时必须区分关断请求和硬件实际关断结果。
 
-当前均衡策略支持：
+流程源文件：[RuntimeDiag](docs/diagrams-drawio/runtimeDiag.drawio)、[HwFault V2](docs/diagrams-drawio/HwFault_V2_Flow.drawio)。
 
-* 均衡允许条件判断
-* Enter / Exit 阈值迟滞
-* 最低单体电压门限判断
-* 最大均衡电流限制
-* 多电芯 Balance Mask 选择
-* 非相邻电芯筛选，避免相邻通道同时均衡
-* 基于 FreeRTOS Tick 的周期刷新
-* 奇偶窗口分时轮换
-* 滞回保持区继续轮换
-* CELLBAL1 / CELLBAL2 / CELLBAL3 写入
-* CELLBAL 寄存器读回校验
-* 新旧 Balance Mask 比较，避免无意义重复写入
-* RuntimeFault / HwFault 下禁止旧均衡请求继续写入
+## 7. FreeRTOS 多任务设计
 
-均衡任务采用“决策 / 硬件写入 / 状态提交”三段式结构：
+### 7.1 任务划分
 
-```text
-BMS_BalanceTask
-    ↓
-BalanceDecide
-    只读取 app 状态，生成 START / STOP / NONE 请求，不访问 I2C
-    ↓
-BalanceApplyHw
-    需要动作时写入 CELLBAL1 / CELLBAL2 / CELLBAL3，并读回校验
-    ↓
-BalanceCommit
-    提交均衡状态、目标电芯、Balance Mask 和 active 状态
-```
+下表对应当前 `bms_config.h` 和 `bms_tasks.c`。优先级为相对 `tskIDLE_PRIORITY` 的增量。
 
-当前均衡状态通过 CAN `0x306` 帧实时上报，PCAN-View 可观察到：
+| 任务 | 触发方式 / 周期 | 优先级 | 职责 |
+| --- | --- | --- | --- |
+| SampleTask | 采样循环，末尾延时 500 ms | +4 | 数据采集、状态提交、采样异常统计 |
+| ProtectTask | 信号量 | +3 | 软件告警与保护处理 |
+| BalanceTask | 信号量 | +3 | 均衡决策、写入与提交 |
+| ControlTask | 信号量 | +3 | BQ76200 状态更新 |
+| GaugeTask | 1000 ms，默认关闭 | +1 | BQ34Z100 周期读取 |
+| RuntimeTask | 信号量 | +4 | RuntimeFault Safe-Off 与重试 |
+| HwFaultTask | 硬件事件信号量 | +5 | ALERT、OCD/SCD 处理 |
+| CANTask | RX 队列 + 1000 ms 上报检查 | +2 | 接收解析、状态发送与 ACK |
+| AuxTask | 1000 ms | +1 | LED 与运行摘要 |
 
-* 当前是否正在均衡
-* 本轮均衡目标数量
-* CELLBAL1 / CELLBAL2 / CELLBAL3 mask
-* 奇偶窗口 phase
-* 当前目标电芯标签
-
----
-
-## 11. 异常安全处理
-
-项目当前实现三类异常处理流程：
+### 7.2 正常任务链路
 
 ```text
-1. BringUp 初始化异常
-2. Runtime 运行时采样异常
-3. HwFault 硬件保护异常
+SampleTask → ProtectTask → BalanceTask → ControlTask
 ```
 
----
+这是正常业务路径。异常分支可能跳过均衡或直接通知控制任务；CAN 和辅助任务独立运行。
 
-### 11.1 BringUp 初始化异常
-
-初始化阶段会检查：
-
-* BQ76940 唤醒
-* 基础寄存器读取
-* ADC 校准参数读取
-* 硬件保护参数加载
-* OCD / SCD 配置
-* 采样链路自检
-
-异常处理流程：
+### 7.3 异常任务链路
 
 ```text
-BQ76940 初始化失败
-    ↓
-最多重试 3 次
-    ↓
-最终失败
-    ↓
-强制 Safe-Off
-    ↓
-关闭 BQ76200 CHG / DSG / CP / PCHG
-    ↓
-尝试关闭 BQ76940 FET 与 CELLBAL
-    ↓
-CAN 发送 0x305 故障帧
-    ↓
-LED 故障提示
-    ↓
-进入 STOP 低功耗故障保持态
+连续采样失败 → RuntimeTask → Safe-Off → ControlTask
+BQ76940 ALERT → HwFaultTask → 故障处理 → ControlTask
 ```
 
-该流程保证系统在 BQ76940 初始化失败时不会继续创建 FreeRTOS 任务，而是优先进入安全关断状态。
+启动阶段失败在进入正常调度前处理。整体流程见 [全局启动与任务创建流程图](docs/diagrams-drawio/BMS-48Pro_全局启动与任务创建流程图.drawio)。
 
----
+### 7.4 任务间同步
 
-### 11.2 Runtime 运行时采样异常
+| 机制 | 用途 |
+| --- | --- |
+| Mutex | 保护共享 I2C 总线和 BMS 上下文 |
+| Binary Semaphore | 正常任务接力、运行异常与硬件事件通知 |
+| Queue | 将 CAN 接收中断中的报文交给 CANTask |
 
-运行过程中，如果连续采样失败，会进入 RuntimeDiag 诊断流程。
+### 7.5 I2C Mutex
 
-当前实现：
+BQ76940 与电量计任务使用共享 I2C 访问保护。获取总线锁后执行硬件事务，结束后释放；超时作为错误交给相应业务处理。
 
-* 连续采样失败计数
-* 总采样失败计数
-* 最近故障码记录
-* 最近故障阶段记录
-* RuntimeFault 锁存
-* AFE 写禁止标志
-* Safe-Off 请求
-* Safe-Off 失败重试
-* 故障保持
-* CAN 故障诊断帧上报
+### 7.6 BMS Context Mutex
 
-RuntimeFault 触发后：
+全局状态锁用于快照读取与结果提交，避免多任务同时修改上下文。采样换算、算法判断和报文组织尽量使用局部数据，减少持锁时间。
+
+## 8. CAN 通讯设计
+
+### 8.1 CAN 总体设计
 
 ```text
-SampleTask 发现连续采样失败
-    ↓
-RuntimeDiag 记录失败
-    ↓
-首次进入 RuntimeFault
-    ↓
-设置 AFE 写禁止
-    ↓
-通知 RuntimeTask
-    ↓
-RuntimeTask 执行 Safe-Off
-    ↓
-关闭 BQ76200 执行层
-    ↓
-关闭 BQ76940 CELLBAL / CHG / DSG
-    ↓
-提交 Safe-Off 结果
-    ↓
-通知 ControlTask 保持安全状态
+BMS 固件 ←→ STM32 CAN / TJA1050 ←→ USB-CAN ←→ Qt / PCAN-View
 ```
 
-AFE 写禁止用于阻止 ProtectTask / BalanceTask 在故障后继续基于旧请求写入 BQ76940。
+当前使用 **500 kbps、标准数据帧**。状态和命令报文使用 8 字节数据，多字节字段按小端编码。
 
----
+### 8.2 周期状态上报
 
-### 11.3 HwFault 硬件故障异常
+| CAN ID | 内容 |
+| --- | --- |
+| `0x301` | Pack 总压、电流 |
+| `0x302` | C1～C4 电压 |
+| `0x303` | C5～C8 电压 |
+| `0x304` | C9 电压、TS1 温度、告警、保护、均衡目标、电流方向 |
+| `0x305` | 故障诊断：None / BringUp / Runtime / HwFault / RTOS Init |
+| `0x306` | 均衡 active、目标数量、CELLBAL1/2/3、phase、目标标签 |
 
-HwFault 主要处理 BQ76940 硬件保护事件，例如 OCD / SCD。
+`0x305` 的启动异常由对应启动故障路径发送；正常周期任务发送运行诊断或无故障状态。
 
-处理流程：
+### 8.3 PC 命令
+
+PC 通过 `0x401` 发送查询：Byte0 为命令，Byte1 为序号，其余保留。
+
+| 命令 | 功能 |
+| --- | --- |
+| `0x01` | 请求全部状态 `0x301～0x306` |
+| `0x02` | 请求故障诊断 `0x305` |
+| `0x03` | 请求均衡状态 `0x306` |
+
+### 8.4 ACK
+
+BMS 使用 `0x307` 返回原命令、序号、结果、详情、状态标志与故障类型。结果枚举包含 OK、UNKNOWN_CMD、INVALID_DLC、REJECTED 和 EXEC_FAIL，便于区分请求处理结果。
+
+### 8.5 CAN RX 中断 + Queue
 
 ```text
-BQ76940 ALERT
-    ↓
-HwFaultTask 被唤醒
-    ↓
-读取 SYS_STAT
-    ↓
-识别 OCD / SCD
-    ↓
-生成硬件故障请求
-    ↓
-尝试补写 DSG OFF
-    ↓
-提交硬件故障状态
-    ↓
-通知 ControlTask 更新 BQ76200 执行层
-    ↓
-通过 CAN 0x305 上报 HwFault 诊断信息
+CAN FIFO → ISR / HAL 回调 → xQueueSendFromISR
+    → CAN RX Queue → CANTask → Protocol Parser → 数据响应 + ACK
 ```
 
-该流程强调：硬件保护事件发生后，即使 BQ76940 已经自动关断，软件仍会锁存故障并同步执行层状态。
+中断负责取帧和投递队列，业务解析在任务中完成；队列满时记录丢帧计数。流程见 [CAN 收发与命令闭环](docs/diagrams-drawio/CAN收发与命令闭环流程图v1.drawio)。
 
----
+### 8.6 详细 CAN 协议
 
-## 12. FreeRTOS 多任务架构
+完整字节表、标志位和示例见 [CAN 通讯协议](docs/can-protocol.md)。当前协议尚未包含电量计 SOC/SOH 字段。
 
-当前系统已迁移到 FreeRTOS 多任务架构。
+## 9. Qt BMS Monitor 上位机
 
-已实现任务：
+### 9.1 上位机简介
 
-| 任务              | 功能                               |
-| --------------- | -------------------------------- |
-| BMS_SampleTask  | 电压 / 电流 / 温度 / SYS_STAT 采样       |
-| BMS_ProtectTask | 软件告警与温度保护处理                      |
-| BMS_BalanceTask | 自动均衡决策与 CELLBAL 写入               |
-| BMS_ControlTask | BQ76200 执行层状态更新                  |
-| BMS_RuntimeTask | RuntimeFault Safe-Off            |
-| BMS_HwFaultTask | BQ76940 ALERT / OCD / SCD 硬件故障处理 |
-| BMS_CANTask     | CAN 周期上报、RX 命令解析、ACK 响应          |
-| BMS_AuxTask     | LED 与运行状态打印                      |
-| BMS_GaugeTask   | BQ34Z100 电量计预留任务                 |
+上位机位于 `BMS-QT/BMS_Monitor`，采用 C++17、Qt Widgets 和 Qt SerialBus。`CanConnection` 管理设备，`BmsCanProtocol` 解析报文，`MainWindow` 组织状态展示和交互，自定义图形组件绘制单体电压分布。
 
-核心任务链路：
+### 9.2 CAN 连接
+
+通过 Qt `peakcan` 插件扫描和连接 PCAN 设备，支持设备刷新、连接/断开、波特率设置和连接日志。当前截图使用 PCAN-USB `usb0`、500 kbps、标准帧。
+
+### 9.3 Pack 状态显示
+
+展示总电压、电流和温度，并将原始 mV、mA、0.1°C 数据转换为便于阅读的 V、A、°C。
+
+### 9.4 9S 单体电压显示
+
+以电压卡片和柱状图展示 C1～C9，突出最高/最低电芯与单体压差，辅助观察电芯一致性和均衡状态。
+
+### 9.5 SOC / SOH
+
+SOC 区域已预留，当前显示“电量计未接入”；SOC/SOH 的 CAN 字段、协议解析与数据显示正在开发。
+
+### 9.6 告警 / 故障显示
+
+解析 `0x304` 告警与保护字段、`0x305` 诊断字段及 `0x306` 均衡字段。软件告警与故障诊断分别展示，因此可以同时出现“UV / DIFF”和“无故障”，两者对应不同的状态来源。
+
+### 9.7 实时数据曲线
+
+界面已预留趋势曲线区域与选择控件，历史数据缓存、时间轴与曲线刷新正在开发。当前单体电压柱状图展示各电芯的即时电压分布。
+
+### 9.8 CAN 命令交互
+
+界面提供查询命令选择和发送入口，代码具备 ACK 解析。原始报文区展示时间戳、方向、ID、DLC、数据与解析结果，支持暂停显示与清空。
+
+上位机运行效果见首页截图，联调数据与日志见第 10 节。
+
+## 10. 实物测试与验证
+
+### 10.1 实物平台
+
+联调平台由 9S 电池组、BMS 板、PCAN-USB 和 PC 组成，CAN 用于上位机通讯，UART 用于观察启动与运行日志。
+
+### 10.2 PCAN-View 测试
+
+PCAN-View 联调覆盖 `0x301～0x306` 周期上报、三种查询命令、`0x307` ACK 和未知命令响应。下图展示周期状态帧与请求全部状态的 ACK：
+
+![PCAN-View 周期上报与请求全部状态 ACK](docs/images/pcan-query-all-ack.png)
+
+对应报文：
 
 ```text
-SampleTask
-    ↓
-ProtectTask
-    ↓
-BalanceTask
-    ↓
-ControlTask
+PC → BMS：0x401  01 01 00 00 00 00 00 00  请求全部状态
+BMS → PC：0x301～0x306                   返回状态帧
+BMS → PC：0x307  01 01 00 00 00 00 00 00  ACK：命令 01，序号 01，OK
 ```
 
-异常任务链路：
+ACK 中命令与序号均为 `0x01`，结果为 OK；状态标志为 `0x00`，与截图中未开启均衡的状态一致。CAN 波特率为 500 kbit/s，连接状态为 OK。
 
-```text
-SampleTask
-    ↓
-RuntimeTask
-    ↓
-ControlTask
-```
+### 10.3 Qt 上位机联调
 
-硬件故障链路：
+当前 [Qt 运行截图](docs/images/qt-bms-monitor.png) 显示：
 
-```text
-BQ76940 ALERT
-    ↓
-HwFaultTask
-    ↓
-ControlTask
-```
+- PCAN-USB 已连接，波特率为 500 kbps。
+- Pack 总压 30.765 V、电流 0.622 A、温度 28.8°C。
+- 9 节电芯数据已显示，最高 C1 为 3.627 V，最低 C6 为 3.252 V，压差 375 mV。
+- 告警为 UV / DIFF，均衡为 Inactive，故障诊断区显示无故障。
+- 原始报文区可见 `0x301～0x306`，接收计数为 102，解析错误计数为 0。
 
-CAN 任务独立运行：
+### 10.4 串口运行日志
 
-```text
-BMS_CANTask
-    ├── 周期上报 0x301 ~ 0x306
-    └── 处理 RX Queue 中的 0x401 命令帧，并回复 0x307 ACK
-```
-
----
-
-## 13. 互斥锁、信号量与队列
-
-当前已实现：
-
-| RTOS 机制          | 用途                            |
-| ---------------- | ----------------------------- |
-| ctx mutex        | 保护全局 `BQ76940_AppCtx_t` 状态结构体 |
-| i2c mutex        | 保护 Soft I2C 总线                |
-| binary semaphore | 任务链路接力                        |
-| CAN RX queue     | CAN 接收中断与 CANTask 解耦          |
-
-锁粒度设计：
-
-```text
-I2C mutex：
-    只保护硬件 I2C 读写
-
-ctx mutex：
-    只保护全局状态读取 / 提交
-
-无锁阶段：
-    数据换算、算法判断、状态决策
-```
-
-这种设计避免长时间持有全局锁，提高任务实时性和模块解耦程度。
-
----
-
-## 14. CAN 通讯协议
-
-当前已实现 CAN 周期上报、故障诊断上报、均衡状态上报以及 PC 端命令请求 / ACK 响应闭环。
-
-CAN 波特率：
-
-```text
-500 kbps
-```
-
----
-
-### 14.1 BMS → PC 状态帧
-
-| CAN ID  | 内容                                                                   |
-| ------- | -------------------------------------------------------------------- |
-| `0x301` | Pack 总压、Pack 电流                                                      |
-| `0x302` | Cell 1 ~ Cell 4 电压                                                   |
-| `0x303` | Cell 5 ~ Cell 8 电压                                                   |
-| `0x304` | Cell 9 电压、TS1 温度、告警标志、保护标志、均衡目标、电流方向                                 |
-| `0x305` | 故障诊断帧：BringUp / RuntimeFault / HwFault / None                        |
-| `0x306` | 均衡状态帧：bal_active、target_count、CELLBAL1/2/3、parity_phase、target_label |
-
----
-
-### 14.2 `0x301` Pack 状态帧
-
-| Byte    | 内容                      |
-| ------- | ----------------------- |
-| Byte0~3 | Pack 总压，单位 mV，uint32，小端 |
-| Byte4~7 | Pack 电流，单位 mA，int32，小端  |
-
----
-
-### 14.3 `0x302` Cell 1 ~ Cell 4
-
-| Byte    | 内容                    |
-| ------- | --------------------- |
-| Byte0~1 | Cell1 电压，mV，uint16，小端 |
-| Byte2~3 | Cell2 电压，mV，uint16，小端 |
-| Byte4~5 | Cell3 电压，mV，uint16，小端 |
-| Byte6~7 | Cell4 电压，mV，uint16，小端 |
-
----
-
-### 14.4 `0x303` Cell 5 ~ Cell 8
-
-| Byte    | 内容                    |
-| ------- | --------------------- |
-| Byte0~1 | Cell5 电压，mV，uint16，小端 |
-| Byte2~3 | Cell6 电压，mV，uint16，小端 |
-| Byte4~5 | Cell7 电压，mV，uint16，小端 |
-| Byte6~7 | Cell8 电压，mV，uint16，小端 |
-
----
-
-### 14.5 `0x304` Cell 9 + 状态
-
-| Byte    | 内容                    |
-| ------- | --------------------- |
-| Byte0~1 | Cell9 电压，mV，uint16，小端 |
-| Byte2~3 | TS1 温度，单位 0.1°C       |
-| Byte4   | alarm_flags           |
-| Byte5   | protect_flags         |
-| Byte6   | bal_target_label      |
-| Byte7   | pack_current_dir      |
-
-`alarm_flags`：
-
-| bit  | 含义   |
-| ---- | ---- |
-| bit0 | UV   |
-| bit1 | OV   |
-| bit2 | DIFF |
-| bit3 | OT   |
-| bit4 | UT   |
-
-`protect_flags`：
-
-| bit  | 含义                     |
-| ---- | ---------------------- |
-| bit0 | OT cutoff active       |
-| bit1 | UT charge block active |
-| bit2 | HW DSG block active    |
-| bit3 | HW OCD active          |
-| bit4 | HW SCD active          |
-| bit5 | Balance active         |
-
----
-
-### 14.6 `0x305` 故障诊断帧
-
-`0x305` 用于上报当前故障诊断状态。
-
-故障类型：
-
-| fault_type | 含义            |
-| ---------- | ------------- |
-| `0x00`     | None          |
-| `0x01`     | BringUp Fault |
-| `0x02`     | Runtime Fault |
-| `0x03`     | HwFault       |
-
-无故障时：
-
-```text
-0x305: 00 00 00 00 00 00 00 00
-```
-
-Runtime Fault 时：
-
-| Byte    | 内容                      |
-| ------- | ----------------------- |
-| Byte0   | fault_type = Runtime    |
-| Byte1   | runtime fault code      |
-| Byte2   | runtime fault stage     |
-| Byte3   | safe_off_result         |
-| Byte4   | runtime fault active    |
-| Byte5   | safe_off_retry_count    |
-| Byte6~7 | total_sample_fail_count |
-
-HwFault 时：
-
-| Byte    | 内容                        |
-| ------- | ------------------------- |
-| Byte0   | fault_type = HwFault      |
-| Byte1   | hw_fault_last_code        |
-| Byte2   | hw_fault_sys_stat_latched |
-| Byte3   | hw_fault_flags            |
-| Byte4   | hw_fault_last_apply_ret   |
-| Byte5   | reserved                  |
-| Byte6~7 | hw_fault_count            |
-
----
-
-### 14.7 `0x306` 均衡状态帧
-
-| Byte  | 内容               |
-| ----- | ---------------- |
-| Byte0 | bal_active       |
-| Byte1 | bal_target_count |
-| Byte2 | CELLBAL1 mask    |
-| Byte3 | CELLBAL2 mask    |
-| Byte4 | CELLBAL3 mask    |
-| Byte5 | bal_parity_phase |
-| Byte6 | bal_target_label |
-| Byte7 | reserved         |
-
-示例：
-
-```text
-0x306: 01 02 02 00 02 01 02 00
-```
-
-含义：
-
-```text
-bal_active       = 1
-target_count     = 2
-CELLBAL1 mask    = 0x02
-CELLBAL2 mask    = 0x00
-CELLBAL3 mask    = 0x02
-parity_phase     = 1
-target_label     = 2
-```
-
----
-
-### 14.8 PC → BMS 命令帧 `0x401`
-
-| CAN ID  | 方向       | 内容    |
-| ------- | -------- | ----- |
-| `0x401` | PC → BMS | 命令请求帧 |
-
-数据格式：
-
-| Byte    | 含义       |
-| ------- | -------- |
-| Byte0   | cmd      |
-| Byte1   | seq      |
-| Byte2~7 | reserved |
-
-当前支持命令：
-
-| CMD    | 功能                        |
-| ------ | ------------------------- |
-| `0x01` | 请求立即上报全部状态帧 `0x301~0x306` |
-| `0x02` | 请求故障诊断帧 `0x305`           |
-| `0x03` | 请求均衡状态帧 `0x306`           |
-| 其他     | 返回 UNKNOWN_CMD ACK，不执行动作  |
-
-示例：
-
-```text
-0x401: 01 01 00 00 00 00 00 00
-```
-
-含义：
-
-```text
-cmd = 0x01，请求全部状态
-seq = 0x01，本次命令序号
-```
-
----
-
-### 14.9 BMS → PC ACK 帧 `0x307`
-
-| CAN ID  | 方向       | 内容         |
-| ------- | -------- | ---------- |
-| `0x307` | BMS → PC | 命令 ACK 响应帧 |
-
-数据格式：
-
-| Byte    | 含义           |
-| ------- | ------------ |
-| Byte0   | 原命令 cmd      |
-| Byte1   | 原命令 seq      |
-| Byte2   | result       |
-| Byte3   | detail       |
-| Byte4   | status_flags |
-| Byte5   | fault_type   |
-| Byte6~7 | reserved     |
-
-ACK result：
-
-| result | 含义          |
-| ------ | ----------- |
-| `0x00` | OK          |
-| `0x01` | UNKNOWN_CMD |
-| `0x02` | INVALID_DLC |
-| `0x03` | REJECTED    |
-| `0x04` | EXEC_FAIL   |
-
-`status_flags`：
-
-| bit  | 含义                     |
-| ---- | ---------------------- |
-| bit0 | RuntimeFault active    |
-| bit1 | HW DSG block active    |
-| bit2 | Balance active         |
-| bit3 | OT cutoff active       |
-| bit4 | UT charge block active |
-
-示例：
-
-```text
-0x307: FF 04 01 FF 04 00 00 00
-```
-
-含义：
-
-```text
-cmd          = 0xFF
-seq          = 0x04
-result       = UNKNOWN_CMD
-detail       = 0xFF
-status_flags = 0x04，当前正在均衡
-fault_type   = 0x00，无故障
-```
-
----
-
-## 15. CAN RX Queue 设计
-
-CAN 接收采用 **RX 中断 + FreeRTOS Queue** 的方式。
-
-接收路径：
-
-```text
-PCAN 发送 0x401
-    ↓
-STM32 CAN 外设接收
-    ↓
-CAN RX FIFO0
-    ↓
-USB_LP_CAN1_RX0_IRQHandler
-    ↓
-HAL_CAN_IRQHandler
-    ↓
-HAL_CAN_RxFifo0MsgPendingCallback
-    ↓
-HAL_CAN_GetRxMessage 读取帧
-    ↓
-封装为 CAN_DrvRxFrame_t
-    ↓
-xQueueSendFromISR 投递到 CAN RX Queue
-    ↓
-BMS_CANTask xQueueReceive 取出
-    ↓
-BQ76940_AppHandleCanCommand 解析命令
-    ↓
-发送状态帧 / 故障帧 / 均衡帧
-    ↓
-发送 0x307 ACK
-```
-
-设计原则：
-
-* 中断中只读取 CAN FIFO 并投递队列
-* 不在中断中解析业务命令
-* 不在中断中访问 BMS 全局状态
-* 不在中断中执行复杂发送流程
-* 命令解析统一在 BMS_CANTask 中完成
-* 队列满时记录 drop count，避免中断阻塞
-
----
-
-## 16. 运行时串口输出
-
-当前默认串口输出采用一行摘要形式：
+串口运行日志示例：
 
 ```text
 [BMS] P=35346mV MAX=VC1:3967mV MIN=VC6:3842mV D=125mV I=2mA T=291dC ALM=00 PROT=20 BAL=1:VC1 SYS=00
 ```
 
-字段说明：
+字段涵盖总压、极值、压差、电流、温度、告警、保护、均衡和 SYS_STAT。此示例与当前 Qt 截图属于不同运行时刻。
 
-| 字段   | 含义               |
-| ---- | ---------------- |
-| P    | Pack 总压          |
-| MAX  | 最高单体             |
-| MIN  | 最低单体             |
-| D    | 最大压差             |
-| I    | Pack 电流          |
-| T    | TS1 温度，单位 0.1°C  |
-| ALM  | 软件告警标志           |
-| PROT | 保护状态标志           |
-| BAL  | 均衡状态与目标电芯        |
-| SYS  | BQ76940 SYS_STAT |
-
----
-
-## 17. PCAN-View 实物验证
-
-当前已通过 PCAN-View 完成 CAN V1 验证。
-
-已验证内容：
-
-* `0x301~0x306` 周期上报
-* `0x306` 均衡状态帧上报
-* `0x401` 请求全部状态
-* `0x401` 请求故障诊断
-* `0x401` 请求均衡状态
-* `0x307` ACK 响应
-* 未知命令 `0xFF` 返回 UNKNOWN_CMD
-* ACK 中 status_flags 与当前均衡状态一致
-
-示例 1：请求全部状态
+## 11. 项目目录
 
 ```text
-PC -> BMS:
-0x401: 01 01 00 00 00 00 00 00
-
-BMS -> PC:
-0x301
-0x302
-0x303
-0x304
-0x305
-0x306
-0x307: 01 01 00 00 04 00 00 00
+STM32-BMS-48Pro/
+├── Users/
+│   ├── main.c                         # 启动、自检与启动异常处理
+│   ├── bms_config.h                   # 任务参数、开关与测试配置
+│   ├── bms_log.h                      # 日志配置
+│   └── App/                           # BMS 应用与 FreeRTOS 任务
+├── Drivers/
+│   ├── BSP/                           # BQ 驱动、执行端口和板级接口
+│   └── STM32F1xx_HAL_Driver/           # HAL 驱动
+├── Middlewares/                       # FreeRTOS 等中间件
+├── BMS-QT/
+│   └── BMS_Monitor/                    # Qt 上位机与 CMake 工程
+├── docs/
+│   ├── can-protocol.md                # CAN 字节定义与示例
+│   ├── diagrams-drawio/               # 流程图源文件
+│   └── images/                        # README 图片
+└── Projects/
+    └── MDK-ARM/                       # Keil 工程
 ```
 
-示例 2：未知命令
+**固件入口：**使用 Keil MDK 打开 [BMS_Rebuild_add_34z100.uvprojx](Projects/MDK-ARM/BMS_Rebuild_add_34z100.uvprojx)。启动前核对板卡接线、保护参数与 `bms_config.h` 功能开关；当前电量计任务默认关闭。
 
-```text
-PC -> BMS:
-0x401: FF 04 00 00 00 00 00 00
+**上位机入口：**使用 Qt Creator 打开 [CMakeLists.txt](BMS-QT/BMS_Monitor/CMakeLists.txt)。工程要求 CMake ≥ 3.19、Qt 6 ≥ 6.5、C++17，依赖 Core、Widgets 和 SerialBus；连接实物需要可用的 Qt PeakCAN 插件及相应 PCAN 驱动/运行库。运行后选择设备、500 kbps 和标准帧，再连接查看状态。
 
-BMS -> PC:
-0x307: FF 04 01 FF 04 00 00 00
-```
+**串口：**当前初始化波特率为 115200。
 
-其中 `0x307` Byte4 = `0x04` 表示当前 `bal_active = 1`，系统正在均衡。
+## 12. 项目文档
 
----
+| 文档主题 | 阅读入口 |
+| --- | --- |
+| 项目概述与硬件平台 | 本 README 第 1～4 节 |
+| FreeRTOS 软件架构 | 第 5、7 节；[启动与任务创建流程图](docs/diagrams-drawio/BMS-48Pro_全局启动与任务创建流程图.drawio) |
+| 系统启动与数据采集 | [Bring-up 流程](docs/diagrams-drawio/Bring-up与自检流程图.drawio)、[采样流程](docs/diagrams-drawio/采样流程.drawio) |
+| 保护与异常处理 | [HwFault 流程](docs/diagrams-drawio/HwFault_V2_Flow.drawio)、[RuntimeDiag](docs/diagrams-drawio/runtimeDiag.drawio) |
+| 自动均衡策略 | [均衡决策](docs/diagrams-drawio/BQ76940_均衡决策流程.drawio)、[均衡任务](docs/diagrams-drawio/均衡任务流程.drawio) |
+| CAN 通讯协议 | [详细协议](docs/can-protocol.md)、[收发与命令闭环](docs/diagrams-drawio/CAN收发与命令闭环流程图v1.drawio) |
+| Qt 上位机设计 | 本 README 第 9 节 |
+| 实物联调与运行日志 | 本 README 第 10 节 |
 
-## 18. 软件架构
+`.drawio` 流程图可使用 diagrams.net / draw.io 打开编辑；首页架构图使用 Mermaid。
 
-当前项目采用分层结构：
+## 13. 项目状态与后续计划
 
-```text
-STM32-BMS-48Pro
-├── Users
-│   ├── main.c
-│   ├── bms_config.h
-│   ├── bms_log.h
-│   └── App
-│       ├── bq76940_app
-│       ├── bq76940_app_can
-│       ├── bq76940_balance
-│       ├── bq76940_protect
-│       ├── bq76940_diag
-│       ├── bms_tasks
-│       └── bq34z100_app
-│
-├── Drivers
-│   ├── BSP
-│   │   ├── can
-│   │   │   └── can_drv
-│   │   ├── soft_i2c
-│   │   │   └── soft_i2c1
-│   │   ├── uart
-│   │   ├── led
-│   │   └── io_ctrl
-│   │
-│   ├── BQ76940
-│   │   ├── bq76940_drv
-│   │   ├── bq76940_alarm
-│   │   ├── bq76940_protect
-│   │   └── bq76940_print
-│   │
-│   └── BQ76200
-│       ├── bq76200_exec
-│       └── bq76200_exec_port
-│
-├── Middleware
-│   └── FreeRTOS
-│
-├── docs
-│   ├── flowcharts
-│   ├── diagrams
-│   └── test_logs
-│
-└── Projects
-    └── MDK-ARM
-```
+| 模块 | 状态 | 当前范围 |
+| --- | --- | --- |
+| BQ76940 采样 | 已实现 | 9S 电压、电流、温度采集，已接入 Qt 显示 |
+| 软件告警与硬件保护 | 已实现 | 告警判定、OCD/SCD 处理、故障锁存与条件恢复 |
+| 自动均衡 | 已实现 | 多电芯选择、奇偶轮换、迟滞与读回校验 |
+| BQ76200 执行层 | 已实现 | 控制接口与状态机；完整预充流程仍需完善 |
+| FreeRTOS | 已实现 | 任务调度、信号量、互斥锁与接收队列 |
+| CAN | 已实现 | 周期状态上报、查询命令与带序号 ACK |
+| 分级异常 / Safe-Off | 已实现 | 启动、运行与硬件异常处理，关断结果记录和重试 |
+| Qt Monitor | 已联调基本数据链路 | CAN 连接、状态显示、原始报文；具备查询与 ACK 解析代码 |
+| BQ34Z100-G1 | 开发中 | 读取框架已实现，GaugeTask 默认关闭；继续完善配置、容量学习与系统接入 |
+| SOC/SOH CAN 与 Qt 接入 | 开发中 | 电量计字段与显示链路尚未接入 |
+| 历史趋势曲线 | 开发中 | UI 已预留，历史数据与曲线尚未接入 |
+| Flash 参数管理 | 计划中 | 参数保存与配置版本管理 |
 
----
+下一步重点：
 
-## 19. 项目特点
+- 完善 BQ34Z100 参数配置、校准和容量学习，接通 SOC/SOH 的 CAN 与 Qt 链路。
+- 实现 Qt 历史数据缓存、时间轴与趋势曲线。
+- 增加 Flash 参数管理，扩展协议与上位机配置能力。
+- 扩展保护恢复、预充、故障关断、异常通讯与长期运行测试。
 
-本项目重点体现以下嵌入式工程能力：
+## 14. 声明
 
-* BQ76940 电池监控芯片真实硬件调试
-* 多串电池采样与校准换算
-* BMS 软件告警与硬件保护逻辑设计
-* BQ76940 CELLBAL 自动均衡控制
-* BQ76200 执行层状态机设计
-* FreeRTOS 多任务拆分与同步
-* I2C 总线互斥与全局状态保护
-* CAN 周期上报、命令接收与 ACK 闭环
-* CAN RX 中断与 FreeRTOS Queue 解耦
-* RuntimeFault / HwFault / BringUpFault 安全处理
-* Safe-Off 异常关断流程
-* 模块化代码重构与 Git 分支管理
-* PCAN-View 实物验证与测试截图留档
+本项目用于嵌入式学习、工程实践与作品展示，目前的实现和测试范围以文档记录为准，尚不代表完成产品级验证或认证。
 
----
+当前 CAN 仅开放状态查询命令，不提供远程强制开启 MOS、修改保护阈值或强制均衡接口。硬件测试需结合实际电芯、采样与功率回路参数，在具备限流和测量条件的环境下进行。
 
-## 20. 项目边界说明
-
-本项目为学习、重构与求职展示项目，当前 V1 重点验证 BMS 软件架构与核心控制流程。
-
-当前 V1 已实现核心功能，但仍保留以下后续扩展方向：
-
-* BQ34Z100-G1 电量计深度接入
-* Qt 上位机状态显示
-* Flash 参数保存
-* 更完整的 SOC / SOH 估算
-* 更完善的测试用例与自动化测试
-* 更复杂的 CAN 上位机协议
-* 更完整的实车 / 储能场景验证
-
-出于安全边界考虑，当前 CAN V1 仅开放查询类命令，不开放远程强制开启 MOS、远程修改保护阈值、远程强制均衡等高风险控制命令。
-
----
-
-## 21. 当前收尾阶段计划
-
-当前项目已进入 V1 收尾阶段，后续重点不再继续堆功能，而是整理为求职展示作品。
-
-收尾内容：
-
-* 整理 README
-* 补充流程图
-* 保存 PCAN-View 截图
-* 保存串口日志
-* 整理 CAN 协议表
-* 整理均衡策略说明
-* 整理异常处理流程
-* 准备项目复盘问答
-* 补充 C / STM32 / FreeRTOS / CAN / I2C 基础知识
-
----
-
-## 22. 作者
+## 15. 作者
 
 **Evan**
 
 Embedded Developer
 
-GitHub: [Secret-G](https://github.com/Secret-G)
+GitHub：[Secret-G](https://github.com/Secret-G)
