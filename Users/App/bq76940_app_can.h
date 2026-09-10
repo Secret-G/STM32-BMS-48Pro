@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "can_drv.h"
+#include "bq34z100_app.h"
 
 #define BMS_CAN_FAULT_TYPE_NONE 0U
 #define BMS_CAN_FAULT_TYPE_BRINGUP 1U
@@ -25,6 +26,8 @@
 #define BMS_CAN_ACK_EXEC_FAIL 0x04U
 
 struct BQ76940_AppCtx;
+
+uint8_t BQ34Z100_AppSendCanStatus(const BQ34Z100_AppCtx_t *ctx);
 
 void BQ76940_AppSendCanTelemetry(const struct BQ76940_AppCtx *ctx);
 

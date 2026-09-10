@@ -284,8 +284,27 @@ QString BmsCanProtocol::describeFrame(const QCanBusFrame &frame)
         case 0x304U: return QStringLiteral("Cell9 / 温度 / 状态");
         case 0x305U: return QStringLiteral("故障诊断");
         case 0x306U: return QStringLiteral("均衡状态");
+        case 0x308U: return QStringLiteral("BQ34Z100 电量 / 容量");
         case 0x307U: return QStringLiteral("命令ACK");
         case 0x401U: return QStringLiteral("PC命令请求");
         default: return QStringLiteral("未定义报文");
     }
+}
+
+bool BmsCanProtocol::parseGaugeStatus(const QCanBusFrame &frame, BmsGaugeData &gaugeData)
+{
+    if (!isEightByteStandardDataFrame(frame, 0x308U)) return false;
+    const QByteArray payload = frame.payload();
+    BmsGaugeData next;
+    next.socPercent = static_cast<quint8>(payload.at(0));
+    next.sohPercent = static_cast<quint8>(payload.at(1));
+    next.remainingCapacityMah = readU16LittleEndian(payload, 2);
+    next.fullChargeCapacityMah = readU16LittleEndian(payload, 4);
+    next.lastError = static_cast<quint8>(payload.at(7));
+    next.received = true;
+    next.valid = static_cast<quint8>(payload.at(6)) == 1U
+                 && next.lastError == 0U
+                 && next.socPercent <= 100U && next.sohPercent <= 100U;
+    gaugeData = next;
+    return true;
 }

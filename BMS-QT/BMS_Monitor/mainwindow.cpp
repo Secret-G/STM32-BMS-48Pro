@@ -93,6 +93,10 @@ MainWindow::MainWindow(QWidget *parent)
       m_canConnection(new CanConnection(this))
 {
     ui->setupUi(this);
+    updateGaugeDisplay();
+    auto *gaugeTimer = new QTimer(this);
+    connect(gaugeTimer, &QTimer::timeout, this, &MainWindow::updateGaugeDisplay);
+    gaugeTimer->start(500);
 
     // 启动时尚未收到真实单体电压，先显示“-- V”。
     updateCellVoltageDisplay();
@@ -494,6 +498,9 @@ void MainWindow::handleCanConnectionStateChanged(bool connected)
         m_faultData = {};
         m_balanceData = {};
         m_ackData = {};
+        m_gaugeData = {};
+        m_gaugeAge.invalidate();
+        updateGaugeDisplay();
         updateCellVoltageDisplay();
         updatePackStatusDisplay();
         updateStatus304Display();
@@ -557,7 +564,7 @@ void MainWindow::handleCanFrame(const QCanBusFrame &frame)
     QString parseResult = BmsCanProtocol::describeFrame(frame);
 
     /*判断canid的范围*/
-    const bool knownBmsId = frame.frameId() >= 0x301U && frame.frameId() <= 0x307U;
+    const bool knownBmsId = frame.frameId() >= 0x301U && frame.frameId() <= 0x308U;
 
     if (knownBmsId
         && (frame.frameType() != QCanBusFrame::DataFrame
@@ -598,6 +605,12 @@ void MainWindow::handleCanFrame(const QCanBusFrame &frame)
     if (BmsCanProtocol::parseBalanceStatus(frame, m_balanceData))
     {
         updateBalanceDisplay();
+    }
+
+    if (BmsCanProtocol::parseGaugeStatus(frame, m_gaugeData))
+    {
+        m_gaugeAge.restart();
+        updateGaugeDisplay();
     }
 
     if (BmsCanProtocol::parseCommandAck(frame, m_ackData))
@@ -1121,4 +1134,28 @@ void MainWindow::updateBottomStatus()
     ui->labelTxCount->setText(QStringLiteral("发送：%1").arg(m_transmittedFrameCount));
 
     ui->labelParseErrorCount->setText(QStringLiteral("解析错误：%1").arg(m_parseErrorCount));
+}
+
+void MainWindow::updateGaugeDisplay()
+{
+    const bool stale = m_gaugeAge.isValid() && m_gaugeAge.elapsed() >= 3500;
+    const bool valid = m_gaugeData.received && m_gaugeData.valid && !stale;
+    ui->labelSoc->setText(valid ? QStringLiteral("%1 %").arg(m_gaugeData.socPercent)
+                               : QStringLiteral("-- %"));
+    ui->labelSoc->setStyleSheet(valid ? QStringLiteral("color:#168a45;")
+                                      : QStringLiteral("color:#98a2b3;"));
+    QString detail;
+    if (!m_gaugeData.received) detail = QStringLiteral("等待电量数据");
+    else if (stale) detail = QStringLiteral("电量数据超时");
+    else if (!m_gaugeData.valid)
+        detail = QStringLiteral("电量无效 E%1").arg(hexByte(m_gaugeData.lastError));
+    else detail = QStringLiteral("SOH %1%").arg(m_gaugeData.sohPercent);
+    ui->labelSocSource->setText(detail);
+    const QString tooltip = valid
+        ? QStringLiteral("BQ34Z100\nSOC：%1%  SOH：%2%\n剩余容量：%3 mAh\n满充容量：%4 mAh")
+              .arg(m_gaugeData.socPercent).arg(m_gaugeData.sohPercent)
+              .arg(m_gaugeData.remainingCapacityMah).arg(m_gaugeData.fullChargeCapacityMah)
+        : detail;
+    ui->labelSoc->setToolTip(tooltip);
+    ui->labelSocSource->setToolTip(tooltip);
 }

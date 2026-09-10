@@ -20,6 +20,7 @@ CAN 波特率：
 | `0x304` | Cell 9 电压、TS1 温度、告警标志、保护标志、均衡目标、电流方向                                 |
 | `0x305` | 故障诊断帧：BringUp / RuntimeFault / HwFault / None                        |
 | `0x306` | 均衡状态帧：bal_active、target_count、CELLBAL1/2/3、parity_phase、target_label |
+| `0x308` | BQ34Z100：SOC、SOH、剩余容量、满充容量、数据有效标志、错误码 |
 
 ---
 
@@ -295,8 +296,38 @@ fault_type   = 0x00，无故障
 
 HwFault Byte3：bit0 为 OCD active，bit1 为 SCD active，bit2 为 DSG block。应结合这些标志判断当前状态。BringUp 和 RTOS 初始化失败由启动故障路径单独发送。
 
-### 电量计扩展边界
+### `0x308` 电量计状态帧
 
-当前上述帧未定义 SOC、SOH、Qmax 或容量字段。电量计接入 Qt 前，需要补充对应协议和解析逻辑。
+11 位标准数据帧，DLC 固定为 8。每秒随其他状态帧上报；收到 `0x401` 的 `0x01` 查询全部状态命令（DLC=8）时也发送，随后沿用原有 ACK。ACK 表示命令已处理，不保证 PC 已收到每个状态帧。
+
+| Byte | 内容 |
+| --- | --- |
+| 0 | SOC，uint8，0～100% |
+| 1 | SOH，uint8，0～100% |
+| 2～3 | RemainingCapacity，uint16，小端，mAh |
+| 4～5 | FullChargeCapacity，uint16，小端，mAh |
+| 6 | data_valid：1=最近完整采样有效，0=不可使用数值 |
+| 7 | last_error：0=成功；非零错误见下表 |
+
+容量单位沿用当前驱动的未缩放 mAh。若生产配置使用容量/电流缩放，必须在固件中加入与该配置匹配的换算并重新核对协议量程，不能直接将缩放后的原始值当作 mAh。
+
+| last_error | 含义 |
+| --- | --- |
+| 10～21（十进制） | 依次为 SOC、MaxError、RM、FCC、电压、平均电流、电流、温度、Flags、FlagsB、循环次数、SOH 读取失败 |
+| 22（十进制） | SOC、SOH 或 MaxError 超出 0～100 |
+| 0xF0 | I²C 总线互斥锁超时 |
+| 0xF1 | 尚未完成首次采样 |
+| 0xF2 | 编译配置关闭电量计任务 |
+| 0xF3 | 最后一次成功采样已超过或等于 3000 ms |
+
+无效时 Byte0～5 清零，接收方必须以 Byte6 判断有效性，不能将无效帧中的 SOC=0 解读为电池耗尽。恢复完整采样后自动恢复有效。
+
+示例：`4B 5F B8 0B A0 0F 01 00` 表示 SOC=75%、SOH=95%、RM=3000 mAh、FCC=4000 mAh、有效。
+
+Qt 显示 SOC 和 SOH；鼠标悬停在 SOC 或 SOH 上可查看容量。断开连接清空状态；连续 3500 ms 未收到合法格式的 `0x308` 时显示超时并隐藏数值。格式错误帧不会刷新接收时间。
+
+`data_valid` 只表示通信、数值范围和采样新鲜度，不认证 ChemID、校准、学习、IT 启用状态或 SOC 精度。本帧不包含 Qmax；Flags、MaxError、循环次数等仍保留在固件采样上下文中，可通过周期调试日志查看。
+
+验证：构建 Qt 时启用 `BMS_BUILD_PROTOCOL_TESTS=ON`，运行 `ctest --test-dir <build目录> --output-on-failure`。测试将实际固件采样/打包函数与实际 Qt 解析函数连接，覆盖逐项读取失败、恢复、小端容量、无效状态和错误帧格式。上板还需验证 `0x308` 周期收发、查询全部状态、I²C 断开/恢复和 CAN 停发超时。
 
 > **待补充：**各故障码/阶段码枚举说明、带时间戳的命令与 ACK 实测报文，以及协议版本记录。

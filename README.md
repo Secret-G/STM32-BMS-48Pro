@@ -2,7 +2,7 @@
 
 基于 **STM32F103C8T6 + BQ76940** 的 9S 锂电池管理系统，
 结合 FreeRTOS、CAN 与 Qt 上位机，实现从电池数据采集、保护与均衡到 PC 端状态监控的完整链路，
-并正在接入 **BQ34Z100-G1 SOC/SOH 电量管理**。
+并已接入 **BQ34Z100-G1 SOC/SOH 采集、CAN 上报与 Qt 显示**，电量精度仍需结合校准、学习和实物验证。
 
 **技术栈：** `C` · `STM32 HAL` · `FreeRTOS` · `Soft I2C` · `CAN` · `C++17` · `Qt 6` · `Keil MDK` · `CMake`
 
@@ -30,7 +30,7 @@
 
 **BMS 核心固件、FreeRTOS 任务协作和 CAN 查询/ACK 已实现，Qt 已接入实物数据。** 上位机可查看 9S 电压、Pack 电流、温度、告警、故障和均衡状态，并显示原始 CAN 报文。
 
-BQ34Z100 电量管理、SOC/SOH 通讯接入与历史趋势曲线正在开发，完成度统一见第 13 节。
+BQ34Z100 的 SOC/SOH 通讯和显示代码已接通；校准、学习与历史趋势曲线的完成度见第 13 节。
 
 ## 2. 项目亮点
 
@@ -84,7 +84,7 @@ flowchart LR
 | --- | --- | --- |
 | 4.1 | STM32F103C8T6 | 主控，负责任务调度、I2C 访问、CAN 通讯与 GPIO 控制 |
 | 4.2 | BQ76940 | 9S 电压、电流、TS1 温度采样，硬件保护状态与被动均衡控制 |
-| 4.3 | BQ34Z100-G1 | 电量计，SOC/SOH 与容量读取框架已实现，系统接入开发中 |
+| 4.3 | BQ34Z100-G1 | 电量计，SOC/SOH 与容量采集、CAN 和 Qt 接入已实现，待实物验证 |
 | 4.4 | BQ76200 | 高边驱动执行层，已实现控制接口与状态机 |
 | 4.5 | TJA1050 | CAN 物理层收发器，当前通讯为 500 kbps |
 | 4.6 | 9S 电池组及外围硬件 | 电芯连接、采样电阻、NTC、均衡与充放电外围 |
@@ -128,7 +128,7 @@ Hardware：STM32、监控芯片、执行器与总线
 
 `BQ76940_AppCtx_t` 汇总电压、电流、温度、告警、保护、均衡、运行诊断和硬件故障状态。任务在互斥保护下读取快照或提交结果，使算法计算与硬件访问尽量在全局状态锁之外完成。
 
-电量计使用独立的 `BQ34Z100_AppCtx_t` 保存 SOC、SOH、容量和有效性等信息；当前尚未形成电量计数据到 CAN、Qt 的完整链路。
+电量计使用独立的 `BQ34Z100_AppCtx_t` 保存 SOC、SOH、容量和有效性等信息；通过 `0x308` 将电量和容量发送给 Qt，采集失败或超时会使显示失效。
 
 ## 6. BMS 核心功能
 
@@ -184,7 +184,7 @@ BalanceCommit：提交 active、mask、目标数量、标签与 phase
 
 当前已实现 SOC、SOH、剩余容量、满充容量、电压、电流、温度、循环次数和状态标志等读取逻辑，并维护数据有效性与错误码。
 
-GaugeTask 通过共享 I2C 总线周期读取电量计，当前由 `BMS_ENABLE_GAUGE_TASK = 0U` 默认关闭。参数配置、校准、Qmax/容量学习和 CAN / Qt 接入属于后续电量管理开发内容。
+GaugeTask 通过共享 I2C 总线周期读取电量计，当前 `BMS_ENABLE_GAUGE_TASK = 1U` 默认启用。先读临时样本，再持上下文锁统一提交，CAN 在锁外发送快照。参数配置、校准、Qmax/容量学习和实物精度验证仍需在投产前完成；程序不会在每次启动时重写学习参数。
 
 ### 6.6 BQ76200 执行控制
 
@@ -226,7 +226,7 @@ Safe-Off 优先关闭 BQ76200 执行输出，并尝试关闭 BQ76940 FET 与 CEL
 | ProtectTask | 信号量 | +3 | 软件告警与保护处理 |
 | BalanceTask | 信号量 | +3 | 均衡决策、写入与提交 |
 | ControlTask | 信号量 | +3 | BQ76200 状态更新 |
-| GaugeTask | 1000 ms，默认关闭 | +1 | BQ34Z100 周期读取 |
+| GaugeTask | 1000 ms，默认启用 | +1 | BQ34Z100 周期读取、完整样本提交 |
 | RuntimeTask | 信号量 | +4 | RuntimeFault Safe-Off 与重试 |
 | HwFaultTask | 硬件事件信号量 | +5 | ALERT、OCD/SCD 处理 |
 | CANTask | RX 队列 + 1000 ms 上报检查 | +2 | 接收解析、状态发送与 ACK |
@@ -313,7 +313,7 @@ CAN FIFO → ISR / HAL 回调 → xQueueSendFromISR
 
 ### 8.6 详细 CAN 协议
 
-完整字节表、标志位和示例见 [CAN 通讯协议](docs/can-protocol.md)。当前协议尚未包含电量计 SOC/SOH 字段。
+完整字节表、标志位和示例见 [CAN 通讯协议](docs/can-protocol.md)。新增 `0x308` 包含 SOC、SOH、剩余容量、满充容量、有效标志和错误码，并加入查询全部状态响应。
 
 ## 9. Qt BMS Monitor 上位机
 
@@ -335,7 +335,7 @@ CAN FIFO → ISR / HAL 回调 → xQueueSendFromISR
 
 ### 9.5 SOC / SOH
 
-SOC 区域已预留，当前显示“电量计未接入”；SOC/SOH 的 CAN 字段、协议解析与数据显示正在开发。
+SOC 卡片显示 `0x308` 中的 SOC 和 SOH，悬停可查看剩余/满充容量。未收到、采样失败、禁用、采样过期或 CAN 电量帧超时均显示无效状态，不把旧值当成当前电量。当前帧的有效标志不代表芯片已完成学习或精度验证。
 
 ### 9.6 告警 / 故障显示
 
@@ -416,7 +416,7 @@ STM32-BMS-48Pro/
     └── MDK-ARM/                       # Keil 工程
 ```
 
-**固件入口：**使用 Keil MDK 打开 [BMS_Rebuild_add_34z100.uvprojx](Projects/MDK-ARM/BMS_Rebuild_add_34z100.uvprojx)。启动前核对板卡接线、保护参数与 `bms_config.h` 功能开关；当前电量计任务默认关闭。
+**固件入口：**使用 Keil MDK 打开 [BMS_Rebuild_add_34z100.uvprojx](Projects/MDK-ARM/BMS_Rebuild_add_34z100.uvprojx)。启动前核对板卡接线、保护参数与 `bms_config.h` 功能开关；当前电量计任务默认启用。
 
 **上位机入口：**使用 Qt Creator 打开 [CMakeLists.txt](BMS-QT/BMS_Monitor/CMakeLists.txt)。工程要求 CMake ≥ 3.19、Qt 6 ≥ 6.5、C++17，依赖 Core、Widgets 和 SerialBus；连接实物需要可用的 Qt PeakCAN 插件及相应 PCAN 驱动/运行库。运行后选择设备、500 kbps 和标准帧，再连接查看状态。
 
@@ -449,14 +449,14 @@ STM32-BMS-48Pro/
 | CAN | 已实现 | 周期状态上报、查询命令与带序号 ACK |
 | 分级异常 / Safe-Off | 已实现 | 启动、运行与硬件异常处理，关断结果记录和重试 |
 | Qt Monitor | 已联调基本数据链路 | CAN 连接、状态显示、原始报文；具备查询与 ACK 解析代码 |
-| BQ34Z100-G1 | 开发中 | 读取框架已实现，GaugeTask 默认关闭；继续完善配置、容量学习与系统接入 |
-| SOC/SOH CAN 与 Qt 接入 | 开发中 | 电量计字段与显示链路尚未接入 |
+| BQ34Z100-G1 | 待实物验证 | GaugeTask 默认启用；配置、校准、容量学习和精度仍需验证 |
+| SOC/SOH CAN 与 Qt 接入 | 代码已实现 | 0x308 周期/查询上报、SOC/SOH/容量显示和失效处理；待 CAN 实物联调 |
 | 历史趋势曲线 | 开发中 | UI 已预留，历史数据与曲线尚未接入 |
 | Flash 参数管理 | 计划中 | 参数保存与配置版本管理 |
 
 下一步重点：
 
-- 完善 BQ34Z100 参数配置、校准和容量学习，接通 SOC/SOH 的 CAN 与 Qt 链路。
+- 完成 BQ34Z100 参数配置、校准和容量学习，实物验证 SOC/SOH 的 CAN 与 Qt 链路及电量精度。
 - 实现 Qt 历史数据缓存、时间轴与趋势曲线。
 - 增加 Flash 参数管理，扩展协议与上位机配置能力。
 - 扩展保护恢复、预充、故障关断、异常通讯与长期运行测试。

@@ -21,6 +21,8 @@ int main(int argc, char **argv)
     QMainWindow window;
     Ui::MainWindow ui;
     ui.setupUi(&window);
+    ui.labelSoc->setText(QStringLiteral("100 %"));
+    ui.labelSocSource->setText(QStringLiteral("SOH 100%"));
     const QVector<double> cells{3.826,3.833,3.782,3.694,3.826,3.750,3.775,3.799,3.790};
     ui.widgetCellBarChart->setValues(cells);
     ui.labelCellBadge2->hide(); ui.labelCellBadge4->hide(); ui.labelCellBalance2->hide();

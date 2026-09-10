@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.19)
-project(BMS_Monitor LANGUAGES CXX)
+project(BMS_Monitor LANGUAGES C CXX)
 
 include(GNUInstallDirs)
 
@@ -53,6 +53,22 @@ if(BMS_BUILD_LAYOUT_TESTS)
     endif()
     add_test(NAME dashboard_layout COMMAND BMS_LayoutSmoke -platform offscreen)
     add_test(NAME dashboard_layout_hidpi COMMAND BMS_LayoutSmoke -platform offscreen --hidpi)
+endif()
+
+option(BMS_BUILD_PROTOCOL_TESTS "Build gauge sampling and CAN protocol tests" OFF)
+if(BMS_BUILD_PROTOCOL_TESTS)
+    enable_testing()
+    qt_add_executable(BMS_GaugeProtocolTest
+        tests/gauge_protocol.cpp bmscanprotocol.cpp
+        ../../Users/App/bq34z100_app.c)
+    target_include_directories(BMS_GaugeProtocolTest PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR} ../../Users/App ../../Users
+        ../../Drivers/BSP/bq34z100_drv)
+    target_link_libraries(BMS_GaugeProtocolTest PRIVATE Qt::Core Qt::SerialBus)
+    if(MSVC)
+        target_compile_options(BMS_GaugeProtocolTest PRIVATE /utf-8)
+    endif()
+    add_test(NAME gauge_protocol COMMAND BMS_GaugeProtocolTest)
 endif()
 
 install(TARGETS BMS_Monitor

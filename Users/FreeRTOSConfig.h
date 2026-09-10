@@ -36,6 +36,7 @@ extern uint32_t SystemCoreClock;
 #define configMAX_SYSCALL_INTERRUPT_PRIORITY            ( configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY << ( 8 - configPRIO_BITS ) )
 
 #define INCLUDE_vTaskDelay                      1
+#define INCLUDE_vTaskDelayUntil                 1
 #define INCLUDE_vTaskDelete                     1
 #define INCLUDE_vTaskSuspend                    0
 #define INCLUDE_xTaskGetSchedulerState          1

@@ -729,7 +729,7 @@ QHeaderView::section { padding:3px; }</string>
                  <item>
                   <widget class="QLabel" name="labelSocSource">
                    <property name="text">
-                    <string>电量计未接入</string>
+                    <string>等待电量数据</string>
                    </property>
                    <property name="alignment">
                     <set>Qt::AlignmentFlag::AlignCenter</set>

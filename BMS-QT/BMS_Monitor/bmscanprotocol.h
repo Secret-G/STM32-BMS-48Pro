@@ -68,9 +68,22 @@ struct BmsCommandAckData
     bool valid = false;
 };
 
+// 0x308: transport validity does not certify calibration or learning accuracy.
+struct BmsGaugeData
+{
+    quint8 socPercent = 0;
+    quint8 sohPercent = 0;
+    quint16 remainingCapacityMah = 0;
+    quint16 fullChargeCapacityMah = 0;
+    quint8 lastError = 0;
+    bool received = false;
+    bool valid = false;
+};
+
 class BmsCanProtocol
 {
 public:
+    static bool parseGaugeStatus(const QCanBusFrame &frame, BmsGaugeData &gaugeData);
     // 解析0x302、0x303、0x304中的单体电压。
     // 如果当前帧属于单体电压报文并且长度正确，则返回true。
     static bool parseCellVoltages(const QCanBusFrame &frame,BmsCellVoltageData &cellData);

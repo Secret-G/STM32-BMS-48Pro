@@ -3,6 +3,13 @@
 
 #include "stdint.h"
 
+/* Transport/data errors, independent of the gauge learning state. */
+#define BQ34Z100_APP_ERR_RANGE       22U
+#define BQ34Z100_APP_ERR_I2C_LOCK    0xF0U
+#define BQ34Z100_APP_ERR_NOT_READY   0xF1U
+#define BQ34Z100_APP_ERR_DISABLED    0xF2U
+#define BQ34Z100_APP_ERR_STALE       0xF3U
+
 typedef struct
 {
     uint8_t  soc_percent;
@@ -31,5 +38,6 @@ typedef struct
 void BQ34Z100_AppInit(BQ34Z100_AppCtx_t *ctx);
 uint8_t BQ34Z100_AppRunCycle(BQ34Z100_AppCtx_t *ctx);
 void BQ34Z100_AppPrint(const BQ34Z100_AppCtx_t *ctx);
+uint8_t BQ34Z100_AppBuildCanPayload(const BQ34Z100_AppCtx_t *ctx, uint8_t data[8]);
 
 #endif

@@ -129,9 +129,7 @@ void BQ76940_AppSendCanTelemetry(const BQ76940_AppCtx_t *ctx)
 		
 }
 
-void BQ76940_AppSendBringUpFaultCan(const BQ76940_AppCtx_t *ctx,
-                                    uint8_t main_ret,
-                                    uint8_t safe_off_result)
+void BQ76940_AppSendBringUpFaultCan(const BQ76940_AppCtx_t *ctx,uint8_t main_ret,uint8_t safe_off_result)
 {
     uint8_t data[8];
     uint8_t fault_flags = 0U;
@@ -177,9 +175,7 @@ void BQ76940_AppSendBringUpFaultCan(const BQ76940_AppCtx_t *ctx,
 }
 
 
-void BQ76940_AppSendRtosInitFaultCan(const struct BQ76940_AppCtx *ctx,
-                                     uint8_t err_code,
-                                     uint8_t safe_off_result)
+void BQ76940_AppSendRtosInitFaultCan(const struct BQ76940_AppCtx *ctx,uint8_t err_code,uint8_t safe_off_result)
 {
     uint8_t data[8];
 
@@ -474,4 +470,12 @@ uint8_t BQ76940_AppHandleCanCommand(const BQ76940_AppCtx_t *ctx,
     BQ76940_AppSendCmdAck(ctx, cmd, seq, result, detail);
 
     return 0U;
+}
+
+/* 0x308: SOC, SOH, RM, FCC, validity, error. Capacities are little-endian. */
+uint8_t BQ34Z100_AppSendCanStatus(const BQ34Z100_AppCtx_t *ctx)
+{
+    uint8_t data[8];
+    if (BQ34Z100_AppBuildCanPayload(ctx, data) != 0U) return 1U;
+    return CAN_DrvSendStd(CAN_ID_BMS_GAUGE_STATUS, data, 8U);
 }

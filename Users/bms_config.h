@@ -43,12 +43,12 @@
 /* =========================
  * Feature switches
  * ========================= */
-#define BMS_ENABLE_GAUGE_TASK              0U
+#define BMS_ENABLE_GAUGE_TASK              1U
 
 /* =========================
  * BQ34Z100 refresh
  * ========================= */
-#define BMS_CORE_BQ34Z100_PERIOD_CNT       10U
+#define BMS_GAUGE_STALE_TIMEOUT_MS         3000U
 
 /* =========================
  * Mutex / timeout

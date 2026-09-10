@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QElapsedTimer>
 #include "bmscanprotocol.h"
 
 QT_BEGIN_NAMESPACE
@@ -71,6 +72,9 @@ private:
     BmsFaultData m_faultData;
     BmsBalanceData m_balanceData;
     BmsCommandAckData m_ackData;
+    BmsGaugeData m_gaugeData;
+    QElapsedTimer m_gaugeAge;
+    void updateGaugeDisplay();
 
     quint64 m_receivedFrameCount = 0;
     quint64 m_transmittedFrameCount = 0;
